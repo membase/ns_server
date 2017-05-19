@@ -2,7 +2,7 @@
   <ui-view></ui-view>
   <div class="row flex-column items-top">
     <div
-       class="margin-top1 flex-order-two columns-four"
+       class="margin-top-1 flex-order-two columns-four"
        ng-repeat="block in analyticsCtl.state.statsDirectoryBlocks track by block.blockName"
        ng-class="{dynamic_withtotal: block.withTotal,
                  'flex-order-one': block.blockName=='Summary',

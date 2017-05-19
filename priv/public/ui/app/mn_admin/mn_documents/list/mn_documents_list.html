@@ -50,7 +50,7 @@
         class="row flex-right indent-1">
     <input
        type="text"
-       class="prepend width-15"
+       class="prepend fix-width-4"
        autocorrect="off"
        spellcheck="false"
        autocapitalize="off"
@@ -80,8 +80,8 @@
        ng-repeat="r in documentsControlCtl.state.docs.rows track by r.id"
        ng-show="documentsControlCtl.state.docs.rows.length">
       <div class="cbui-tablerow">
-        <span class="cbui-table-cell wrap break-all">{{ r.id }}</span>
-        <span class="cbui-table-cell flex-grow-2 wrap break-all">
+        <span class="cbui-table-cell wrap break-word">{{ r.id }}</span>
+        <span class="cbui-table-cell flex-grow-2 wrap break-word">
           {{r.doc.json !== undefined ? r.doc.json : r.doc.base64 | mnLimitTo: 200}}
         </span>
         <span class="cbui-table-cell wrap text-right">

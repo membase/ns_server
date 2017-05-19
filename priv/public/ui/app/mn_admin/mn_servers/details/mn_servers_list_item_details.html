@@ -18,13 +18,13 @@
       <div
         title="{{serversListItemDetailsCtl.server.details.storage.hdd[0].path}}"
         ng-if="!!serversListItemDetailsCtl.server.details.storage.hdd[0].path"
-        class="break-all">
+        class="break-word">
        <strong>Data Storage Path:</strong> {{serversListItemDetailsCtl.server.details.storage.hdd[0].path | mnEllipsisiseOnLeft:100}}
       </div>
       <div
          title="{{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path}}"
          ng-if="!!serversListItemDetailsCtl.server.details.storage.hdd[0].index_path"
-         class="break-all">
+         class="break-word">
         <strong>Index Storage Path:</strong> {{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:100}}
       </div>
     </div>
@@ -50,7 +50,7 @@
 
 <!-- rebalance progress items: buckets, data out, data in -->
   <h5
-    class="margin-top1"
+    class="margin-top-1"
      ng-show="serversListItemDetailsCtl.tasks.detailedProgress && rbac.cluster.tasks.read">
     Rebalance Progress
   </h5>

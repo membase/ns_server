@@ -3,8 +3,8 @@
   <form
      ng-submit="settingsClusterCtl.saveVisualInternalSettings()"
      class="forms">
-    <div class="formrow width-480 margin-bottom2">
-      <h4>Cluster Name &nbsp;<small>(0 — 256 chars)</small></h4>
+    <div class="formrow width-480 margin-bottom-2">
+      <h4>Cluster Name &nbsp <small>(0 — 256 chars)</small></h4>
       <input
          id="cluster-name-field"
          type="text"
@@ -21,7 +21,7 @@
     </div>
     <div
        rbac="rbac"
-       class="width-480 margin-bottom2"
+       class="width-480 margin-bottom-2"
        mn-memory-quota="settingsClusterCtl.memoryQuotaConfig"
        errors="settingsClusterCtl.memoryQuotaErrors">
     </div>
@@ -120,7 +120,7 @@
         </div>
       </div>
     </div>
-    <div class="margin-top2">
+    <div class="margin-top-2">
       <button
          type="submit"
          ng-show="rbac.cluster.pools.write || rbac.cluster.indexes.write"

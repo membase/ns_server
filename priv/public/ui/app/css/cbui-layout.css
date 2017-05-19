@@ -1,16 +1,16 @@
-/* LAYOUT  */
-
+/* MAIN LAYOUT COMPONENTS ----------------------------------------------- */
+/* expands height of the page regardless of content - for footer position */
 html, body, .root-container {
   height: 100%;
 }
-
+/* creates a slot for the footer ---------------------------------------- */
 .page-wrap {
   min-height: 100%;
   margin-bottom: -24px;
   padding-bottom: 24px;
 }
-
-nav.nav-header {
+/* utility links at page top -------------------------------------------- */
+.nav-header {
   display: flex;
   justify-content: flex-end;
   align-content: center;
@@ -19,18 +19,11 @@ nav.nav-header {
   width: 100%;
   height: 18px;
 }
-
+/* blue header area w/ logo, title, action links ------------------------ */
 header {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-wrap: no-wrap;
   flex-wrap: no-wrap;
-  -webkit-box-pack: start;
-  -ms-flex-pack: start;
   justify-content: flex-start;
-  -webkit-box-align: center;
-  -ms-flex-align: center;
   align-items: center;
   background-color: #4287d6;
   padding: 0 1rem;
@@ -38,7 +31,7 @@ header {
   color: #fff;
   position: relative;
 }
-
+/* contains all content below the header -------------------------------- */
 main {
   display:-webkit-box;
   display:-ms-flexbox;
@@ -52,17 +45,13 @@ main {
   margin: 0;
   width: 100vw;
 }
-
+/* nav element for child pages, positioned under header ----------------- */
 nav.sub-nav {
-  display: -webkit-box;
-  display: -ms-flexbox;
   display: flex;
-  -webkit-box-pack: center;
-  -ms-flex-pack: center;
   justify-content: center;
   background-color: #669ee0;
 }
-
+/* nav element for main navigation, on left side or hidden for mobile --- */
 nav.nav-sidebar {
   flex: 0 0 auto;
   border-right: 1px solid #ececec;
@@ -70,119 +59,14 @@ nav.nav-sidebar {
   margin: 0 2rem 0 0;
   text-align: right;
 }
-
+/* wrapper for all content in <main> besides sidebar -------------------- */
 .main-content {
   flex: 1;
   margin-bottom: 2rem;
 }
-
-.relative {
-  position: relative;
-}
-
-/* these hacks must GO !!!********** */
-.inline {
-    display: inline-block;
-}
-.middle {
-    vertical-align: middle;
-}
-.align-top {
-  vertical-align: top;
-}
-/* ******************************* */
-
-
-/* https://drafts.csswg.org/css-flexbox/#min-size-auto
-don't allow flex container to be more than screen size
-*/
-.min-width-zero {
-  min-width: 0;
-}
-
-.pre-line {
-  white-space: pre-line;
-}
-
-.row {
-  display: -webkit-flex;
-  display: -ms-flexbox;
-  display: flex;
-  min-height: 1rem;
-  -webkit-align-items: center;
-  -ms-flex-align: center;
-  align-items: center;
-  -webkit-flex-wrap: no-wrap;
-  -ms-flex-wrap: no-wrap;
-  flex-wrap: no-wrap;
-  -webkit-justify-content: space-between;
-  -ms-flex-pack: justify;
-  justify-content: space-between;
-  position: relative;
-}
-
-.row.row-min {
-  min-height: 0;
-}
-
-.row.items-top {
-    -webkit-align-items: flex-start;
-    -ms-flex-align: flex-start;
-    align-items: flex-start;
-}
-
-.row.items-bottom {
-    -webkit-align-items: flex-end;
-    -ms-flex-align: flex-end;
-    align-items: flex-end;
-}
-
-.row.items-center {
-    -webkit-box-pack: center;
-    -webkit-justify-content: center;
-    -ms-flex-pack: center;
-    justify-content: center;
-}
-
-.row.items-space-around {
-    -webkit-box-pack: space-around;
-    -webkit-justify-content: space-around;
-    -ms-flex-pack: space-around;
-    justify-content: space-around;
-}
-.row.items-stretch {
-  -webkit-box-align: stretch;
-  -ms-grid-row-align: stretch;
-  align-items: stretch;
-}
-
-.flex-grow-one {
-    flex-grow: 1;
-}
-
-.column {
-  padding: 0;
-  margin: 0 2rem 0 0;
-}
-
-.column:last-child {
-  margin-right: 0;
-}
-
-.flex-column { /* starts with row  */
-  -webkit-box-orient: vertical;
-  -webkit-box-direction: normal;
-  -ms-flex-direction: column;
-  flex-direction: column;
-  -webkit-box-pack: start;
-  -ms-flex-pack: start;
-  justify-content: flex-start;
-}
-
 section {
   border-bottom: 1px solid #d1d1d1;
 }
-
 footer {
   text-align: center;
   padding: .25rem 0;
@@ -191,216 +75,257 @@ footer {
   background-color: #ecf3fa;
   font-size: .688rem;
 }
-
-/* WIDTH HELPERS --------------------- */
-.width-1 {
-  width: 8.33333333%;
+/* basic flex component for horizontal layout --------------------------- */
+.row {
+  display: flex;
+  min-height: 1rem;
+  align-items: center;
+  flex-wrap: no-wrap;
+  justify-content: space-between;
+  position: relative;
+}
+.row.row-min {
+  min-height: 0;
 }
 
-.width-2 {
-  width: 16.66666667%;
+/* column for side-by-side containers ----------------------------------- */
+.column {
+  padding: 0;
+  margin: 0 2rem 0 0;
+}
+.column:last-child {
+  margin-right: 0;
+}
+/* turns a .row into a vertical layout w/ top-aligned content ----------- */
+.flex-column {
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
-.width-3 {
-  width: 25%;
+/* GENERAL HELPERS ------------------------------------------------------ */
+.relative {
+  position: relative;
 }
-
-.width-4 {
-  width: 33.33333333%;
+.inline {
+  display: inline-block;
 }
-
-.width-5 {
-  width: 41.66666667%;
+.middle {
+  vertical-align: middle;
 }
-
-.width-6 {
-  width: 50%;
+.align-top {
+  vertical-align: top;
 }
-
-.width-7 {
-  width: 58.33333333%;
-}
-
-.width-8 {
-  width: 66.66666667%;
-}
-
-.width-9 {
-  width: 75%;
-}
-
-.width-10 {
-  width: 83.33333333%;
-}
-
-.width-11 {
-  width: 91.66666667%;
-}
-
-.width-12 {
-  width: 100%;
-}
-
-.max-width-4 {
-  max-width: 16rem;
-}
-
-.max-width-3 {
-  max-width: 12rem;
-}
-
-/* LAYOUT HELPERS ------------------- */
-.margin-left-half {
-  margin-left: .5rem;
-}
-
-.indent-1 {
-  margin-left: 1rem;
-}
-
-.indent-2 {
-  margin-left: 2rem;
-}
-
-.padding-0 {
-  padding: 0 !important;
-}
-
-.padding-left-half {
-  padding-left: .5rem;
-}
-
-.indent-3 {
-  margin-left: 3rem;
-}
-
-.padding-left-2 {
-  padding-left: 2.5rem;
-}
-
-.padding-bottom-6 {
-  padding-bottom:6rem;
-}
-
-.margin-right-1 {
-    margin-right: 1rem;
-}
-
-.margin-right-half {
-    margin-right: .5rem;
-}
-
-.margin-right-zero {
-    margin-right: 0 !important;
-}
-
-.margin-top-1 {
-  margin-top: -1rem;
-}
-
-.margin-top1 {
-  margin-top: 1rem;
-}
-
-.margin-top2 {
-  margin-top: 2rem;
-}
-
-.margin-top4 {
-  margin-top: 4rem;
-}
-
-.margin-bottom0 {
-  margin-bottom: 0;
-}
-
-.margin-bottom1 {
-  margin-bottom: 1rem;
-}
-
-.margin-bottom2 {
-  margin-bottom: 2rem;
-}
-
-.margin-bottom-half {
-  margin-bottom: .5rem;
-}
-
-.debug-outline {
-  border: 1px dashed red;
-}
-
 .text-right {
-  text-align:right;
+  text-align: right;
 }
 .text-center {
-  text-align:center;
+  text-align: center;
 }
 .text-left {
   text-align: left;
 }
-
 .text-nowrap {
   white-space: nowrap;
 }
-
+.nowrap {
+  white-space: nowrap;
+}
 .wrap {
   white-space: normal;
   overflow: visible;
 }
 
+/* FLEX HELPERS --------------------------------------------------------- */
 .flex-left {
-  -webkit-box-pack: start;
-  -webkit-justify-content: flex-start;
-  -ms-flex-pack: start;
   justify-content: flex-start;
 }
-
 .flex-right {
-  -webkit-box-pack: end;
-  -webkit-justify-content: flex-end;
-  -ms-flex-pack: end;
   justify-content: flex-end;
 }
-
 .flex-center {
-  -webkit-box-pack: center;
-  -ms-flex-pack: center;
   justify-content: center;
+}
+.items-top {
+  align-items: flex-start;
+}
+.items-bottom {
+  align-items: flex-end;
+}
+.items-center {
+  justify-content: center;
+}
+.items-space-around {
+  justify-content: space-around;
+}
+.items-stretch {
+  align-items: stretch;
 }
 
 .flex-order-two {
-  -webkit-box-ordinal-group: 3;
-  -ms-flex-order: 2;
   order: 2;
 }
-
 .flex-order-one {
-  -webkit-box-ordinal-group: 2 !important;
-  -ms-flex-order: 1 !important;
   order: 1 !important;
 }
+/* flex-grow factors --------------------------------------------------- */
+.flex-grow-0 {
+  flex-grow: 0;
+}
+.flex-grow-half {
+  flex-grow: .5;
+}
+.flex-grow-1 {
+  flex-grow: 1;
+}
+.flex-grow-1-25 {
+  flex-grow: 1.25;
+}
+.flex-grow-1-5 {
+  flex-grow: 1.5;
+}
+.flex-grow-2 {
+  flex-grow: 2;
+}
+.flex-grow-2-5 {
+  flex-grow: 2.5;
+}
+.flex-grow-3 {
+  flex-grow: 3;
+}
 
+/* min/max width ------------------------------------------------------- */
+.min-width-zero {
+  min-width: 0;
+}
+
+.max-width-1 {
+  max-width: 4rem; /* 1rem = 16px, 4rem = 64px */
+}
+.max-width-2 {
+  max-width: 8rem; /* 128px */
+}
+.max-width-3 {
+  max-width: 12rem; /* 192px */
+}
+.max-width-4 {
+  max-width: 16rem; /* 256px */
+}
+.max-width-5 {
+  max-width: 24rem; /* 384px */
+}
+.max-width-6 {
+  max-width: 32rem; /* 512px */
+}
+.max-width-7 {
+  max-width: 40rem; /* 640px */
+}
+.max-width-8 {
+  max-width: 48rem; /* 768px */
+}
+.max-width-9 {
+  max-width: 56rem; /* 896px */
+}
+.max-width-10 {
+  max-width: 64rem; /* 1024px */
+}
+.max-width-11 {
+  max-width: 72rem; /* 1152px */
+}
+.max-width-12 {
+  max-width: 80rem; /* 1280px */
+}
+
+/* percentage width ---------------------------------------------------- */
+.width-1 {
+  width: 8.33333333%;
+}
+.width-2 {
+  width: 16.66666667%;
+}
+.width-3 {
+  width: 25%;
+}
+.width-4 {
+  width: 33.33333333%;
+}
+.width-5 {
+  width: 41.66666667%;
+}
+.width-6 {
+  width: 50%;
+}
+.width-7 {
+  width: 58.33333333%;
+}
+.width-8 {
+  width: 66.66666667%;
+}
+.width-9 {
+  width: 75%;
+}
+.width-10 {
+  width: 83.33333333%;
+}
+.width-11 {
+  width: 91.66666667%;
+}
+.width-12 {
+  width: 100%;
+}
+
+/* fixed rem width ----------------------------------------------------- */
+.fix-width-1 {
+  width: 4rem; /* 1rem = 16px, 4rem = 64px */
+}
+.fix-width-2 {
+  width: 8rem; /* 128px */
+}
+.fix-width-3 {
+  width: 12rem; /* 192px */
+}
+.fix-width-4 {
+  width: 16rem; /* 256px */
+}
+.fix-width-5 {
+  width: 24rem; /* 384px */
+}
+.fix-width-6 {
+  width: 32rem; /* 512px */
+}
+.fix-width-7 {
+  width: 40rem; /* 640px */
+}
+.fix-width-8 {
+  width: 48rem; /* 768px */
+}
+.fix-width-9 {
+  width: 56rem; /* 896px */
+}
+.fix-width-10 {
+  width: 64rem; /* 1024px */
+}
+.fix-width-11 {
+  width: 72rem; /* 1152px */
+}
+.fix-width-12 {
+  width: 80rem; /* 1280px */
+}
+
+/* fixed pixel width -------------------------------------------------- */
 .width-300 {
   width: 300px;
 }
-
-.width-15 {
-  width: 15rem;
-}
-
 .width-480 {
   width: 480px;
 }
-
 .width-530 {
   width: 530px;
 }
-
 .width-680 {
   width: 680px;
 }
 
+/* fixed height ------------------------------------------------------- */
 .max-height-500 {
   max-height: 500px;
   overflow: auto;
@@ -409,20 +334,119 @@ footer {
   height: 2rem;
 }
 
+/* margins ------------------------------------------------------------ */
+.margin-0 {
+  margin: 0 !important;
+}
+
+.margin-top-neg-1 {
+  margin-top: -1rem;
+}
+.margin-top-0 {
+  margin-top: 0;
+}
+.margin-top-half {
+  margin-top: .5rem;
+}
+/* REMOVE */
+.margin-top1 {
+  margin-top: 1rem;
+}
+.margin-top-1 {
+  margin-top: 1rem;
+}
+.margin-top-2 {
+  margin-top: 2rem;
+}
+.margin-top-4 {
+  margin-top: 4rem;
+}
+
+.margin-right-zero {
+  margin-right: 0 !important;
+}
+.margin-right-0 {
+  margin-right: 0 !important;
+}
+.margin-right-half {
+  margin-right: .5rem;
+}
+.margin-right-1 {
+  margin-right: 1rem;
+}
+
+.margin-bottom-0 {
+  margin-bottom: 0;
+}
+.margin-bottom-half {
+  margin-bottom: .5rem;
+}
+.margin-bottom-1 {
+  margin-bottom: 1rem;
+}
+/* REMOVE */
+.margin-bottom1 {
+  margin-bottom: 1rem;
+}
+/* REMOVE */
+.margin-bottom2 {
+  margin-bottom: 2rem;
+}
+.margin-bottom-2 {
+  margin-bottom: 2rem;
+}
+.margin-bottom-4 {
+  margin-bottom: 4rem;
+}
+
+.margin-left-0 {
+  margin-left: 0;
+}
+.margin-left-half {
+  margin-left: .5rem;
+}
+.margin-left-1, .indent-1 {
+  margin-left: 1rem;
+}
+.margin-left-2, .indent-2 {
+  margin-left: 2rem;
+}
+.margin-left-3, .indent-3 {
+  margin-left: 3rem;
+}
+
+/* padding ------------------------------------------------------------- */
+.padding-0 {
+  padding: 0 !important;
+}
+
+.padding-left-0 {
+  padding-left: 0;
+}
+.padding-left-half {
+  padding-left: .5rem;
+}
+.padding-left-1 {
+  padding-left: 1rem;
+}
+.padding-left-2 {
+  padding-left: 2rem;
+}
+.padding-left-2-5 {
+  padding-left: 2.5rem;
+}
+
+.padding-bottom-6 {
+  padding-bottom: 6rem;
+}
+
+/* extras -------------------------------------------------------------- */
+.pre-line {
+  white-space: pre-line;
+}
 .break-word {
   word-break: break-all;
 }
-.break-all-modal {
-  -ms-word-break: break-all;
-  overflow-wrap: break-word;
-}
-.break-all {
-  -ms-word-break: break-all;
-  word-break: break-all;
-  /* Non standard for webkit */
-  word-break: break-word;
-  -webkit-hyphens: auto;
-  -moz-hyphens: auto;
-  -ms-hyphens: auto;
-  hyphens: auto;
+.debug-outline {
+  border: 1px dashed red;
 }

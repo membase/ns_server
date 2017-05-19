@@ -6,7 +6,7 @@
 
 <div mn-spinner="(rbac.cluster.bucket['.'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['.'].settings.read && !buckets.details)">
 
-  <div class="row items-top margin-top1 service-widget-row resp-margin-xsml">
+  <div class="row items-top margin-top-1 service-widget-row resp-margin-xsml">
     <div
        class="service-widget"
        ng-class="['dynamic_' + overviewCtl.nodes.kv.statusClass]">
@@ -79,7 +79,7 @@
 
   <div class="row resp-wrap-med">
     <div
-       class="column width-6 margin-top2">
+       class="column width-6 margin-top-2">
       <h4>Data Service Memory</h4>
       <div
          ng-class="{
@@ -91,7 +91,7 @@
          base-info="overviewCtl.mnOverviewConfig.ramOverviewConfig"></div>
     </div>
     <div
-       class="column width-6 margin-top2">
+       class="column width-6 margin-top-2">
       <h4>Data Service Disk</h4>
       <div
          class="bar-usages"
@@ -104,7 +104,7 @@
     <div
        ng-if="rbac.cluster.bucket['.'].stats.read"
        class="row flex-left items-top resp-wrap-med">
-      <div ng-show="buckets.details.length" class="margin-top2">
+      <div ng-show="buckets.details.length" class="margin-top-2">
         <h4>Buckets Operations Per Second</h4>
           <span ng-show="!overviewCtl.mnOverviewStats.opsGraphConfig.stats.length">
             (No samples, yet)
@@ -116,7 +116,7 @@
            style="height: 150px; width: 360px; margin-right: 2rem;"
            class="text-smaller"></div>
       </div>
-      <div ng-show="buckets.details.length" class="margin-top2">
+      <div ng-show="buckets.details.length" class="margin-top-2">
         <h4>Disk Fetches Per Second</h4>
           <span ng-show="!overviewCtl.mnOverviewStats.readsGraphConfig.stats.length">
             (No samples, yet)
