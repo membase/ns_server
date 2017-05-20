@@ -76,13 +76,19 @@
 
 -record(state, {queue, retries}).
 
+backup_path() ->
+    filename:join(path_config:component_path(data, "config"), "audit.bak").
+
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    {ok, #state{queue = queue:new(), retries = 0}}.
+    erlang:process_flag(trap_exit, true),
+    {ok, #state{queue = maybe_restore_backup(), retries = 0}}.
 
-terminate(_Reason, _State)     -> ok.
+terminate(_Reason, #state{queue = Queue}) ->
+    maybe_backup(Queue).
+
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_call({log, Code, Body}, _From, #state{queue = Queue} = State) ->
@@ -106,7 +112,66 @@ handle_info(send, #state{queue = Queue, retries = Retries} = State) ->
                 timer2:send_after(1000, send),
                 Retries + 1
         end,
-    {noreply, State#state{queue = NewQueue, retries = NewRetries}}.
+    {noreply, State#state{queue = NewQueue, retries = NewRetries}};
+handle_info({'EXIT', From, Reason}, State) ->
+    ?log_debug("Received exit from ~p with reason ~p. Exiting.", [From, Reason]),
+    {stop, Reason, State}.
+
+maybe_backup(Queue) ->
+    case queue:is_empty(Queue) of
+        false ->
+            ?log_warning("Backup non empty audit queue"),
+            case misc:write_file(backup_path(), term_to_binary(Queue)) of
+                ok ->
+                    ok;
+                Error ->
+                    ?log_error("Error backing up audit queue: ~p", [Error])
+            end;
+        true ->
+            ok
+    end.
+
+restore_backup(Binary) ->
+    try binary_to_term(Binary, [safe]) of
+        Queue ->
+            case queue:is_queue(Queue) of
+                true ->
+                    ?log_info("Audit queue was restored from the backup"),
+                    self() ! send,
+                    Queue;
+                false ->
+                    ?log_error("Backup content is not a proper queue"),
+                    error
+            end
+    catch
+        T:E ->
+            ?log_error("Backup is malformed ~p", [{T,E}]),
+            error
+    end.
+
+maybe_restore_backup() ->
+    case file:read_file(backup_path()) of
+        {ok, Binary} ->
+            Queue =
+                case restore_backup(Binary) of
+                    error ->
+                        queue:new();
+                    Q ->
+                        Q
+                end,
+            case file:delete(backup_path()) of
+                ok ->
+                    ok;
+                Error ->
+                    ?log_error("Unable to delete backup file: ~p", [Error])
+            end,
+            Queue;
+        {error, enoent} ->
+            queue:new();
+        Other ->
+            ?log_error("Unexpected error when reading backup: ~p", [Other]),
+            queue:new()
+    end.
 
 code(login_success) ->
     8192;
