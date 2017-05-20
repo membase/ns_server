@@ -96,7 +96,10 @@ handle_call({log, Code, Body}, _From, #state{queue = Queue} = State) ->
     EncodedBody = ejson:encode({Body}),
     NewQueue = queue:in({Code, EncodedBody}, Queue),
     self() ! send,
-    {reply, ok, State#state{queue = NewQueue}}.
+    {reply, ok, State#state{queue = NewQueue}};
+handle_call(stats, _From, #state{queue = Queue, retries = Retries} = State) ->
+    {reply, [{queue_length, queue:len(Queue)},
+             {unsuccessful_retries, Retries}], State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -379,10 +382,15 @@ send_to_memcached(Queue) ->
     end.
 
 stats() ->
-    ns_memcached_sockets_pool:executing_on_socket(
+    case ns_memcached_sockets_pool:executing_on_socket(
       fun (Sock) ->
               mc_binary:quick_stats(Sock, <<"audit">>, fun mc_binary:quick_stats_append/3, [])
-      end).
+      end) of
+        {ok, Stats} ->
+            {ok, Stats ++ gen_server:call(?MODULE, stats)};
+        Error ->
+            Error
+    end.
 
 login_success(Req) ->
     Identity = menelaus_auth:get_identity(Req),

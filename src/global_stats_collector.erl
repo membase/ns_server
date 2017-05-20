@@ -37,5 +37,10 @@ grab_stats([]) ->
 
 process_stats(_TS, Stats, _PrevCounters, _PrevTS, []) ->
     AuditDroppedEvents = proplists:get_value(<<"dropped_events">>, Stats, <<"0">>),
-    AuditStats = [{audit_dropped_events, list_to_integer(binary_to_list(AuditDroppedEvents))}],
+    AuditQueueLen = proplists:get_value(queue_length, Stats, 0),
+    AuditRetries = proplists:get_value(unsuccessful_retries, Stats, 0),
+
+    AuditStats = [{audit_dropped_events, list_to_integer(binary_to_list(AuditDroppedEvents))},
+                  {audit_queue_length, AuditQueueLen},
+                  {audit_unsuccessful_retries, AuditRetries}],
     {[{"@global", AuditStats}], undefined, []}.
