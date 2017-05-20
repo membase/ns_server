@@ -92,9 +92,18 @@ terminate(_Reason, #state{queue = Queue}) ->
 code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_call({log, Code, Body}, _From, #state{queue = Queue} = State) ->
+    CleanedQueue =
+        case queue:len(Queue) > ns_config:read_key_fast(max_audit_queue_length, 1000) of
+            true ->
+                ?log_error("Audit queue is too large. Dropping audit records to info log"),
+                print_audit_records(Queue),
+                queue:new();
+            false ->
+                Queue
+        end,
     ?log_debug("Audit ~p: ~p", [Code, Body]),
     EncodedBody = ejson:encode({Body}),
-    NewQueue = queue:in({Code, EncodedBody}, Queue),
+    NewQueue = queue:in({Code, EncodedBody}, CleanedQueue),
     self() ! send,
     {reply, ok, State#state{queue = NewQueue}};
 handle_call(stats, _From, #state{queue = Queue, retries = Retries} = State) ->
@@ -655,3 +664,12 @@ client_cert_auth(Req, Value) ->
 
 security_settings(Req, Settings) ->
     put(security_settings, Req, [{settings, {prepare_list(Settings)}}]).
+
+print_audit_records(Queue) ->
+    case queue:out(Queue) of
+        {empty, _} ->
+            ok;
+        {{value, V}, NewQueue} ->
+            ?log_info("Dropped  audit entry: ~p", [V]),
+            print_audit_records(NewQueue)
+    end.
