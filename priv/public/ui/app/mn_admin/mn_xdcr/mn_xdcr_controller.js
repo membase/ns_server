@@ -34,11 +34,8 @@
     vm.status = status;
 
     function to(row) {
-      if (!vm.references) {
-        return;
-      }
       var uuid = row.id.split("/")[0];
-      var clusters = vm.references.byUUID;
+      var clusters = vm.references ? vm.references.byUUID : {};
       var toName = !clusters[uuid] ? "unknown" : !clusters[uuid].deleted ? clusters[uuid].name : ('at ' + cluster[uuid].hostname);
       return 'bucket "' + row.target.split('buckets/')[1] + '" on cluster "' + toName + '"';
     }

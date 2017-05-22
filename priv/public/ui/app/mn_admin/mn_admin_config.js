@@ -160,7 +160,7 @@
           }
         },
         data: {
-          permissions: "cluster.xdcr.remote_clusters.read",
+          permissions: "cluster.tasks.read",
           title: "XDCR Replications"
         }
       })

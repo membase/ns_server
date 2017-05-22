@@ -53,7 +53,7 @@
     <div class="row margin-bottom-half">
       <h4>Ongoing Replications</h4>
       <button
-         ng-show="xdcrCtl.references.filtered.length"
+         ng-show="(rbac.cluster.xdcr.remote_clusters.read && xdcrCtl.references.filtered.length) && rbac.cluster.xdcr.settings.read && rbac.cluster.xdcr.settings.write && rbac.cluster.bucket['.'].xdcr.write"
          ng-click="xdcrCtl.createReplications()">
         Create Replication
       </button>
@@ -94,7 +94,7 @@
               <span>{{xdcrCtl.humanStatus(row)}}</span>
               <div
                  style="cursor: pointer; display: inline-block;"
-                 ng-show="row.status !== 'notRunning' && poolDefault.compat.atLeast30 && rbac.cluster.bucket['.'].xdcr.write && rbac.cluster.bucket['.'].xdcr.execute"
+                 ng-show="row.status !== 'notRunning' && poolDefault.compat.atLeast30 && rbac.cluster.bucket[row.source].xdcr.execute"
                  class="icon text-normal"
                  ng-class="['fa-' + xdcrCtl.status(row)]"
                  ng-click="xdcrCtl.status(row) !== 'spinner' && xdcrCtl.pausePlayReplication(row)"></div>
@@ -107,10 +107,10 @@
             <td class="resp-hide-sml">{{row.when}}</td>
             <td class="text-right">
               <a
-                 ng-show="rbac.cluster.bucket['.'].xdcr.write"
+                 ng-show="rbac.cluster.bucket[row.source].xdcr.write"
                  ng-click="xdcrCtl.deleteReplication(row)">Delete</a> &nbsp;
               <a
-                 ng-show="rbac.cluster.bucket['.'].xdcr.read && rbac.cluster.xdcr.settings.read"
+                 ng-show="rbac.cluster.bucket[row.source].xdcr.write && rbac.cluster.xdcr.settings.write"
                  ng-click="xdcrCtl.editReplication(row)">Edit</a>
             </td>
           </tr>
