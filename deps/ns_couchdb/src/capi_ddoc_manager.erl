@@ -61,8 +61,7 @@ start_replicator(Bucket) ->
                               ViewNodes ->
                                   LiveOtherNodes = ns_node_disco:nodes_actual_other(),
                                   ordsets:intersection(LiveOtherNodes, ViewNodes)
-                          end,
-                          ns_node_disco:nodes_actual_other()
+                          end
                   end,
               doc_replicator:start_link(?MODULE, replicator_name(Bucket), GetRemoteNodes,
                                         doc_replication_srv:proxy_server_name(Bucket))
