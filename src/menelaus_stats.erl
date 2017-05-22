@@ -1717,7 +1717,7 @@ membase_summary_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, IsEp
               {stats,
                [{struct,[{title,<<"ops per second">>},
                          {name,<<"ops">>},
-                         {desc,<<"Total amount of operations per second to this bucket (measured from cmd_get + cmd_set + incr_misses + incr_hits + decr_misses + decr_hits + delete_misses + delete_hits)">>},
+                         {desc,<<"Total amount of operations per second (including XDCR) to this bucket (measured from cmd_get + cmd_set + incr_misses + incr_hits + decr_misses + decr_hits + delete_misses + delete_hits + ep_num_ops_del_meta + ep_num_ops_get_meta + ep_num_ops_set_meta)">>},
                          {default,true}]},
                 {struct,[{title,<<"cache miss ratio">>},
                          {name,<<"ep_cache_miss_rate">>},
