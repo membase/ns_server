@@ -46,6 +46,11 @@
 -define(HIBERNATE_TIMEOUT, 10000).
 -define(LIVELINESS_UPDATE_INTERVAL, 1000).
 
+-define(CONNECT_TIMEOUT, ns_config:get_timeout(ebucketmigrator_connect, 180000)).
+
+-define(RECBUF, ns_config:read_key_fast({node, node(), mc_replication_recbuf}, 64 * 1024)).
+-define(SNDBUF, ns_config:read_key_fast({node, node(), mc_replication_sndbuf}, 64 * 1024)).
+
 init([Type, ConnName, Node, Bucket, ExtModule, InitArgs]) ->
     {ExtState, State} = ExtModule:init(
                           InitArgs,
@@ -214,8 +219,18 @@ connect(Type, ConnName, Node, Bucket, XAttr) ->
     Username = ns_config:search_node_prop(Node, ns_config:latest(), memcached, admin_user),
     Password = ns_config:search_node_prop(Node, ns_config:latest(), memcached, admin_pass),
 
-    HostPort = ns_memcached:host_port(Node),
-    Sock = mc_replication:connect({HostPort, Username, Password, Bucket}),
+    {Host, Port} = ns_memcached:host_port(Node),
+    {ok, Sock} = gen_tcp:connect(Host, Port,
+                                 [binary, {packet, raw}, {active, false},
+                                  {nodelay, true}, {delay_send, true},
+                                  {keepalive, true},
+                                  {recbuf, ?RECBUF},
+                                  {sndbuf, ?SNDBUF}],
+                                 ?CONNECT_TIMEOUT),
+    ok = mc_client_binary:auth(Sock, {<<"PLAIN">>,
+                                      {list_to_binary(Username),
+                                       list_to_binary(Password)}}),
+    ok = mc_client_binary:select_bucket(Sock, Bucket),
 
     XAttr = maybe_negotiate_xattr(Sock, XAttr),
     ok = dcp_commands:open_connection(Sock, ConnName, Type, XAttr),
