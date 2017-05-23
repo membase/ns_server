@@ -22,7 +22,9 @@
 
     </span>
   </div>
-  <div class="row margin-bottom-half">
+  <div
+     class="row margin-bottom-half"
+     ng-class="{'flex-right': !viewsEditingCtl.state.isDevelopmentDocument}">
     <div
        class="pills text-right"
        ng-show="viewsEditingCtl.state.isDevelopmentDocument">
