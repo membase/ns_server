@@ -7,10 +7,9 @@
       <span>{{task | formatWarmupMessage}}</span>
     </div>
     <a
-       href=""
        ng-show="warmUpTasks.length > 3 && limitTo === 3"
        ng-click="limitTo = undefined">... more</a>
-    <a href=""
+    <a
        ng-show="warmUpTasks.length > 3 && limitTo === undefined"
        ng-click="limitTo = 3">less</a>
   </div>

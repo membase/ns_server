@@ -296,7 +296,7 @@ input.filter-input {
   font-size: 1.125rem;
   color: #2ca01c;
   position: absolute;
-  top: -4px;
+  top: 0;
   left: -1.5rem;
 }
 /* alert warning icon --------------------------------------------------- */
@@ -306,7 +306,7 @@ input.filter-input {
   font-size: 1.125rem;
   color: #f5a623;
   position: absolute;
-  top: -4px;
+  top: 0;
   left: -1.5rem;
 }
 /* alert error icon ----------------------------------------------------- */
@@ -316,20 +316,8 @@ input.filter-input {
   font-size: 1rem;
   color: #d65558;
   position: absolute;
-  top: -4px;
+  top: 0;
   left: -1.5rem;
-}
-/* close alert icon ----------------------------------------------------- */
-.alert span.close {
-  font-family: FontAwesome;
-  font-size: 1.125rem;
-  position: absolute;
-  top: -4px;
-  cursor: pointer;
-  right: 0;
-  padding: 0 1.5rem;
-  opacity: .6;
-  filter: alpha(opacity=60);
 }
 
 /* CBUI FLEXBOX TABLES -------------------------------------------------  */
@@ -545,9 +533,6 @@ section.error {
 .panel-header.flex-left {
   justify-content: flex-start;
 }
-.panel-header h2 {
-  color: #fff;
-}
 .panel-content {
   padding: 1.5rem;
   font-size: .961rem;
@@ -704,6 +689,10 @@ section.error {
   left: 0;
   top: -2px;
 }
+.badge.red-3 {
+  color: #fff;
+  background-color: #e07f82;
+}
 
 /* alerts  -------------------------------------------------------------- */
 .animate-alert.ng-move,
@@ -715,27 +704,29 @@ section.error {
 .animate-alert.ng-move,
 .animate-alert.ng-enter {
   opacity: 0;
-  height: 0rem;
+  height: 0;
 }
 .animate-alert.ng-leave,
 .animate-alert.ng-move.ng-move-active,
 .animate-alert.ng-enter.ng-enter-active {
   opacity: 1;
-  height: 2.5rem;
+  height: 2rem;
 }
 .alert {
+  overflow: hidden;
   text-align: center;
+  line-height: 2rem;
+  height: 2rem;
   font-size: .75rem;
   font-weight: 600;
   display: block;
   color: #333;
   position: relative;
-  padding: .5rem 3rem;
+  padding-right: 3rem;
 }
 .alert .close {
   position: absolute;
   right: 1.5rem;
-  top: 4px;
   font-size: 1rem;
 }
 .alert p {
@@ -748,6 +739,9 @@ section.error {
 }
 .alert a:hover {
   text-decoration: underline;
+}
+.alert .close:hover {
+  text-decoration: none;
 }
 .alert-success {
   background-color: #e9f5e8;
@@ -770,10 +764,6 @@ section.error {
 .alert-error a,
 .alert-error span {
   color: #cc2a2e;
-}
-.alert span.close:hover {
-  opacity: 1;
-  filter: alpha(opacity=100);
 }
 
 /* statistic charts ----------------------------------------------------- */

@@ -51,7 +51,6 @@
     from: {{viewsEditingCtl.state.capiBase + viewsEditingResultCtl.errors.from}};<br>
     reason: {{viewsEditingResultCtl.errors.error}} {{viewsEditingResultCtl.errors.reason ? "(" + viewsEditingResultCtl.errors.reason + ")" : ""}}
     <a
-       href=""
        ng-show="viewsEditingResultCtl.errors.showBtn"
        ng-click="viewsEditingResultCtl.activate()">
       Run Query Again
@@ -74,7 +73,6 @@
           <td class="ellipsis"  title="{{ r.key | json }}">
             {{ r.key | json}}<br>
             <a
-               href=""
                ng-show="r.id !== 'undefined'"
                ng-click="viewsEditingResultCtl.loadSampleDocument(r.id)">{{ r.id }}</a>
             <div

@@ -9,7 +9,7 @@
   </div>
 
   <div class="row">
-    <span class="red nowrap text-smaller resp-hide-sml" style="padding-left:1rem;">BETA BUILD</span>
+    <span class="red-1 nowrap text-smaller resp-hide-sml" style="padding-left:1rem;">BETA BUILD</span>
     <nav class="nav-header">
       <a ng-click="adminCtl.toggleProgressBar()" class="activities" ng-if="rbac.cluster.tasks.read">
         Activity
@@ -76,11 +76,12 @@
         <div uib-dropdown-menu class="dropdown-menu-select-like">
           <a
              ng-show="pools.isEnterprise && poolDefault.compat.atLeast50 && (adminCtl.user.domain === 'local' || adminCtl.user.domain === 'admin')"
-             href=""
              ng-click="adminCtl.showResetPasswordDialog()">
             Reset password
           </a>
-          <a href="" ng-click="adminCtl.logout()" class="ellipsis max-width-4">
+          <a
+             ng-click="adminCtl.logout()"
+             class="ellipsis max-width-4">
             Sign out {{adminCtl.user.id}}
           </a>
         </div>

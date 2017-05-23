@@ -85,24 +85,24 @@
        ng-model="userRolesCtl.pageLimit"
        ng-options="o as o for o in [10,20,50,100]"></select>
     <span>
-      <a href=""
+      <a
          ng-hide="userRolesCtl.pageNumber === 1"
          ng-click="userRolesCtl.prevPage()">&lt; Prev</a>
-      <a href="" ng-show="userRolesCtl.pageNumber > 3">...</a>
-      <a href=""
+      <a  ng-show="userRolesCtl.pageNumber > 3">...</a>
+      <a
          ng-repeat="pageNumber in userRolesCtl.getVisiblePages() track by pageNumber"
          ng-click="userRolesCtl.goToPage(pageNumber)"
          ng-show="userRolesCtl.getTotalPageCount() > 1">
         {{pageNumber}}
       </a>
       <span ng-show="userRolesCtl.pageNumber + 2 < userRolesCtl.getTotalPageCount()">
-        <a href="">...</a>
-        <a href=""
+        <a >...</a>
+        <a
            ng-click="userRolesCtl.goToPage(userRolesCtl.getTotalPageCount())">
           {{userRolesCtl.getTotalPageCount()}}
         </a>
       </span>
-      <a href=""
+      <a
          ng-show="userRolesCtl.state.users.length > userRolesCtl.pageNumber * userRolesCtl.pageLimit"
          ng-click="userRolesCtl.nextPage()">Next &gt;</a>
     </span>

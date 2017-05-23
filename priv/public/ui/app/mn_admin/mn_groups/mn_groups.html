@@ -14,7 +14,6 @@
 
 <div class="row flex-right margin-bottom-half">
   <a
-     href=""
      class="margin-right-1"
      ng-show="!groupsCtl.disableApplyChangesBtn"
      ng-click="groupsCtl.reloadState('app.admin.servers.list.groups')"
@@ -38,7 +37,6 @@
     <div class="cbui-table-header flex-left">
       <h4 class="ellipsis">{{group.name}}&nbsp;
         <a
-           href=""
            class="text-smaller"
            ng-show="rbac.cluster.server_groups.write"
            ng-click="groupsCtl.createGroup(group)"
@@ -68,7 +66,6 @@
           <div uib-dropdown-toggle class="menu-toggle">move to <span class="icon fa-caret-down"></span></div>
           <div uib-dropdown-menu class="dropdown-menu-select-like">
             <a
-               href=""
                ng-show="groupNew.name !== group.name"
                ng-repeat="groupNew in groupsCtl.state.groups | orderBy:'name'"
                ng-click="groupsCtl.changeNodeGroup(group.name, groupNew.name, server)">{{groupNew.name}}</a>
@@ -80,7 +77,6 @@
             pending move to {{server.toGroupPending}}
           </span>
           <a
-             href=""
              class="indent-1"
              ng-click="groupsCtl.changeNodeGroup(server.toGroupPending, group.name, server)">
             cancel
@@ -93,7 +89,6 @@
     <div ng-show="!group.nodes.length" class="zero-content">
       This group is empty.
       <a
-         href=""
          ng-click="groupsCtl.deleteGroup(group)"
          class="indent-1">
         delete group

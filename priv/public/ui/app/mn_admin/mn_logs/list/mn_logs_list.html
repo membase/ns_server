@@ -19,11 +19,9 @@
              >{{row.text}}</span>
           <span ng-show="logsListCtl.isOverLimit(row)">
             <a
-               href=""
                ng-show="!logsListCtl.isOpened($index)"
                ng-click="logsListCtl.toggle($index)">...show</a>
             <a
-               href=""
                ng-show="logsListCtl.isOpened($index)"
                ng-click="logsListCtl.toggle($index)">hide</a>
           </span>
