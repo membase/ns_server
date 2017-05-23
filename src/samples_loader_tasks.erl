@@ -114,7 +114,9 @@ perform_loading_task(Name, Quota) ->
     case ns_orchestrator:ensure_janitor_run({bucket, Name}) of
         ok ->
             ok;
-        _ ->
+        NotOK ->
+            ?log_error("Sample load task ~p failed, received ~p back from "
+                       "ensuring janitor runs", [Name, NotOK]),
             exit(failed_waiting_bucket)
     end,
 
