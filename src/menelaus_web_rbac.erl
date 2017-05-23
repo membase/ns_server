@@ -665,6 +665,8 @@ validate_cred(P, password) ->
     execute_verifiers(Verifiers);
 validate_cred([], username) ->
     <<"Username must not be empty">>;
+validate_cred(Username, username) when length(Username) > 128 ->
+    <<"Username may not exceed 128 characters">>;
 validate_cred(Username, username) ->
     V = lists:all(
           fun (C) ->
@@ -1300,3 +1302,24 @@ after_the_end_page_test() ->
          [{first, noparams},
           {prev, {"a28", local}}]),
        process_toy_users(toy_users(10, 30), {"b29", local}, 3)).
+
+validate_cred_username_test() ->
+    LongButValid = "Username_that_is_127_characters_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    ?assertEqual(127, length(LongButValid)),
+    ?assertEqual(true, validate_cred("valid", username)),
+    ?assertEqual(true, validate_cred(LongButValid, username)),
+    ?assertNotEqual(true, validate_cred([], username)),
+    ?assertNotEqual(true, validate_cred("", username)),
+    ?assertNotEqual(true, validate_cred(LongButValid ++ "more_than_128_characters", username)),
+    ?assertNotEqual(true, validate_cred([7], username)),
+    ?assertNotEqual(true, validate_cred([127], username)),
+    ?assertNotEqual(true, validate_cred("=", username)),
+
+    %%% The following block does not work after compilation with erralng 16
+    %%% due to non-native utf8 enoding of strings in .beam compiled files.
+    %%% TODO: re-enable this after upgrading to eralng 19+.
+    % Utf8 = "ξ",
+    % ?assertEqual(1,length(Utf8)),
+    % ?assertEqual(true, validate_cred(Utf8, username)),                  % "ξ" is codepoint 958
+    % ?assertEqual(true, validate_cred(LongButValid ++ Utf8, username)),  % 128 code points
+    ok.
