@@ -27,7 +27,7 @@
          terminate/2, code_change/3]).
 
 -export([adjust_my_address/3, read_address_config/0, save_address_config/1,
-         ip_config_path/0, using_user_supplied_address/0, reset_address/0]).
+         ip_config_path/0, using_user_supplied_address/0, reset_address/0, wait_for_node/1]).
 
 %% used by babysitter and ns_couchdb
 -export([configure_net_kernel/0]).
@@ -231,14 +231,17 @@ bringup(MyIP, UserSupplied) ->
 
     #state{self_started = Rv, my_ip = MyIP, user_supplied = UserSupplied}.
 
-wait_for_node(Node) ->
+wait_for_node(Node) when is_atom(Node) ->
     ?log_debug("Waiting for connection to node ~p to be established", [Node]),
-    wait_for_node(Node, 100, 10).
+    wait_for_node(fun () -> Node end);
+wait_for_node(NodeFun) ->
+    wait_for_node(NodeFun, 100, 10).
 
-wait_for_node(Node, _Time, 0) ->
-    ?log_error("Failed to wait for node ~p", [Node]),
+wait_for_node(NodeFun, _Time, 0) ->
+    ?log_error("Failed to wait for node ~p", [NodeFun()]),
     erlang:exit({error, wait_for_node_failed});
-wait_for_node(Node, Time, Try) ->
+wait_for_node(NodeFun, Time, Try) ->
+    Node = NodeFun(),
     case net_kernel:connect_node(Node) of
         true ->
             ?log_debug("Observed node ~p to come up", [Node]),
@@ -246,7 +249,7 @@ wait_for_node(Node, Time, Try) ->
         Ret ->
             ?log_debug("Node ~p is not accessible yet. (Ret = ~p). Retry in ~p ms.", [Node, Ret, Time]),
             timer:sleep(Time),
-            wait_for_node(Node, Time, Try - 1)
+            wait_for_node(NodeFun, Time, Try - 1)
     end.
 
 configure_net_kernel() ->
