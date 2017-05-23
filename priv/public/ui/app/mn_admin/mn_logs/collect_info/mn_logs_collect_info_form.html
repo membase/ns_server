@@ -120,6 +120,6 @@
 
     <button
        type="submit"
-       ng-disabled="logsCollectInfoCtl.collect.nodes.length">Start Collection</button>
+       ng-disabled="logsCollectInfoCtl.collect.from === '' && !('some' | lodash:('values' | lodash:logsCollectInfoCtl.collect.nodes))">Start Collection</button>
   </form>
 </div>
