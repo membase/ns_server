@@ -949,7 +949,7 @@ handle_call({clear, Keep}, From, State) ->
     %% we ignore state from saver, 'cause we're going to reload it anyway
     wait_saver(NewState, infinity),
     RV = handle_call(reload, From, State),
-    ?log_debug("Full result of clear:~n~p", [RV]),
+    ?log_debug("Full result of clear:~n~p", [ns_config_log:sanitize(RV)]),
     RV;
 
 handle_call({merge_ns_couchdb_config, NewKVList0, FromNode}, _From, State) ->
