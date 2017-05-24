@@ -803,6 +803,9 @@ idle({ensure_janitor_run, Item}, From, State) ->
 
 janitor_running(rebalance_progress, _From, State) ->
     {reply, not_running, janitor_running, State};
+janitor_running({ensure_janitor_run, Item}, From, State) ->
+    do_request_janitor_run(Item, fun(Reason) -> gen_fsm:reply(From, Reason) end,
+                           janitor_running, State);
 janitor_running(Msg, From, #janitor_state{cleanup_id=ID}) when ID =/= undefined ->
     %% When handling some call while janitor is running we kill janitor
     %% and then handle original call in idle state
@@ -814,10 +817,7 @@ janitor_running(Msg, From, #janitor_state{cleanup_id=ID}) when ID =/= undefined 
         {cleanup_done, _, _} ->
             ok
     end,
-    idle(Msg, From, #idle_state{});
-janitor_running({ensure_janitor_run, Item}, From, State) ->
-    do_request_janitor_run(Item, fun(Reason) -> gen_fsm:reply(From, Reason) end,
-                           janitor_running, State).
+    idle(Msg, From, #idle_state{}).
 
 %% Asynchronous rebalancing events
 rebalancing({update_progress, Service, ServiceProgress},
