@@ -175,7 +175,7 @@
         },
         data: {
           title: "Logs",
-          permissions: "cluster.admin.logs.read"
+          permissions: "cluster.logs.read"
         }
       })
       .state('app.admin.logs.list', {
@@ -189,6 +189,7 @@
         controller: 'mnLogsCollectInfoController as logsCollectInfoCtl',
         templateUrl: 'app/mn_admin/mn_logs/collect_info/mn_logs_collect_info.html',
         data: {
+          permissions: "cluster.admin.logs.read",
           title: "Collect Information"
         }
       })
