@@ -70,7 +70,7 @@
      class="cbui-tablerow error"
      ng-show="serversItemCtl.isNodeUnhealthy && !serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeInactiveAdded">
     <span>
-      Node unresponsive (wait for node, or failover to remove on next rebalance)
+      Node unresponsive | Not taking traffic | FAILOVER to activate available replicas
     </span>
     <button
        ng-show="rbac.cluster.pools.write"
@@ -145,7 +145,7 @@
   <div
      class="cbui-tablerow"
      ng-show="!adminCtl.tasks.inRebalance && serversItemCtl.isNodeInactiveAdded && node.recoveryType === 'none' && rbac.cluster.tasks.read">
-    <span class="error">This server will be added to the cluster pending rebalance.</span>
+    <span class="error">New node | Not taking traffic | ADD pending rebalance</span>
     <button
        ng-show="rbac.cluster.pools.write"
        class="outline"
