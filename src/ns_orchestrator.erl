@@ -256,7 +256,7 @@ ensure_janitor_run(Item) ->
               case gen_fsm:sync_send_event(?SERVER, {ensure_janitor_run, Item}, infinity) of
                   warming_up ->
                       false;
-                  shutdown ->
+                  interrupted ->
                       false;
                   Ret ->
                       Ret
