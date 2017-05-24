@@ -144,22 +144,26 @@ handle_info({'EXIT', Pid, Reason}, #state{pid = Pid,
                                           unsafe_nodes = UnsafeNodes,
                                           caller_pid = CallerPid,
                                           cleanup_done_cb = CB} = State) ->
-    case Reason of
-        normal ->
-            %% No need to notify as it will already be done by 'cleanup_complete'.
-            ok;
-        _ ->
-            Ret = case Reason of
-                      shutdown -> interrupted;
-                      _X       -> janitor_failed
+    NewRequests = case Reason of
+                      normal ->
+                          %% No need to notify as it will already be done by 'cleanup_complete'.
+                          Requests;
+                      _ ->
+                          Ret = case Reason of
+                                    shutdown -> interrupted;
+                                    _X       -> janitor_failed
+                                end,
+
+                          lists:map(fun({Item, _} = Request) ->
+                                            %% Clear the list of callbacks once the requestors
+                                            %% have been notified about the reason of exit.
+                                            do_notify_janitor_finished(Request, Ret),
+                                            {Item, []}
+                                    end, Requests)
                   end,
 
-            lists:map(fun(Request) ->
-                              do_notify_janitor_finished(Request, Ret)
-                      end, Requests)
-    end,
     ok = CB(CallerPid, UnsafeNodes, Pid),
-    {noreply, State#state{pid = undefined, unsafe_nodes = []}};
+    {noreply, State#state{janitor_requests = NewRequests, pid = undefined, unsafe_nodes = []}};
 handle_info(_, State) ->
     {noreply, State}.
 
