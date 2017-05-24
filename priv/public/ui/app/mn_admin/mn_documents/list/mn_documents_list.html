@@ -13,7 +13,6 @@
     <ui-select
        on-select="documentsCtl.onSelectBucketName($item)"
        ng-model="documentsCtl.currentBucketName"
-       ng-disabled="!rbac.bucketNames['.data.docs!read'].length"
        theme="selectize"
        style="display: inline-block; vertical-align: middle;"
        class="cbui">
@@ -99,7 +98,7 @@
         </span>
       </div>
     </section>
-    <div ng-if="!documentsControlCtl.state.docs.rows.length" class="zero-content">
+    <div ng-show="!documentsControlCtl.state.docs.rows.length && !documentsControlCtl.state.status" class="zero-content">
       <span ng-show="!buckets.details.byName[documentsCtl.currentBucketName].isEphemeral">There are currently no documents in this bucket{{ searchCriteria ? ' corresponding to the search criteria.' : '.' }}</span>
       <span ng-show="buckets.details.byName[documentsCtl.currentBucketName].isEphemeral">Documents are retrieved from ephemeral buckets by using the id lookup.</span>
     </div>

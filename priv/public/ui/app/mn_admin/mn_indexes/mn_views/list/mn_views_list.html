@@ -60,10 +60,6 @@
     <div class="cbui-table">
       <div
          class="zero-content"
-         ng-show="viewsListCtl.ddocs.status">
-      </div>
-      <div
-         class="zero-content"
          ng-show="!viewsListCtl.ddocs.status && !rbac.bucketNames['.views!read'].length">
         There are currently no buckets and no views to show.
         <span ng-show="rbac.cluster.buckets.create">

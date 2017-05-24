@@ -18,7 +18,7 @@
     activate();
 
     function isEmptyState() {
-      return !vm.state || vm.state.isEmptyState;
+      return !vm.state || vm.state.status;
     }
     function isPrevDisabled() {
       return isEmptyState() || vm.state.pageNumber === 0;

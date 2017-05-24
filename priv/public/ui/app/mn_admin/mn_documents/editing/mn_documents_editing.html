@@ -1,32 +1,30 @@
-
-<div
-   class="error text-small"
-   ng-show="documentsEditingCtl.state.errors">
-  <p>Error: {{documentsEditingCtl.state.errors.reason}} ({{documentsEditingCtl.state.errors.error }})</p>
-</div>
-<div
-   class="error text-small"
-   ng-show="documentsEditingCtl.areThereWarnings()"
-   ng-messages="documentsEditingCtl.state.editorWarnings">
-  <p ng-message="documentLimitError">Warning: Editing of document with size more than 256 KiB is not allowed</p>
-  <p ng-message="documentIsBase64">Warning: Editing of binary document is not allowed</p>
-  <p ng-message="notFound">Error: not found (Document does not exist)</p>
-</div>
+<mn-element-cargo depot="alerts">
+  <div
+     class="alert alert-warning"
+     ng-show="documentsEditingCtl.state.errors">
+    <p>Error: {{documentsEditingCtl.state.errors.reason}} ({{documentsEditingCtl.state.errors.error }})</p>
+  </div>
+  <div
+     class="alert alert-warning"
+     ng-show="documentsEditingCtl.areThereWarnings()"
+     ng-messages="documentsEditingCtl.state.editorWarnings">
+    <p ng-message="documentLimitError">Warning: Editing of document with size more than 256 KiB is not allowed</p>
+    <p ng-message="documentIsBase64">Warning: Editing of binary document is not allowed</p>
+    <p ng-message="notFound">Error: not found (Document does not exist)</p>
+  </div>
+</mn-element-cargo>
 
 <div class="row margin-bottom-half">
   <h4 class="ellipsis width-7">{{documentsEditingCtl.state.title}}</h4>
   <div class="width-5 text-right">
     <button
-       ng-hide="rbac.cluster.bucket[documentsCtl.currentBucketName].data.write === false"
-       ng-disabled="documentsEditingCtl.isDeleteDisabled()"
+       ng-disabled="documentsEditingCtl.isDeleteDisabled() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
        ng-click="documentsEditingCtl.deleteDocument()">Delete</button>
     <button
-       ng-hide="rbac.cluster.bucket[documentsCtl.currentBucketName].data.write === false"
-       ng-disabled="documentsEditingCtl.isSaveAsDisabled()"
+       ng-disabled="documentsEditingCtl.isSaveAsDisabled() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
        ng-click="documentsEditingCtl.saveAsDialog()">Save As...</button>
     <button
-       ng-disabled="documentsEditingCtl.isSaveDisabled()"
-       ng-hide="rbac.cluster.bucket[documentsCtl.currentBucketName].data.write === false"
+       ng-disabled="documentsEditingCtl.isSaveDisabled() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
        ng-click="documentsEditingCtl.save()">Save</button>
   </div>
 </div>

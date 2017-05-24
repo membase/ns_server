@@ -35,16 +35,12 @@
         return getListState(resp.data, params);
       }, function (resp) {
         switch (resp.status) {
-          case 404: return getEmptyListState(params, {data: {error: "bucket not found"}});
-          default: return getEmptyListState(params, resp);
+        case 0:
+        case -1: return $q.reject(resp);
+        case 404: return !params.bucket ? {status: "_404"} : resp;
+        default: return resp;
         }
       });
-    }
-
-    function getEmptyListState(params, resp) {
-      var rv = getListState({rows: [], errors: [resp && resp.data]}, params);
-      rv.isEmptyState = true;
-      return rv;
     }
 
     function getDocumentsParams(params) {
