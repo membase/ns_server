@@ -91,7 +91,7 @@
         switch (resp.status) {
         case 0:
         case -1: return $q.reject(resp);
-        case 404: return !params.bucket ? {status: "_404"} : resp;
+        case 404: return !bucket ? {status: "_404"} : resp;
         default: return resp;
         }
       });

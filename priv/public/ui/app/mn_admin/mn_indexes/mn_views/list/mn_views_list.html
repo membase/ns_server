@@ -15,11 +15,11 @@
 
 <mn-element-cargo depot="alerts">
   <div
-     ng-if="viewsListCtl.ddocs.status"
+     ng-if="viewsListCtl.ddocs.status && rbac.bucketNames['.views!read'].length"
      ng-switch="viewsListCtl.ddocs.status"
-     class="interim alert alert-warning" >
+     class="interim alert alert-warning">
     <p ng-switch-when="_404">Bucket name should be specified.</p>
-    <p ng-switch-when="400">Error 400: This bucket is hosted on another node.</p>
+    <p ng-switch-when="400">Error 400: Either this bucket is not Couchbase bucket or is hosted on another node.</p>
     <p ng-switch-when="404">Error 404: This bucket does not exist.</p>
     <p ng-switch-when="403">Error 403: You do not have the necessary permissions to see views in this bucket.</p>
     <p ng-switch-default>Unexpected Error</p>
@@ -60,8 +60,8 @@
     <div class="cbui-table">
       <div
          class="zero-content"
-         ng-show="!viewsListCtl.ddocs.status && !rbac.bucketNames['.views!read'].length">
-        There are currently no buckets and no views to show.
+         ng-show="viewsListCtl.ddocs.status === '_404' && !rbac.bucketNames['.views!read'].length">
+        There are currently no Couchbase buckets and no views to show.
         <span ng-show="rbac.cluster.buckets.create">
           Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one,
           or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.
