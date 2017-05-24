@@ -82,9 +82,10 @@
         });
       }, function (resp) {
         switch (resp.status) {
-          case 0:
-          case -1: return $q.reject(resp);
-          default: return $q.when({isEmptyState: true});
+        case 0:
+        case -1: return $q.reject(resp);
+        case 404: return !params.$stateParams.bucket ? {status: "_404"} : resp;
+        default: return resp;
         }
       });
     }
@@ -98,7 +99,7 @@
       } else {
         reqParams.node = params.$stateParams.statsHostname;
       }
-      if (params.previousResult && !params.previousResult.isEmptyState) {
+      if (params.previousResult && !params.previousResult.status) {
         reqParams.haveTStamp = params.previousResult.stats.lastTStamp;
       }
       return $http({
@@ -119,7 +120,7 @@
       var statDesc = mnCloneOnlyDataFilter(data[1].data);
       var samples = {};
       var rv = {};
-      if (params.previousResult && !params.previousResult.isEmptyState) {
+      if (params.previousResult && !params.previousResult.status) {
         stats = maybeApplyDelta(params.previousResult.stats, stats);
       }
 
@@ -162,6 +163,7 @@
       });
 
       rv.isSpecificStats = !!params.$stateParams.specificStat;
+      rv.specificStat = params.$stateParams.specificStat;
 
       rv.statsByName = statsByName;
       rv.statsDirectoryBlocks = statDesc.blocks;

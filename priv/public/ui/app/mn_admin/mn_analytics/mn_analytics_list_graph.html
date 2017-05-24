@@ -11,8 +11,9 @@
     </h4>
     <span
        class="text-center margin-top4"
+       style="position: absolute; top: 40%; left: 30%;"
        ng-show="!analyticsListGraphCtl.selectedStat.visiblePeriod">
-      No samples, yet
+      There are currently no statistics to show.
     </span>
     <div
        class="inline margin-right-1 text-smaller"
@@ -33,12 +34,4 @@
     <a ui-sref="{zoom: 'month'}" ui-sref-active="selected">Month</a>
     <a ui-sref="{zoom: 'year'}" ui-sref-active="selected">Year</a>
   </div>
-<!-- this is probably redundant with the tooltips
-  <div
-     ng-show="!analyticsCtl.state.isEmptyState"
-     class="width-2 text-smaller">
-    <strong class="text-larger">* </strong>
-    {{analyticsListGraphCtl.selectedStat.desc}}
-  </div>
--->
 </div>

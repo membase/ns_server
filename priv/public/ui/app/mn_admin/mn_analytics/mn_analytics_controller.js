@@ -40,7 +40,7 @@
       })
       .setInterval(function (response) {
         //TODO add error handler
-        return response.isEmptyState ? 10000 : response.stats.nextReqAfter;
+        return response.status ? 10000 : response.stats.nextReqAfter;
       })
       .subscribe("state", vm)
       .reloadOnScopeEvent("reloadAnalyticsPoller");

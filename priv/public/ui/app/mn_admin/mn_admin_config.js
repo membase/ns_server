@@ -286,6 +286,9 @@
           }
         },
         params: {
+          specificStat: {
+            value: null
+          },
           bucket: {
             value: null
           }
@@ -317,7 +320,7 @@
         url: '/:graph?zoom',
         params: {
           graph: {
-            value: 'ops'
+            value: null
           },
           zoom: {
             value: 'minute'
@@ -331,7 +334,7 @@
           var params = _.clone(trans.params(), true);
 
           return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
-            if (state.isEmptyState) {
+            if (state.status) {
               return;
             }
             var originalParams = _.clone(params);
@@ -351,7 +354,7 @@
               }
             }
             var selectedStat = state.statsByName && state.statsByName[params.graph];
-            if (!selectedStat || !selectedStat.config.data.length) {
+            if (!params.graph && (!selectedStat || !selectedStat.config.data.length)) {
               var findBy = function (info) {
                 return info.config.data.length;
               };

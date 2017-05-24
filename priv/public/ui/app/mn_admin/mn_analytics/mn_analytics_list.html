@@ -53,7 +53,7 @@
                 </div>
             </div>
             <a class="text-fine" ng-show="!analyticsCtl.isSpecificStats" ui-sref="{graph: '@' + analyticsCtl.nodes.nodesNames[1], specificStat: statInfo.name}">per server</a>
-            <a class="text-fine" ng-show="analyticsCtl.isSpecificStats" ui-sref="{graph: 'ops', statsHostname: statInfo.name.slice(1), specificStat: null}">per server</a>
+            <a class="text-fine" ng-show="analyticsCtl.isSpecificStats" ui-sref="{graph: analyticsCtl.state.specificStat, statsHostname: statInfo.name.slice(1), specificStat: null}">per server</a>
           </div>
         </div>
       </div>
