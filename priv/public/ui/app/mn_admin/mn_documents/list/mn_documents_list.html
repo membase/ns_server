@@ -1,7 +1,7 @@
 <mn-element-cargo depot="actions">
   <div class="header-controls">
     <a
-       ng-disabled="documentsControlCtl.isEmptyState() || !rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
+       ng-show="!documentsControlCtl.isEmptyState() && rbac.cluster.bucket[documentsCtl.currentBucketName].data.write"
        ng-click="documentsListCtl.showCreateDialog()">
       ADD DOCUMENT
     </a>
