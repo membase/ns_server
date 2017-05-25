@@ -28,7 +28,8 @@
       'mnSettingsAutoFailoverService',
       'mnTasksDetails',
       'mnWarmupProgress',
-      'mnElementCrane'
+      'mnElementCrane',
+      'mnSearch'
     ])
     .controller('mnServersController', mnServersController)
     .filter("formatFailoverWarnings", formatFailoverWarnings);
@@ -54,8 +55,6 @@
     vm.addServer = addServer;
     vm.listFiter = listFiter;
     vm.filterField = "";
-    vm.hideFilter = hideFilter;
-    vm.showFilter = showFilter;
     vm.sortByGroup = sortByGroup
 
     function sortByGroup(node) {
@@ -110,15 +109,6 @@
       }
 
       return rv;
-    }
-
-    function hideFilter() {
-      vm.filterField = "";
-      vm.showFilterFlag = false;
-    }
-    function showFilter() {
-      vm.showFilterFlag = true;
-      vm.focusFilterField = true;
     }
 
     function activate() {

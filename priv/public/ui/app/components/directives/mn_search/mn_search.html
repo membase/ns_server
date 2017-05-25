@@ -1,0 +1,30 @@
+<div
+   ng-if="mnSearchCtl.showFilterFlag"
+   class="filter-input-group">
+  <input
+     type="text"
+     ng-model="mnSearchCtl.mnSearch"
+     mn-focus="mnSearchCtl.focusFilterField"
+     maxlength="256"
+     class="filter-input borderless"
+     placeholder="{{::mnSearchCtl.mnPlaceholder}}">
+  <span
+     class="icon fa-search-minus"
+     ng-show="!mnSearchCtl.mnSearch">
+  </span>
+  <span
+     class="icon fa-times-circle"
+     ng-show="!!mnSearchCtl.mnSearch"
+     ng-click="mnSearchCtl.mnSearch = ''">
+  </span>
+</div>
+<a
+   ng-click="mnSearchCtl.showFilter()"
+   ng-show="!mnSearchCtl.showFilterFlag"
+   class="allcaps">filter
+</a>
+<a
+   ng-click="mnSearchCtl.hideFilter()"
+   ng-show="mnSearchCtl.showFilterFlag"
+   class="allcaps">done
+</a>

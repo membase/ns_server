@@ -1,3 +1,13 @@
+<mn-element-cargo depot="actions">
+  <div class="header-controls resp-sml">
+    <div
+       class="row"
+       mn-search="logsListCtl.filterField"
+       mn-placeholder="filter logs list">
+    </div>
+  </div>
+</mn-element-cargo>
+
 <div mn-spinner="!logsListCtl.logs" min-height="300px">
   <div class="cbui-table">
     <div class="cbui-table-header padding-left resp-hide-sml">
@@ -6,7 +16,7 @@
       <span class="cbui-table-cell">server node</span>
       <span class="cbui-table-cell flex-grow-1-5">time</span>
     </div>
-    <section ng-repeat="row in logsListCtl.logs | orderBy:'serverTime':true track by $index">
+    <section ng-repeat="row in logsListCtl.logs | filter:logsListCtl.filterField | orderBy:'serverTime':true track by $index">
       <div class="cbui-tablerow items-top resp-sml">
         <span class="cbui-table-cell flex-grow-3 min-width-zero resp-sml">
           <span
@@ -26,11 +36,11 @@
                ng-click="logsListCtl.toggle($index)">hide</a>
           </span>
         </span>
-        <span class="cbui-table-cell resp-sml" title="{{row.module}} {{row.code | moduleCode }}">{{row.module}} {{row.code | moduleCode }}</span>
+        <span class="cbui-table-cell resp-sml" title="{{row.module}} {{row.code}}">{{row.module}} {{row.code}}</span>
         <span class="cbui-table-cell resp-sml">{{row.node}}</span>
         <span class="cbui-table-cell flex-grow-1-5 wrap resp-sml">
-          <span class="semi-bold nowrap">{{row.serverTime | date:'mediumTime':'UTC'}}</span> &nbsp;
-          <span class="nowrap">{{row.serverTime | date:'EEE MMM d, yyyy':'UTC'}}</span>
+          <span class="semi-bold nowrap">{{row.time}}</span> &nbsp;
+          <span class="nowrap">{{row.date}}</span>
         </span>
       </div>
     </section>

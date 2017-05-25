@@ -6,7 +6,7 @@
     .controller('mnLogsListController', mnLogsListController)
     .filter('moduleCode', moduleCodeFilter);
 
-  function mnLogsListController($scope, mnLogsService, mnPoller)  {
+  function mnLogsListController($scope, mnLogsService, mnPoller, $filter, moduleCodeFilter)  {
     var vm = this;
     var openedByIndex = {};
     var textLimit = 1000;
@@ -21,7 +21,16 @@
     function activate() {
       new mnPoller($scope, mnLogsService.getLogs)
       .subscribe(function (logs) {
-        vm.logs = logs.data.list;
+        vm.logs = logs.data.list.map(function (row) {
+          return {
+            module: row.module,
+            text: row.text,
+            node: row.node,
+            code: moduleCodeFilter(row.code),
+            time: $filter('date')(row.serverTime, 'mediumTime', 'UTC'),
+            date: $filter('date')(row.serverTime, 'EEE MMM d, yyyy', 'UTC')
+          };
+        });
       })
       .setInterval(10000)
       .cycle();
