@@ -1970,14 +1970,13 @@ merge_values_test__() ->
       end).
 
 mock_timestamp(Body) ->
-    {ok, Pid} = mock:mock(calendar),
     Tid = ets:new(none, [public]),
     true = ets:insert_new(Tid, {counter, 0}),
+    ok = meck:new(calendar, [unstick, passthrough]),
 
     try
-        ok = mock:expects(calendar, datetime_to_gregorian_seconds,
-                          fun (_) -> true end,
-                          fun (_, _) ->
+        ok = meck:expect(calendar, datetime_to_gregorian_seconds,
+                          fun (_) ->
                                   [{counter, Count}] = ets:lookup(Tid, counter),
                                   NewCount = case random:uniform() < 0.3 of
                                                  true ->
@@ -1985,34 +1984,13 @@ mock_timestamp(Body) ->
                                                  false ->
                                                      Count
                                              end,
-
                                   true = ets:insert(Tid, {counter, NewCount}),
-
                                   Count
-                          end, 16#ffffffff),
-        ok = mock:expects(calendar, local_time,
-                          fun (_) -> true end,
-                          fun (_, _) -> erlang:localtime() end, 16#ffffffff),
-        ok = mock:expects(calendar, now_to_local_time,
-                          fun (_) -> true end,
-                          fun (_, _) -> erlang:localtime() end, 16#ffffffff),
-        ok = mock:expects(calendar, now_to_universal_time,
-                          fun (_) -> true end,
-                          fun (_, _) -> erlang:universaltime() end, 16#ffffffff),
-        ok = mock:expects(calendar, seconds_to_time,
-                          fun (_) -> true end,
-                          fun (_, _) -> {0, 0, 0} end, 16#ffffffff),
-
+                          end),
         Body()
     after
-        ets:delete(Tid),
-
-        unlink(Pid),
-        exit(Pid, kill),
-        misc:wait_for_process(Pid, infinity),
-
-        code:purge(calendar),
-        true = code:delete(calendar)
+        meck:unload(calendar),
+        ets:delete(Tid)
     end.
 
 mutate(Value, Nodes) ->
