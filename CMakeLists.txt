@@ -130,10 +130,10 @@ ADD_CUSTOM_TARGET (ns_distclean)
 ADD_DEPENDENCIES (ns_distclean realclean ns_dataclean)
 
 ADD_SUBDIRECTORY (deps)
-REBAR (TARGET ns_server NOCLEAN DEPENDS ns_cfg ale triq)
+REBAR (TARGET ns_server NOCLEAN DEPENDS ns_cfg ale triq meck)
 
 ADD_CUSTOM_TARGET (erlang_deps
-  DEPENDS gen_smtp ale ns_babysitter ns_ssl_proxy ns_couchdb triq)
+  DEPENDS gen_smtp ale ns_babysitter ns_ssl_proxy ns_couchdb triq meck)
 
 ADD_CUSTOM_TARGET (ns_server_all DEPENDS ns_server erlang_deps)
 
