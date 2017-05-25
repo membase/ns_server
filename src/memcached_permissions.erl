@@ -130,7 +130,7 @@ generate_45(#state{buckets = Buckets,
     menelaus_util:encode_json(Json).
 
 refresh() ->
-    ns_memcached:connect_and_send_rbac_refresh().
+    memcached_refresh:refresh(rbac).
 
 bucket_permissions(Bucket, CompiledRoles) ->
     lists:usort([MemcachedPermission ||

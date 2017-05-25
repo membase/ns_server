@@ -61,6 +61,9 @@ child_specs() ->
                            {pool_size, 20}]]},
       {permanent, 1}, 1000, worker, [lhttpc_manager]},
 
+     {memcached_refresh, {memcached_refresh, start_link, []},
+      permanent, 1000, worker, []},
+
      {ns_ssl_services_sup,
       {ns_ssl_services_sup, start_link, []},
       permanent, infinity, supervisor, []},

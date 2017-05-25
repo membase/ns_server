@@ -607,6 +607,6 @@ do_notify_service(xdcr_proxy) ->
 do_notify_service(query_svc) ->
     query_rest:maybe_refresh_cert();
 do_notify_service(memcached) ->
-    ns_memcached:connect_and_send_ssl_certs_refresh();
+    memcached_refresh:refresh(ssl_certs);
 do_notify_service(event) ->
     gen_event:notify(ssl_service_events, cert_changed).

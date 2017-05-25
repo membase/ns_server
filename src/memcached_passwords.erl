@@ -165,7 +165,7 @@ jsonify_auth([AU | Users], AP, Buckets, RestCreds) ->
        end).
 
 refresh() ->
-    ns_memcached:connect_and_send_isasl_refresh().
+    memcached_refresh:refresh(isasl).
 
 extract_creds(ConfigList) ->
     Configs = proplists:get_value(configs, ConfigList),

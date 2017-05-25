@@ -134,6 +134,9 @@
 %% for ns_memcached_sockets_pool only
 -export([connect/0]).
 
+%% for memcached_file_refresh only
+-export([connect/1]).
+
 %% for diagnostics/debugging
 -export([perform_very_long_call/2]).
 
