@@ -1671,19 +1671,22 @@ multi_call_test_() ->
      [fun do_test_multi_call/0]}.
 
 multi_call_test_setup_server() ->
-    {ok, Pid} = mock_gen_server:start_link({local, multi_call_server}),
-    ok = mock_gen_server:stub_call(Pid, echo,
-                                   fun ({echo, V}) ->
-                                           V
-                                   end),
-    ok = mock_gen_server:stub_call(Pid, sleep,
-                                   fun ({sleep, Time}) ->
-                                           timer:sleep(Time)
-                                   end),
-    ok = mock_gen_server:stub_call(Pid, eval,
-                                   fun ({eval, Fun}) ->
-                                           Fun()
-                                   end).
+    meck:new(multi_call_server, [non_strict, no_link]),
+    meck:expect(multi_call_server, init, fun([]) -> {ok, {}} end),
+    meck:expect(multi_call_server, handle_call,
+                fun(Request, _From, _State) ->
+                        Reply = case Request of
+                                    {echo, V} ->
+                                        V;
+                                    {sleep, Time} ->
+                                        timer:sleep(Time);
+                                    {eval, Fun} ->
+                                        Fun()
+                                end,
+                        {reply, Reply, {}}
+                end),
+    {ok, _} = gen_server:start_link({local, multi_call_server}, multi_call_server, [], []),
+    ok.
 
 multi_call_test_setup() ->
     NodeNames = [a, b, c, d, e],
