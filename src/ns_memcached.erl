@@ -1191,8 +1191,6 @@ connect_and_send_rbac_refresh() ->
 connect() ->
     connect(?CONNECTION_ATTEMPTS).
 
-connect(0) ->
-    {error, couldnt_connect_to_memcached};
 connect(Tries) ->
     Config = ns_config:get(),
     Port = ns_config:search_node_prop(Config, memcached, dedicated_port),
@@ -1212,9 +1210,15 @@ connect(Tries) ->
         Sock -> {ok, Sock}
     catch
         E:R ->
-            ?log_warning("Unable to connect: ~p, retrying.", [{E, R}]),
-            timer:sleep(1000), % Avoid reconnecting too fast.
-            connect(Tries - 1)
+            case Tries of
+                1 ->
+                    ?log_warning("Unable to connect: ~p.", [{E, R}]),
+                    {error, couldnt_connect_to_memcached};
+                _ ->
+                    ?log_warning("Unable to connect: ~p, retrying.", [{E, R}]),
+                    timer:sleep(1000), % Avoid reconnecting too fast.
+                    connect(Tries - 1)
+            end
     end.
 
 
