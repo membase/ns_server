@@ -113,9 +113,6 @@
          get_meta/3,
          update_with_rev/7,
          get_seqno_stats/2,
-         connect_and_send_isasl_refresh/0,
-         connect_and_send_ssl_certs_refresh/0,
-         connect_and_send_rbac_refresh/0,
          eval/2,
          get_mass_dcp_docs_estimate/2,
          get_dcp_docs_estimate/3,
@@ -1150,42 +1147,6 @@ get_seqno_stats(Bucket, VBucket) ->
                     end, []),
               {reply, Stats}
       end, Bucket).
-
-connect_and_send_isasl_refresh() ->
-    case connect(1) of
-        {ok, Sock}  ->
-            try
-                ok = mc_client_binary:refresh_isasl(Sock)
-            after
-                gen_tcp:close(Sock)
-            end;
-        Error ->
-            Error
-    end.
-
-connect_and_send_ssl_certs_refresh() ->
-    case connect(1) of
-        {ok, Sock} ->
-            try
-                ok = mc_client_binary:refresh_ssl_certs(Sock)
-            after
-                gen_tcp:close(Sock)
-            end;
-        Error ->
-            Error
-    end.
-
-connect_and_send_rbac_refresh() ->
-    case connect(1) of
-        {ok, Sock}  ->
-            try
-                ok = mc_client_binary:refresh_rbac(Sock)
-            after
-                gen_tcp:close(Sock)
-            end;
-        Error ->
-            Error
-    end.
 
 %%
 %% Internal functions
