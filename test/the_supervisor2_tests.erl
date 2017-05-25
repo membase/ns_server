@@ -54,35 +54,38 @@ frequent_crashes_run() ->
     sync_shutdown_child(find_child(Sup, c1), shutdown),
     %% three crashes in a row should delay restart
 
-    ?assertEqual(undefined, find_child(Sup, c1)),
+    ?assertEqual(restarting, find_child(Sup, c1)),
 
     timer:sleep(2000),
 
-    ?assertEqual(undefined, find_child(Sup, c1)),
+    ?assertEqual(restarting, find_child(Sup, c1)),
 
     sync_shutdown_child(find_child(Sup, c2), shutdown),
-    ?assertNotEqual(undefined, find_child(Sup, c2)),
+    ?assertNotEqual(restarting, find_child(Sup, c2)),
 
     timer:sleep(500),
 
-    ?assertEqual(undefined, find_child(Sup, c1)),
+    ?assertEqual(restarting, find_child(Sup, c1)),
 
     timer:sleep(500),
 
     ?assertNotEqual(undefined, find_child(Sup, c1)),
+    ?assertNotEqual(restarting, find_child(Sup, c1)),
 
     %% delayed restarts reset the restart counters; this makes it two; the
     %% next shutdown should delay the restart again
     sync_shutdown_child(find_child(Sup, c2), die),
     ?assertNotEqual(undefined, find_child(Sup, c2)),
+    ?assertNotEqual(restarting, find_child(Sup, c2)),
 
     sync_shutdown_child(find_child(Sup, c1), die1),
     sync_shutdown_child(find_child(Sup, c2), die),
-    ?assertEqual(undefined, find_child(Sup, c2)),
-    ?assertEqual(undefined, find_child(Sup, c1)),
+    ?assertEqual(restarting, find_child(Sup, c2)),
+    ?assertEqual(restarting, find_child(Sup, c1)),
     timer:sleep(4000),
     ?assertEqual(2, length([T || T <- [find_child(Sup, c1), find_child(Sup, c2)],
-                                 T =/= undefined])),
+                                 T =/= undefined,
+                                 T =/= restarting])),
 
     erlang:process_flag(trap_exit, true),
     Sup ! {'EXIT', self(), shutdown},
