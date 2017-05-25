@@ -24,7 +24,7 @@
       $scope.mnSortableTable = ctl;
       if ($attrs.sortByDefault) {
         ctl.setOrderOrToggleInvert(
-          $scope.mnSortableTitle || $scope.sortFunction,
+          $scope.sortFunction || $scope.mnSortableTitle,
           $scope.mnSortableTitle
         );
       }
@@ -33,6 +33,11 @@
         cloned.attr(
           'ng-click',
           'mnSortableTable.setOrderOrToggleInvert(sortFunction || mnSortableTitle, mnSortableTitle)'
+        );
+        cloned.attr(
+          'ng-class',
+          '{"dynamic-active": mnSortableTable.isOrderBy("'+ $scope.mnSortableTitle +'"),'
+         + '"dynamic-inverted": mnSortableTable.isOrderBy("'+ $scope.mnSortableTitle +'") && mnSortableTable.sortableTableProperties.invert}'
         );
         cloned.removeAttr('mn-sortable-title');
         $element.after($compile(cloned)($scope));
@@ -61,6 +66,7 @@
         invert: null
       };
       vm.setOrderOrToggleInvert = setOrderOrToggleInvert;
+      vm.isOrderBy = isOrderBy;
       vm.sortableTableProperties.orderBy = orderBy;
 
       function orderBy(value) {
