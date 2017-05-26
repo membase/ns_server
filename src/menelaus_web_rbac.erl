@@ -558,17 +558,20 @@ parse_until(Str, Delimeters) ->
                             not lists:member(Char, Delimeters)
                     end, Str).
 
+role_to_atom(Role) ->
+    list_to_existing_atom(string:to_lower(Role)).
+
 parse_role(RoleRaw) ->
     try
         case parse_until(RoleRaw, "[") of
             {Role, []} ->
-                list_to_existing_atom(Role);
+                role_to_atom(Role);
             {Role, "[*]"} ->
-                {list_to_existing_atom(Role), [any]};
+                {role_to_atom(Role), [any]};
             {Role, [$[ | ParamAndBracket]} ->
                 case parse_until(ParamAndBracket, "]") of
                     {Param, "]"} ->
-                        {list_to_existing_atom(Role), [Param]};
+                        {role_to_atom(Role), [Param]};
                     _ ->
                         {error, RoleRaw}
                 end
