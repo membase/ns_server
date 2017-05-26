@@ -197,7 +197,7 @@
               controller: 'mnServersMemoryQuotaDialogController as serversMemoryQuotaDialogCtl',
               resolve: {
                 memoryQuotaConfig: function (mnMemoryQuotaService) {
-                  return mnMemoryQuotaService.memoryQuotaConfig(services)
+                  return mnMemoryQuotaService.memoryQuotaConfig(services, true, false);
                 },
                 indexSettings: function (mnSettingsClusterService) {
                   return mnSettingsClusterService.getIndexSettings();

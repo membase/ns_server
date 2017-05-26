@@ -86,7 +86,7 @@
         index: mnPoolDefault.export.compat.atLeast40,
         fts: mnPoolDefault.export.compat.atLeast45,
         n1ql: mnPoolDefault.export.compat.atLeast40
-      }, false))
+      }, false, false))
         .applyToScope(function (resp) {
           vm.initialMemoryQuota = resp.indexMemoryQuota;
           vm.memoryQuotaConfig = resp;

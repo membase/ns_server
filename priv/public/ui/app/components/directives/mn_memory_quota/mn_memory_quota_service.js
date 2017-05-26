@@ -18,15 +18,16 @@
 
     return mnMemoryQuotaService;
 
-    function prepareClusterQuotaSettings(currentPool, displayedServices, calculateMaxMemory) {
+    function prepareClusterQuotaSettings(currentPool, displayedServices, calculateMaxMemory, calculateTotal) {
       var ram = currentPool.storageTotals.ram;
       if (calculateMaxMemory === undefined) {
         calculateMaxMemory = displayedServices.kv;
       }
       var rv = {
+        calculateTotal: calculateTotal,
         displayedServices: displayedServices,
         minMemorySize: Math.max(256, Math.floor(ram.quotaUsedPerNode / IEC.Mi)),
-        totalMemorySize: false,
+        totalMemorySize: Math.floor(ram.total/IEC.Mi),
         memoryQuota: Math.floor(ram.quotaTotalPerNode/IEC.Mi)
       };
       if (currentPool.compat.atLeast40) {
@@ -36,11 +37,7 @@
         rv.ftsMemoryQuota = currentPool.ftsMemoryQuota || 256;
       }
       if (calculateMaxMemory) {
-        var nNodes = _.pluck(currentPool.nodes, function (node) {
-          return node.clusterMembership === "active";
-        }).length;
-        var ramPerNode = Math.floor(ram.total/nNodes/IEC.Mi);
-        rv.maxMemorySize = mnHelper.calculateMaxMemorySize(ramPerNode);
+        rv.maxMemorySize = mnHelper.calculateMaxMemorySize(ram.total / IEC.Mi);
       } else {
         rv.maxMemorySize = false;
       }
@@ -66,9 +63,9 @@
       });
       return nodesCount === 1 && services && (angular.isArray(services) ? (_.indexOf(services, service) > -1) : services[service]);
     }
-    function memoryQuotaConfig(displayedServices, calculateMaxMemory) {
+    function memoryQuotaConfig(displayedServices, calculateMaxMemory, calculateTotal) {
       return mnPoolDefault.get().then(function (poolsDefault) {
-        return mnMemoryQuotaService.prepareClusterQuotaSettings(poolsDefault, displayedServices, calculateMaxMemory);
+        return mnMemoryQuotaService.prepareClusterQuotaSettings(poolsDefault, displayedServices, calculateMaxMemory, calculateTotal);
       });
     }
   }

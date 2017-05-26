@@ -106,6 +106,7 @@
         newConfig.memoryQuota = selfConfig.memoryQuota;
         newConfig.indexMemoryQuota = selfConfig.indexMemoryQuota;
         newConfig.ftsMemoryQuota = selfConfig.ftsMemoryQuota;
+        newConfig.calculateTotal = true;
 
         rv.startNewClusterConfig = newConfig;
         rv.hostname = selfConfig.hostname;

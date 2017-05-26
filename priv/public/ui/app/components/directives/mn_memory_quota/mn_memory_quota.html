@@ -127,12 +127,17 @@
   </div>
 </div>
 
-<div ng-if="config.maxMemorySize" class="text-small text-right nowrap margin-right-1">
+<div
+   ng-if="config.calculateTotal"
+   class="text-small text-right nowrap margin-right-1">
   <strong>TOTAL QUOTA</strong> &nbsp; {{ ((!config.displayedServices.kv || (config.services && !config.services.model.kv)) ? 0 : config.memoryQuota) +
        ((!config.displayedServices.index || (config.services && !config.services.model.index)) ? 0 : config.indexMemoryQuota) +
       ((!config.displayedServices.fts || (config.services && !config.services.model.fts)) ? 0 : config.ftsMemoryQuota) }}MB
 </div>
 
-<div ng-if="config.totalMemorySize" class="content-box text-center margin-top-1">
-  <strong>RAM Available</strong>&nbsp; {{::config.totalMemorySize}}MB
+<div
+   ng-if="config.maxMemorySize"
+   class="content-box text-center margin-top-1">
+  <strong>RAM Available</strong> {{::config.totalMemorySize}}MB &nbsp;
+  <strong>Max Allowed Quota</strong> {{::config.maxMemorySize}}MB
 </div>
