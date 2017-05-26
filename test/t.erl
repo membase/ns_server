@@ -54,7 +54,7 @@ run_tests(Enabled) ->
     FailedTests =
         lists:flatmap(
           fun ({Name, Runner}) ->
-                  io:format("Running ~p tests~n", [Name]),
+                  io:format("Running ~p tests for modules: ~p~n", [Name, Modules]),
                   Runner(Modules)
           end, test_runners(Enabled)),
 
