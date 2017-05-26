@@ -29,6 +29,7 @@
          handle_get_roles/1,
          handle_get_users/2,
          handle_get_users/3,
+         handle_get_user/3,
          handle_whoami/1,
          handle_put_user/3,
          handle_delete_user/3,
@@ -331,6 +332,21 @@ handle_get_all_users(Req, Pattern) ->
                pipes:simple_buffer(2048)],
               menelaus_util:send_chunked(Req, 200, [{"Content-Type", "application/json"}])).
 
+handle_get_user(Domain, UserId, Req) ->
+    menelaus_web:assert_is_spock(),
+    case domain_to_atom(Domain) of
+        unknown ->
+            menelaus_util:reply_json(Req, <<"Unknown user domain.">>, 404);
+        DomainAtom ->
+            Identity = {UserId, DomainAtom},
+            case menelaus_users:user_exists(Identity) of
+                false ->
+                    menelaus_util:reply_json(Req, <<"Unknown user.">>, 404);
+                true ->
+                    menelaus_util:reply_json(Req, get_user_json(Identity))
+            end
+    end.
+
 filter_out_invalid_roles() ->
     Definitions = menelaus_roles:get_definitions(),
     AllPossibleValues = menelaus_roles:calculate_possible_param_values(ns_bucket:get_buckets()),
@@ -524,16 +540,18 @@ handle_get_users_page(Req, DomainAtom, Path, PageSize, Start) ->
     menelaus_util:reply_ok(Req, "application/json", misc:ejson_encode_pretty(Json)).
 
 handle_whoami(Req) ->
-    Passwordless = menelaus_users:get_passwordless(),
     Identity = menelaus_auth:get_identity(Req),
+    menelaus_util:reply_json(Req, get_user_json(Identity)).
+
+get_user_json(Identity) ->
+    Passwordless = menelaus_users:get_passwordless(),
     Definitions = menelaus_roles:get_definitions(),
     AllPossibleValues = menelaus_roles:calculate_possible_param_values(ns_bucket:get_buckets()),
 
     Roles = menelaus_roles:filter_out_invalid_roles(
               menelaus_roles:get_roles(Identity), Definitions, AllPossibleValues),
     Name = menelaus_users:get_user_name(Identity),
-    menelaus_util:reply_json(
-      Req, get_user_json(Identity, Name, lists:member(Identity, Passwordless), Roles)).
+    get_user_json(Identity, Name, lists:member(Identity, Passwordless), Roles).
 
 parse_until(Str, Delimeters) ->
     lists:splitwith(fun (Char) ->
