@@ -290,7 +290,7 @@ i {
 .nocaps {
   text-transform: lowercase;
 }
-.intialcaps {
+.initialcaps {
   text-transform: capitalize;
 }
 /*  eliding overflow text --------------------------------------------------- */
