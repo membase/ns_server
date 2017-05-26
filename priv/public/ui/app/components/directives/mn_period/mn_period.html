@@ -1,6 +1,6 @@
-<div>
+<div class="margin-top-half">
   <div class="formrow">
-    <label class="checkbox">Start Time: </label>
+    <label class="checkbox">Start Time</label>
     <div class="row flex-left">
       <input
          class="input-short-1"
@@ -8,7 +8,6 @@
          ng-model="autoCompactionSettings[mnPeriod].fromHour"
          ng-class="{invalid: errors[mnPeriod + '_fromHour_']}"
          type="number"
-         required
          placeholder="HH"> &nbsp; : &nbsp;
       <input
          class="input-short-1"
@@ -16,19 +15,17 @@
          ng-model="autoCompactionSettings[mnPeriod].fromMinute"
          ng-class="{invalid: errors[mnPeriod + '_fromMinute_']}"
          type="number"
-         required
          placeholder="MM">
     </div>
   </div>
 
   <div class="formrow">
-    <label class="checkbox">End Time:</label>
+    <label class="checkbox">End Time</label>
     <div class="row flex-left">
       <input
          class="input-short-1"
          type="number"
          placeholder="HH"
-         required
          ng-class="{invalid: errors[mnPeriod + '_toHour_']}"
          ng-model="autoCompactionSettings[mnPeriod].toHour"
          ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)" /> &nbsp; : &nbsp;
@@ -38,27 +35,26 @@
          ng-model="autoCompactionSettings[mnPeriod].toMinute"
          ng-disabled="!autoCompactionSettings[mnPeriod + 'Flag'] || (rbac && !rbac.cluster.settings.write)"
          type="number"
-         required
          placeholder="MM">
     </div>
   </div>
-
-  <div class="error" ng-show="errors[mnPeriod]">
-    {{errors[mnPeriod]}}
+  <div class="formrow">
+    <div class="error" ng-show="errors[mnPeriod]">
+      {{errors[mnPeriod]}}
+    </div>
+    <div class="error" ng-show="errors[mnPeriod + '_fromHour_']">
+      Start Time: {{errors[mnPeriod + '_fromHour_']}}
+    </div>
+    <div class="error" ng-show="errors[mnPeriod + '_fromMinute_']">
+      Start Time: {{errors[mnPeriod + '_fromMinute_']}}
+    </div>
+    <div class="error" ng-show="errors[mnPeriod + '_toHour_']">
+      End Time: {{errors[mnPeriod + '_toHour_']}}
+    </div>
+    <div class="error" ng-show="errors[mnPeriod + '_toMinute_']">
+      End Time: {{errors[mnPeriod + '_toMinute_']}}
+    </div>
   </div>
-  <div class="error" ng-show="errors[mnPeriod + '_fromHour_']">
-    {{errors[mnPeriod + '_fromHour_']}}
-  </div>
-  <div class="error" ng-show="errors[mnPeriod + '_fromMinute_']">
-    {{errors[mnPeriod + '_fromMinute_']}}
-  </div>
-  <div class="error" ng-show="errors[mnPeriod + '_toHour_']">
-    {{errors[mnPeriod + '_toHour_']}}
-  </div>
-  <div class="error" ng-show="errors[mnPeriod + '_toMinute_']">
-    {{errors[mnPeriod + '_toMinute_']}}
-  </div>
-
   <div class="formrow">
     <input
        type="checkbox"

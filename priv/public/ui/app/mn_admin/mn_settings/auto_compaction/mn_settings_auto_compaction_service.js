@@ -52,10 +52,10 @@
       acSettings.purgeInterval = settings.purgeInterval;
       !acSettings.allowedTimePeriod && (acSettings.allowedTimePeriod = {
         abortOutside: false,
-        toMinute: 0,
-        toHour: 0,
-        fromMinute: 0,
-        fromHour: 0
+        toMinute: null,
+        toHour: null,
+        fromMinute: null,
+        fromHour: null
       });
       return acSettings;
     }
