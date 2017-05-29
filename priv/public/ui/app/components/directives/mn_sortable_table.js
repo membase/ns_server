@@ -51,7 +51,7 @@
 
     return mnSortableTable;
 
-    function controller($scope, $element, $attrs) {
+    function controller($scope, $element, $attrs, $parse) {
       var currentSortableTitle;
       var currentOrderByStringOrFunction;
       var vm = this;
@@ -67,7 +67,7 @@
         if (angular.isFunction(currentOrderByStringOrFunction)) {
           return currentOrderByStringOrFunction({value: value});
         } else {
-          return currentOrderByStringOrFunction;
+          return $parse(currentOrderByStringOrFunction)(value);
         }
       }
 
