@@ -8,7 +8,8 @@
     'mnSpinner',
     'mnFilters',
     'mnElementCrane',
-    'mnSearch'
+    'mnSearch',
+    'mnSortableTable'
   ]).controller('mnLogsController', mnLogsController);
 
   function mnLogsController($scope, mnHelper, mnLogsService) {

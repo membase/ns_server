@@ -9,14 +9,30 @@
 </mn-element-cargo>
 
 <div mn-spinner="!logsListCtl.logs" min-height="300px">
-  <div class="cbui-table">
+  <div
+     class="cbui-table"
+     mn-sortable-table>
     <div class="cbui-table-header padding-left resp-hide-sml">
-      <span class="cbui-table-cell flex-grow-3">event</span>
-      <span class="cbui-table-cell">module code</span>
-      <span class="cbui-table-cell">server node</span>
-      <span class="cbui-table-cell flex-grow-1-5">time</span>
+      <span class="cbui-table-cell flex-grow-3">
+        event
+      </span>
+      <span
+         class="cbui-table-cell"
+         mn-sortable-title="module"
+         >module code</span>
+      <span
+         class="cbui-table-cell"
+         mn-sortable-title="node"
+         >server node</span>
+      <span
+         class="cbui-table-cell flex-grow-1-5"
+         mn-sortable-title="tstamp"
+         sort-by-default="true"
+         >time</span>
     </div>
-    <section ng-repeat="row in logsListCtl.logs | filter:logsListCtl.filterField | orderBy:'serverTime':true track by $index">
+    <section
+       ng-init="mnSortableTable.sortableTableProperties.invert = true"
+       ng-repeat="row in logsListCtl.logs | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:logsListCtl.filterField track by $index">
       <div class="cbui-tablerow items-top resp-sml">
         <span class="cbui-table-cell flex-grow-3 min-width-zero resp-sml">
           <span
@@ -36,7 +52,9 @@
                ng-click="logsListCtl.toggle($index)">hide</a>
           </span>
         </span>
-        <span class="cbui-table-cell resp-sml" title="{{row.module}} {{row.code}}">{{row.module}} {{row.code}}</span>
+        <span class="cbui-table-cell resp-sml" title="{{row.module}} {{row.code}}">
+          {{row.module}} {{row.code}}
+        </span>
         <span class="cbui-table-cell resp-sml">{{row.node}}</span>
         <span class="cbui-table-cell flex-grow-1-5 wrap resp-sml">
           <span class="semi-bold nowrap">{{row.time}}</span> &nbsp;
