@@ -16,7 +16,8 @@
       'mnFilters',
       'mnTasksDetails',
       'mnWarmupProgress',
-      'mnElementCrane'
+      'mnElementCrane',
+      'mnSortableTable'
     ])
     .controller('mnBucketsController', mnBucketsController);
 

@@ -1,6 +1,11 @@
-<div class="cbui-table">
+<div
+   class="cbui-table"
+   mn-sortable-table>
   <div class="cbui-table-header">
-    <span class="cbui-table-cell flex-grow-3">name</span>
+    <span
+       class="cbui-table-cell flex-grow-3"
+       mn-sortable-title="name"
+       sort-by-default="true">name</span>
     <span class="cbui-table-cell">items</span>
     <span class="cbui-table-cell">resident</span>
     <span class="cbui-table-cell">ops/sec</span>
@@ -14,7 +19,7 @@
   </div>
   <div
      ng-if="buckets.length"
-     ng-repeat="bucket in buckets | orderBy:'name' track by bucket.name"
+     ng-repeat="bucket in buckets | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert track by bucket.name"
      ui-view="item">
   </div>
 </div>
