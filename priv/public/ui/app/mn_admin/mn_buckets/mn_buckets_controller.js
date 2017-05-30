@@ -53,7 +53,7 @@
       return poolDefault.value.rebalancing;
     }
     function isMaxBucketCountWarning() {
-      return (($scope.buckets && !$scope.buckets.details) || []).length >= poolDefault.value.maxBucketCount;
+      return (($scope.buckets && $scope.buckets.details) || []).length >= poolDefault.value.maxBucketCount;
     }
     function areThereCreationWarnings() {
       return isMaxBucketCountWarning() || isBucketCreationWarning();
