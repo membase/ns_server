@@ -29,67 +29,15 @@
 
     vm.isLdapEnabled = poolDefault.ldapEnabled;
 
-    vm.pageLimit = $state.params.pageLimit;
-    vm.pageNumber = $state.params.pageNumber;
-    vm.nextPage = nextPage;
-    vm.prevPage = prevPage;
-    vm.getPageCountArray = getPageCountArray;
-    vm.pageLimitChanged = pageLimitChanged;
-    vm.goToPage = goToPage;
-    vm.getVisiblePages = getVisiblePages;
-    vm.getTotalPageCount = getTotalPageCount;
-
+    vm.pageSize = $state.params.pageSize;
+    vm.pageSizeChanged = pageSizeChanged;
 
     activate();
 
-    function getVisiblePages() {
-      var totalPageCount = getTotalPageCount();
-      var i;
-      var array = [];
-      for (i = 0; i < totalPageCount; i++){
-        array.push(i+1);
-      }
-      var start = vm.pageNumber - 3;
-      var end = vm.pageNumber + 2;
-      if (start < 0) {
-        start = 0;
-      }
-      return array.slice(start, end);
-    }
-
-    function goToPage(number) {
-      vm.pageNumber = number;
+    function pageSizeChanged() {
       $state.go('.', {
-        pageNumber: number
+        pageSize: vm.pageSize
       });
-    }
-
-    function nextPage() {
-      goToPage(vm.pageNumber + 1);
-    }
-
-    function prevPage() {
-      goToPage(vm.pageNumber - 1);
-    }
-
-    function pageLimitChanged() {
-      $state.go('.', {
-        pageLimit: vm.pageLimit
-      });
-    }
-
-    function getTotalPageCount() {
-      var num;
-      if (!vm.state) {
-        num = 1;
-      } else {
-        num = Math.ceil((vm.state.users.length || 1) / vm.pageLimit);
-      }
-      return num;
-    }
-
-    function getPageCountArray() {
-      return new Array(getTotalPageCount());
     }
 
     function rolesFilter(value) {
@@ -106,24 +54,13 @@
             .applyToScope("rolesByRole");
         });
 
-      //redirect to last page if current page became empty
-      $scope.$watch(function () {
-        if (vm.state) {
-          return vm.pageLimit * vm.pageNumber > vm.state.users.length &&
-            getTotalPageCount() !== vm.pageNumber;
-        }
-      }, function (overlimit) {
-        if (overlimit) {
-          goToPage(getTotalPageCount());
-        }
-      });
-
-      var poller = new mnPoller($scope, mnUserRolesService.getState)
+      var poller = new mnPoller($scope, function () {
+        return mnUserRolesService.getState($state.params);
+      })
           .subscribe("state", vm)
           .setInterval(10000)
           .reloadOnScopeEvent("reloadRolesPoller")
           .cycle();
-
     }
 
     function editUser(user) {

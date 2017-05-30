@@ -24,19 +24,20 @@
         }
       })
       .state('app.admin.security.userRoles', {
-        url: "/userRoles?openedUsers&{pageNumber:int}&{pageLimit:int}",
+        url: "/userRoles?openedUsers&startFrom&startFromDomain&{pageSize:int}",
         params: {
           openedUsers: {
             array: true,
             dynamic: true
           },
-          pageNumber: {
-            value: 1,
-            dynamic: true
+          startFrom: {
+            value: null
           },
-          pageLimit: {
-            value: 10,
-            dynamic: true
+          startFromDomain: {
+            value: null
+          },
+          pageSize: {
+            value: 10
           }
         },
         controller: "mnUserRolesController as userRolesCtl",
