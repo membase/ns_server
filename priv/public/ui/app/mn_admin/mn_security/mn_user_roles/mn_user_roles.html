@@ -9,19 +9,18 @@
 <div mn-spinner="!userRolesCtl.state || userRolesCtl.viewLoading" min-height="300px">
   <div class="cbui-table" mn-sortable-table>
     <div class="cbui-table-header padding-left">
-      <span
-         class="cbui-table-cell"
-         mn-sortable-title="id">username</span>
-      <span
-         class="cbui-table-cell resp-hide-sml"
-         mn-sortable-title="name"
-         sort-by-default="true">full name</span>
-      <span
-        class="cbui-table-cell flex-grow-3"
-        mn-sortable-title="roles">roles</span>
-      <span
-         class="cbui-table-cell resp-hide-xsml"
-         mn-sortable-title="domain">auth domain</span>
+      <span class="cbui-table-cell">
+        <span mn-sortable-title="id" sort-by-default="true" class="sorter">username</span>
+      </span>
+      <span class="cbui-table-cell resp-hide-sml">
+        <span mn-sortable-title="name" class="sorter">full name</span>
+      </span>
+      <span class="cbui-table-cell flex-grow-3">
+        <span mn-sortable-title="roles" class="sorter">roles</span>
+      </span>
+      <span class="cbui-table-cell resp-hide-xsml">
+        <span mn-sortable-title="domain" class="sorter">auth domain</span>
+      </span>
     </div>
     <section
        class="has-hover"

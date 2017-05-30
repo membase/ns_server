@@ -9,26 +9,20 @@
 </mn-element-cargo>
 
 <div mn-spinner="!logsListCtl.logs" min-height="300px">
-  <div
-     class="cbui-table"
-     mn-sortable-table>
+  <div class="cbui-table" mn-sortable-table>
     <div class="cbui-table-header padding-left resp-hide-sml">
       <span class="cbui-table-cell flex-grow-3">
         event
       </span>
-      <span
-         class="cbui-table-cell"
-         mn-sortable-title="module"
-         >module code</span>
-      <span
-         class="cbui-table-cell"
-         mn-sortable-title="node"
-         >server node</span>
-      <span
-         class="cbui-table-cell flex-grow-1-5"
-         mn-sortable-title="tstamp"
-         sort-by-default="true"
-         >time</span>
+      <span class="cbui-table-cell">
+        <span mn-sortable-title="module" class="sorter">module code</span>
+      </span>
+      <span class="cbui-table-cell">
+        <span mn-sortable-title="node" class="sorter">server node</span>
+      </span>
+      <span class="cbui-table-cell flex-grow-1-5">
+        <span mn-sortable-title="tstamp" sort-by-default="true" class="sorter">time</span>
+      </span>
     </div>
     <section
        ng-init="mnSortableTable.sortableTableProperties.invert = true"

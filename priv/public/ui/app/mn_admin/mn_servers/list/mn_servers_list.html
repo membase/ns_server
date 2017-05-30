@@ -7,14 +7,19 @@
       <span class="cbui-table-cell flex-grow-2-5">
         <span
            mn-sortable-title="hostname"
-           sort-by-default="true">
-          name /
+           sort-by-default="true"
+           class="sorter margin-right-4">
+          name
         </span>
-        <span mn-sortable-title="group" sort-function="serversCtl.sortByGroup(value)">
+        <span mn-sortable-title="group" sort-function="serversCtl.sortByGroup(value)" class="sorter">
           {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "group" : " " }}
         </span>
       </span>
-      <span class="cbui-table-cell flex-grow-1-5 resp-hide-xsml" mn-sortable-title="services">services</span>
+      <span class="cbui-table-cell flex-grow-1-5 resp-hide-xsml">
+        <span mn-sortable-title="services" class="sorter">
+          services
+        </span>
+      </span>
       <span class="cbui-table-cell flex-grow-half resp-hide-sml">CPU</span>
       <span class="cbui-table-cell flex-grow-half resp-hide-sml">RAM</span>
       <span class="cbui-table-cell flex-grow-half resp-hide-med">swap</span>

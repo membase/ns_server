@@ -357,11 +357,11 @@ input.filter-input {
   justify-content: space-between;
   position: relative;
   border-bottom: solid 1px #d1d1d1;
-  font-size: .813rem;
-  color: #333;
+  font-size: .75rem;
+  color: #555;
   min-height: 2.25rem;
-  cursor: pointer;
   padding-left: 1.5rem;
+  cursor: default;
 }
 .cbui-table-header-filled {
   display: flex;
@@ -371,16 +371,35 @@ input.filter-input {
   justify-content: space-between;
   position: relative;
   border-width: 0;
-  font-size: .813rem;
+  font-size: .75rem;
   min-height: 2rem;
-  cursor: pointer;
   background-color: #eceff2;
+  cursor: default;
 }
 .cbui-table-header-filled.padding-left {
   padding-left: 1rem;
 }
 .cbui-table-header.padding-left {
   padding-left: 1rem;
+}
+.cbui-table-header .sorter {
+  position: relative;
+  padding-right: .75rem;
+  cursor: pointer;
+}
+.cbui-table-header .dynamic-active:after {
+  font-family: FontAwesome;
+  content: "\f0d7";
+  color: #555;
+  position: absolute;
+  right: 0;
+}
+.cbui-table-header .dynamic-inverted:after {
+  font-family: FontAwesome;
+  content: "\f0d8";
+  color: #555;
+  position: absolute;
+  right: 0;
 }
 .cbui-tablerow-title {
   font-weight: 600;

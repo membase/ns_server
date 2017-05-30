@@ -9,12 +9,22 @@
 <div mn-spinner="!gsiCtl.state">
   <div class="cbui-table" mn-sortable-table>
     <div class="cbui-table-header padding-left">
-     <span class="cbui-table-cell" mn-sortable-title="bucket">bucket</span>
-     <span class="cbui-table-cell" sort-by-default="true" mn-sortable-title="hosts[0]">node</span>
-     <span class="cbui-table-cell" mn-sortable-title="index">index name</span>
-     <span class="cbui-table-cell" mn-sortable-title="storageMode | mnFormatStorageMode">storage type</span>
-     <span class="cbui-table-cell" mn-sortable-title="status">status</span>
-     <span class="cbui-table-cell" mn-sortable-title="progress">build progress</span>
+      <span class="cbui-table-cell">
+        <span sort-by-default="true" mn-sortable-title="bucket" class="sorter">bucket</span>
+      </span>
+      <span class="cbui-table-cell">
+        <span mn-sortable-title="hosts[0]" class="sorter">node</span>
+      </span>
+      <span class="cbui-table-cell">
+        <span mn-sortable-title="index" class="sorter">index name</span>
+      </span>
+      <span class="cbui-table-cell">
+        <span mn-sortable-title="storageMode | mnFormatStorageMode" class="sorter">storage type</span>
+      </span>
+      <span class="cbui-table-cell">
+        <span mn-sortable-title="status" class="sorter">status</span>
+      </span>
+      <span class="cbui-table-cell">build progress</span>
     </div>
     <section
        ng-if="gsiCtl.state.indexes.length"
