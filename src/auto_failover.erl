@@ -207,6 +207,8 @@ handle_call(reset_auto_failover_count, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
+handle_cast(reset_auto_failover_count, #state{count=0}=State) ->
+    {noreply, State};
 handle_cast(reset_auto_failover_count, State) ->
     ?log_debug("reset auto_failover count: ~p", [State]),
     State2 = State#state{count=0,

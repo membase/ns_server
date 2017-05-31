@@ -87,6 +87,8 @@ handle_call({enable, MaxNodes}, _From, #state{count = Count} = State) ->
 handle_call(disable, _From, _State) ->
     ok = persist_config(false, ?DEFAULT_MAX_NODES_SUPPORTED, 0),
     {reply, ok, #state{}};
+handle_call(reset_count, _From, #state{count = 0} = State) ->
+    {reply, ok, State};
 handle_call(reset_count, _From, State) ->
     {Enabled, MaxNodes, Count} = get_reprovision_cfg(),
     ale:info(?USER_LOGGER, "auto-reprovision count reset from ~p", [Count]),
