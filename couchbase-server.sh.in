@@ -168,7 +168,7 @@ _start() {
         -ns_babysitter cookiefile "\"$COOKIEFILE\"" \
         -ns_babysitter nodefile "\"$NODEFILE\"" \
         -ns_babysitter pidfile "\"$PIDFILE\"" \
-        -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\"" \
+        -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\""
 }
 
 _stop() {
