@@ -8,7 +8,7 @@
       $httpProvider.interceptors.push('mnHttpInterceptor');
     });
 
-  function mnHttpFactory(mnPendingQueryKeeper, $q, $httpParamSerializerJQLike, $timeout, jQueryLikeParamSerializerFilter, $exceptionHandler) {
+  function mnHttpFactory(mnPendingQueryKeeper, $q, $timeout, jQueryLikeParamSerializerFilter, $exceptionHandler) {
     var myHttpInterceptor = {
       request: request,
       response: response,

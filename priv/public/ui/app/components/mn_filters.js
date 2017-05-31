@@ -55,13 +55,13 @@
         if (angular.isObject(v)) {
           return angular.isDate(v) ? v.toISOString() : angular.toJson(v);
         }
+        if (v === null || angular.isUndefined(v)) {
+          return "";
+        }
         return v;
       }
 
       function serialize(toSerialize, prefix, topLevel) {
-        if (toSerialize === null || angular.isUndefined(toSerialize)) {
-          return;
-        }
         if (angular.isArray(toSerialize)) {
           angular.forEach(toSerialize, function (value, index) {
             serialize(value, prefix + '[' + (angular.isObject(value) ? index : '') + ']');
