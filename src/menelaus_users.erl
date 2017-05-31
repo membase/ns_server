@@ -556,7 +556,13 @@ do_upgrade_to_spock(Nodes, Repair) ->
             ok
     end,
     Config = ns_config:get(),
-    {AdminName, _} = ns_config_auth:get_creds(Config, admin),
+    AdminName =
+        case ns_config_auth:get_creds(Config, admin) of
+            undefined ->
+                undefined;
+            {AN, _} ->
+                AN
+        end,
 
     case ns_config_auth:get_creds(Config, ro_admin) of
         undefined ->
