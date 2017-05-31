@@ -73,7 +73,8 @@
           sock = still_connecting :: port() | still_connecting,
           timer::any(),
           work_requests = [],
-          warmup_stats = [] :: [{binary(), binary()}]
+          warmup_stats = [] :: [{binary(), binary()}],
+          check_config_pid = undefined :: undefined | pid()
          }).
 
 %% external API
@@ -707,18 +708,14 @@ handle_info(check_started,
             {ok, S} = Stats,
             {noreply, State#state{warmup_stats = S}}
     end;
-handle_info(check_config, State) ->
+handle_info(check_config, #state{check_config_pid = undefined} = State) ->
     misc:flush(check_config),
-    StartTS = os:timestamp(),
-    ensure_bucket(State#state.sock, State#state.bucket),
-    Diff = timer:now_diff(os:timestamp(), StartTS),
-    if
-        Diff > ?SLOW_CALL_THRESHOLD_MICROS ->
-            ?log_debug("handle_info(ensure_bucket,..) took too long: ~p us", [Diff]);
-        true ->
-            ok
-    end,
+    Pid = proc_lib:start_link(erlang, apply, [fun run_check_config/2, [State#state.bucket, self()]]),
+    {noreply, State#state{check_config_pid = Pid}};
+handle_info(check_config, State) ->
     {noreply, State};
+handle_info({'EXIT', Pid, normal}, #state{check_config_pid = Pid} = State) ->
+    {noreply, State#state{check_config_pid = undefined}};
 handle_info({'EXIT', _, Reason} = Msg, State) ->
     ?log_debug("Got ~p. Exiting.", [Msg]),
     {stop, Reason, State};
@@ -798,6 +795,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% API
 %%
+
+run_check_config(Bucket, Parent) ->
+    proc_lib:init_ack(Parent, self()),
+    perform_very_long_call(
+      fun(Sock) ->
+              StartTS = os:timestamp(),
+              ensure_bucket(Sock, Bucket),
+              Diff = timer:now_diff(os:timestamp(), StartTS),
+              if
+                  Diff > ?SLOW_CALL_THRESHOLD_MICROS ->
+                      ?log_debug("ensure_bucket took too long: ~p us", [Diff]);
+                  true ->
+                      ok
+              end,
+              {reply, ok}
+      end, Bucket).
 
 -spec active_buckets() -> [bucket_name()].
 active_buckets() ->
