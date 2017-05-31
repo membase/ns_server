@@ -18,14 +18,16 @@
 -module(menelaus_util).
 -author('Northscale <info@northscale.com>').
 
+-include_lib("eunit/include/eunit.hrl").
+
 -include("ns_common.hrl").
 -include("menelaus_web.hrl").
 -include("pipes.hrl").
 
 -export([redirect_permanently/2,
-         respond/2,
          reply/2,
          reply/3,
+         reply/4,
          reply_ok/3,
          reply_ok/4,
          reply_text/3,
@@ -81,12 +83,40 @@
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
 
+-define(CACHE_CONTROL, "Cache-Control").  %% TODO: Move to an HTTP header file.
+
 %% External API
 
-server_headers() ->
-    [{"Cache-Control", "no-cache"},
-     {"Pragma", "no-cache"},
-     {"Server", "Couchbase Server"}].
+%% response_header takes a proplist of headers or pseudo-header
+%% descripts and augments it with response specific headers.
+%% Since any given header can only be specified once, headers at the front
+%% of the proplist have priority over the same header later in the
+%% proplist.
+%% The following pseudo-headers are supported:
+%%   {allow_cache, true}  -- Enables long duration caching
+%%   {allow_cache, false} -- Disables cache via multiple headers
+%% If neither allow_cache or the "Cache-Control" header are specified
+%% {allow_cache, false} is applied.
+-spec response_headers([{string(),string()}|{atom(), atom()}]) -> [{string(), string()}].
+response_headers(Headers) ->
+    {Expanded, _} =
+        lists:foldl(
+          fun({allow_cache, _}, {Acc, _CacheControl = true}) ->
+                  {Acc, true};
+             ({allow_cache, _Value = true}, {Acc, _}) ->
+                  {[{?CACHE_CONTROL, "max-age=30000000"} | Acc], true};
+             ({allow_cache, _Value = false}, {Acc, _}) ->
+                  {[{?CACHE_CONTROL, "no-cache,no-store,must-revalidate"},
+                    {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
+                    {"Pragma", "no-cache"} | Acc], true};
+             ({Header = ?CACHE_CONTROL, Value}, {Acc, _}) ->
+                  {[{Header, Value} | Acc], true};
+             ({Header, Value}, {Acc, CacheControl}) when is_list(Header) ->
+                  {[{Header, Value} | Acc], CacheControl}
+          end, {[], false},
+          Headers ++ [{allow_cache, false},
+                      {"Server", "Couchbase Server"}]),
+    lists:ukeysort(1, lists:reverse(Expanded)).
 
 %% mostly extracted from mochiweb_request:maybe_redirect/3
 redirect_permanently(Path, Req) ->
@@ -110,28 +140,28 @@ redirect_permanently(Path, Req) ->
            "<p>The document has moved <a href=\"">>,
     Bottom = <<">here</a>.</p></body></html>\n">>,
     Body = <<Top/binary, LocationBin/binary, Bottom/binary>>,
-    reply_inner(Req, Body, 301, [{"Location", Location}, {"Content-Type", "text/html"}]).
+    reply(Req, Body, 301, [{"Location", Location}, {"Content-Type", "text/html"}]).
 
 reply_not_found(Req) ->
     reply_not_found(Req, []).
 
 reply_not_found(Req, ExtraHeaders) ->
-    reply_inner(Req, "Requested resource not found.\r\n", 404, [{"Content-Type", "text/plain"} | ExtraHeaders]).
+    reply_text(Req, "Requested resource not found.\r\n", 404, ExtraHeaders).
 
 reply_text(Req, Message, Code) ->
-    reply_inner(Req, Message, Code, [{"Content-Type", "text/plain"}]).
+    reply_text(Req, Message, Code, []).
 
 reply_text(Req, Message, Code, ExtraHeaders) ->
-    reply_inner(Req, Message, Code, [{"Content-Type", "text/plain"} | ExtraHeaders]).
+    reply(Req, Message, Code, [{"Content-Type", "text/plain"} | ExtraHeaders]).
 
 reply_json(Req, Body) ->
     reply_ok(Req, "application/json", encode_json(Body)).
 
 reply_json(Req, Body, Code) ->
-    reply_inner(Req, encode_json(Body), Code, [{"Content-Type", "application/json"}]).
+    reply(Req, encode_json(Body), Code, [{"Content-Type", "application/json"}]).
 
 reply_json(Req, Body, Code, ExtraHeaders) ->
-    reply_inner(Req, encode_json(Body), Code, [{"Content-Type", "application/json"} | ExtraHeaders]).
+    reply(Req, encode_json(Body), Code, [{"Content-Type", "application/json"} | ExtraHeaders]).
 
 log_web_hit(Peer, Req, Resp) ->
     Level = case menelaus_auth:extract_auth(Req) of
@@ -143,38 +173,28 @@ log_web_hit(Peer, Req, Resp) ->
     ale:xlog(?ACCESS_LOGGER, Level, {Peer, Req, Resp}, "", []).
 
 reply_ok(Req, ContentType, Body) ->
-    Peer = Req:get(peer),
-    Resp = Req:ok({ContentType, server_headers(), Body}),
-    log_web_hit(Peer, Req, Resp),
-    Resp.
+    reply_ok(Req, ContentType, Body, []).
 
 reply_ok(Req, ContentType, Body, ExtraHeaders) ->
     Peer = Req:get(peer),
-    Resp = Req:ok({ContentType, extend_server_headers(ExtraHeaders), Body}),
+    Resp = Req:ok({ContentType, response_headers(ExtraHeaders), Body}),
     log_web_hit(Peer, Req, Resp),
     Resp.
 
-reply(Req, Code, ExtraHeaders) ->
-    reply_inner(Req, [], Code, ExtraHeaders).
-
 reply(Req, Code) ->
-    reply_inner(Req, [], Code).
+    reply(Req, [], Code, []).
 
-reply_inner(Req, Body, Code, ExtraHeaders) ->
-    respond(Req, {Code, extend_server_headers(ExtraHeaders), Body}).
+reply(Req, Code, ExtraHeaders) ->
+    reply(Req, [], Code, ExtraHeaders).
 
-reply_inner(Req, Body, Code) ->
-    respond(Req, {Code, server_headers(), Body}).
+reply(Req, Body, Code, ExtraHeaders) ->
+    respond(Req, {Code, response_headers(ExtraHeaders), Body}).
 
 respond(Req, RespTuple) ->
     Peer = Req:get(peer),
     Resp = Req:respond(RespTuple),
     log_web_hit(Peer, Req, Resp),
     Resp.
-
-extend_server_headers(ExtraHeaders) ->
-    misc:ukeymergewith(fun ({K, A}, {K, _}) -> {K, A} end, 1,
-                       lists:keysort(1, ExtraHeaders), server_headers()).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -211,7 +231,7 @@ serve_file(Req, File, Root) ->
 
 serve_file(Req, File, Root, ExtraHeaders) ->
     Peer = Req:get(peer),
-    Resp = Req:serve_file(File, Root, ExtraHeaders),
+    Resp = Req:serve_file(File, Root, response_headers(ExtraHeaders ++ [{allow_cache, true}])),
     log_web_hit(Peer, Req, Resp),
     Resp.
 
@@ -552,10 +572,48 @@ send_chunked(Req, StatusCode, ExtraHeaders) ->
     ?make_consumer(
        begin
            Resp = menelaus_util:respond(
-                    Req, {StatusCode, extend_server_headers(ExtraHeaders), chunked}),
+                    Req, {StatusCode, response_headers(ExtraHeaders), chunked}),
            pipes:foreach(?producer(),
                          fun (Part) ->
                                  Resp:write_chunk(Part)
                          end),
            Resp:write_chunk(<<>>)
        end).
+
+-ifdef(EUNIT).
+
+response_headers_test() ->
+    ?assertEqual([{"Cache-Control", "no-cache,no-store,must-revalidate"},
+                  {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
+                  {"Pragma", "no-cache"},
+                  {"Server", "Couchbase Server"}],
+                 response_headers([])),
+    ?assertEqual([{"Cache-Control", "no-cache,no-store,must-revalidate"},
+                  {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
+                  {"Pragma", "no-cache"},
+                  {"Server", "Couchbase Server"}],
+                 response_headers([{allow_cache, false}])),
+    ?assertEqual([{"Cache-Control", "no-cache,no-store,must-revalidate"},
+                  {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
+                  {"Extra", "header"},
+                  {"Foo", "bar"},
+                  {"Pragma", "no-cache"},
+                  {"Server", "Couchbase Server"} ],
+                 response_headers([{"Foo", "bar"}, {"Extra", "header"}])),
+    ?assertEqual([{"Cache-Control", "max-age=30000000"},
+                  {"Server", "Couchbase Server"}],
+                 response_headers([{allow_cache, true}])),
+    ?assertEqual([{"Cache-Control", "max-age=10"},
+                  {"Server", "Couchbase Server"}],
+                 response_headers([{?CACHE_CONTROL, "max-age=10"}])),
+    ?assertEqual([{"Cache-Control", "max-age=10"},
+                  {"Server", "Couchbase Server"}],
+                 response_headers([{?CACHE_CONTROL, "max-age=10"}, {allow_cache, true}])),
+    ?assertEqual([{"Cache-Control", "no-cache,no-store,must-revalidate"},
+                  {"Duplicate", "first"},
+                  {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
+                  {"Pragma", "no-cache"},
+                  {"Server", "Couchbase Server"}],
+                 response_headers([{"Duplicate", "first"}, {"Duplicate", "second"}])).
+
+-endif.

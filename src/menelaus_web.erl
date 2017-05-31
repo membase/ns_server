@@ -891,12 +891,10 @@ handle_ui_root(AppRoot, Path, UiCompatVersion, Plugins, Req)
     menelaus_util:reply_ok(
       Req,
       "text/html; charset=utf8",
-      menelaus_pluggable_ui:inject_head_fragments(Filename, UiCompatVersion, Plugins),
-      [{"Cache-Control", "must-revalidate"}]);
+      menelaus_pluggable_ui:inject_head_fragments(Filename, UiCompatVersion, Plugins));
 handle_ui_root(AppRoot, Path, ?VERSION_41, [], Req) ->
     menelaus_util:serve_static_file(Req, {AppRoot, Path},
-                                    "text/html; charset=utf8",
-                                    [{"Cache-Control", "must-revalidate"}]).
+                                    "text/html; charset=utf8", []).
 
 handle_serve_file(AppRoot, Path, MaxAge, Req) ->
     menelaus_util:serve_file(

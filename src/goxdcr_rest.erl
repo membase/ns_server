@@ -86,7 +86,8 @@ proxy(Path, MochiReq) ->
                B ->
                    B
            end,
-    menelaus_util:respond(MochiReq, send(MochiReq, MochiReq:get(method), Path, Headers, Body)).
+    {Code, RespHeaders, RespBody} = send(MochiReq, MochiReq:get(method), Path, Headers, Body),
+    menelaus_util:reply(MochiReq, RespBody, Code, RespHeaders).
 
 spec(Permissions, Fun) ->
     spec(Permissions, Fun, []).

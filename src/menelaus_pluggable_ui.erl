@@ -295,20 +295,17 @@ get_body(Req) ->
 handle_resp({ok, {{StatusCode, _ReasonPhrase}, RcvdHeaders, Pid}}, Req)
   when is_pid(Pid) ->
     SendHeaders = filter_headers(RcvdHeaders, ?DEF_RESP_HEADERS_FILTER),
-    Resp = start_response(Req, StatusCode, SendHeaders),
+    Resp = menelaus_util:reply(Req, chunked, StatusCode, SendHeaders),
     stream_body(Pid, Resp);
 handle_resp({ok, {{StatusCode, _ReasonPhrase}, RcvdHeaders, undefined = _Body}},
             Req) ->
     SendHeaders = filter_headers(RcvdHeaders, ?DEF_RESP_HEADERS_FILTER),
-    menelaus_util:respond(Req, {StatusCode, SendHeaders, <<>>});
+    menelaus_util:reply_text(Req, <<>>, StatusCode, SendHeaders);
 handle_resp({error, timeout}, Req) ->
-    menelaus_util:respond(Req, {504, [], <<"Gateway Timeout">> });
+    menelaus_util:reply_text(Req, <<"Gateway Timeout">>, 504);
 handle_resp({error, _Reason}=Error, Req) ->
     ?log_error("http client error ~p~n", [Error]),
-    menelaus_util:respond(Req, {500, [], <<"Unexpected server error">> }).
-
-start_response(Req, StatusCode, Headers) ->
-    menelaus_util:respond(Req, {StatusCode, Headers, chunked}).
+    menelaus_util:reply_text(Req, <<"Unexpected server error">>, 500).
 
 stream_body(Pid, Resp) ->
     case lhttpc:get_body_part(Pid) of
@@ -328,7 +325,7 @@ server_error(Req, RestPrefix, unknown_service) ->
     send_server_error(Req, Msg).
 
 send_server_error(Req, Msg) ->
-    menelaus_util:respond(Req, {404, [], Msg}).
+    menelaus_util:reply_text(Req, Msg, 404).
 
 %%% =============================================================
 %%%
