@@ -104,7 +104,6 @@
          warmup_stats/1,
          topkeys/1,
          raw_stats/5,
-         sync_bucket_config/1,
          flush/1,
          set/5,
          ready_nodes/4,
@@ -309,10 +308,6 @@ handle_call(mark_warmed, _From, #state{status=Status,
         end,
 
     {reply, Reply, State#state{status=NewStatus}};
-handle_call(sync_bucket_config = Msg, _From, State) ->
-    StartTS = os:timestamp(),
-    handle_info(check_config, State),
-    verify_report_long_call(StartTS, StartTS, State, Msg, {reply, ok, State});
 handle_call(warmup_stats, _From, State) ->
     {reply, State#state.warmup_stats, State};
 handle_call(Msg, From, State) ->
@@ -1105,9 +1100,6 @@ stats(Node, Bucket, Key) ->
 -spec warmup_stats(bucket_name()) -> [{binary(), binary()}].
 warmup_stats(Bucket) ->
     do_call(server(Bucket), warmup_stats, ?TIMEOUT).
-
-sync_bucket_config(Bucket) ->
-    do_call(server(Bucket), sync_bucket_config, infinity).
 
 -spec topkeys(bucket_name()) ->
                      {ok, [{nonempty_string(), [{atom(), integer()}]}]} |
