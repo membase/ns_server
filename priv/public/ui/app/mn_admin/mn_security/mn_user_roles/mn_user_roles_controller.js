@@ -26,13 +26,61 @@
     vm.resetUserPassword = resetUserPassword;
 
     vm.rolesFilter = rolesFilter;
+    vm.filterField = "";
 
     vm.isLdapEnabled = poolDefault.ldapEnabled;
 
     vm.pageSize = $state.params.pageSize;
     vm.pageSizeChanged = pageSizeChanged;
+    vm.listFiter = listFiter;
 
     activate();
+
+    function listFiter(user) {
+      var interestingFields = ["id", "name"];
+      var l1 = user.roles.length;
+      var l2 = interestingFields.length;
+      var i1;
+      var i2;
+      var searchValue = vm.filterField.toLowerCase();
+      var role;
+      var roleName;
+      var rv = false;
+      var searchFiled;
+
+      if ((user.domain === "local" ? "Couchbase" : "External")
+          .toLowerCase()
+          .indexOf(searchValue) > -1) {
+        rv = true;
+      }
+
+      if (!rv) {
+        //look in roles
+        loop1:
+        for (i1 = 0; i1 < l1; i1++) {
+          role = user.roles[i1];
+          roleName = role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '');
+          if (vm.rolesByRole[roleName].name.toLowerCase().indexOf(searchValue) > -1) {
+            rv = true;
+            break loop1;
+          }
+        }
+      }
+
+      if (!rv) {
+        //look in interestingFields
+        loop2:
+        for (i2 = 0; i2 < l2; i2++) {
+          searchFiled = interestingFields[i2];
+          if (user[searchFiled].toLowerCase().indexOf(searchValue) > -1) {
+            rv = true;
+            break loop2;
+          }
+        }
+      }
+
+      return rv;
+    }
 
     function pageSizeChanged() {
       $state.go('.', {

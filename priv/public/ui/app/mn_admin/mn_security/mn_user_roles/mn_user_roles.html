@@ -1,5 +1,10 @@
 <mn-element-cargo depot="actions">
   <div class="header-controls">
+    <div
+       class="row"
+       mn-placeholder="filter users list"
+       mn-search="userRolesCtl.filterField">
+    </div>
     <a ng-show="rbac.cluster.admin.security.write"
        ng-click="userRolesCtl.addUser()">
       ADD USER
@@ -27,7 +32,8 @@
        ng-if="userRolesCtl.state.users.length"
        ng-click="userRolesCtl.toggleDetails(user.id + user.domain)"
        ng-repeat="user in userRolesCtl.state.users |
-                  orderBy: mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert
+                  orderBy: mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert |
+                  filter: userRolesCtl.listFiter
                   track by (user.id + user.domain)">
       <div class="cbui-tablerow padding-left">
         <span class="cbui-table-cell">
