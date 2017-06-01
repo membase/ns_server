@@ -116,10 +116,10 @@ handle_cast({cleanup_complete, RetValues, UnsafeNodes},
     %% bucket's run so that the result can be communicated to the
     %% interested parties.
     Out = [case Ret of
-               ok ->
-                   {Item, ok};
                {error, wait_for_memcached_failed, _} ->
-                   {Item, warming_up}
+                   {Item, warming_up};
+               RV ->
+                   {Item, RV}
            end || {Item, Ret} <- RetValues],
     ItemRetDict = dict:from_list(Out),
 
