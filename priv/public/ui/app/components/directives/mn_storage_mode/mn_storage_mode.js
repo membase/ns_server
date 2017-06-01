@@ -9,7 +9,7 @@
   function mnFormatStorageModeError() {
     return function (error) {
       switch (error) {
-        case "storageMode must be one of forestdb, memory_optimized":
+        case "storageMode must be one of forestdb, memory_optimized, plasma":
           return "please choose an index storage mode";
         default:
           return error;
