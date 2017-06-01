@@ -15,7 +15,7 @@
       vm.isEnterprise = pools.isEnterprise;
 
       if (indexSettings.storageMode === "") {
-        vm.indexSettings.storageMode = "forestdb";
+        vm.indexSettings.storageMode = "plasma";
       }
 
       function login(user) {

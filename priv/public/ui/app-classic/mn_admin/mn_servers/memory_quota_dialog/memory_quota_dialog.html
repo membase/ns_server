@@ -17,10 +17,12 @@
           errors="serversMemoryQuotaDialogCtl.errors">
         </div>
         <div
-          ng-if="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index"
-          mn-storage-mode="serversMemoryQuotaDialogCtl.indexSettings"
-          is-disabled="!serversMemoryQuotaDialogCtl.isEnterprise || serversMemoryQuotaDialogCtl.initialIndexSettings.storageMode !== ''"
-          errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors">
+           ng-if="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index"
+           is-forestdb-hidden="true"
+           mn-storage-mode="serversMemoryQuotaDialogCtl.indexSettings"
+           is-disabled="!serversMemoryQuotaDialogCtl.isEnterprise || serversMemoryQuotaDialogCtl.initialIndexSettings.storageMode !== ''"
+           errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors"
+           pool-default="poolDefault">
         </div>
       </div>
       <div class="save_cancel clearfix">

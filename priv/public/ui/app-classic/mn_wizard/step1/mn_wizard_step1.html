@@ -43,9 +43,10 @@
               errors="wizardStep1Ctl.postMemoryErrors">
             </div>
             <div
-              mn-storage-mode="wizardStep1Ctl.config.startNewClusterConfig.indexSettings"
-              is-disabled="!wizardStep1Ctl.isEnterprise || !wizardStep1Ctl.config.startNewClusterConfig.services.model.index"
-              errors="wizardStep1Ctl.postIndexSettingsErrors">
+               is-forestdb-hidden="true"
+               mn-storage-mode="wizardStep1Ctl.config.startNewClusterConfig.indexSettings"
+               is-disabled="!wizardStep1Ctl.isEnterprise || !wizardStep1Ctl.config.startNewClusterConfig.services.model.index"
+               errors="wizardStep1Ctl.postIndexSettingsErrors">
             </div>
           </div>
         </div>

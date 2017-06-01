@@ -20,10 +20,11 @@
           mn-memory-quota="wizardStep6Ctl.config"
           errors="wizardStep6Ctl.errors"></div>
         <div
-          ng-if="wizardStep6Ctl.firstTimeAddedServices.index"
-          mn-storage-mode="wizardStep6Ctl.indexSettings"
-          is-disabled="!wizardStep6Ctl.isEnterprise || wizardStep6Ctl.initialIndexSettings.storageMode !== ''"
-          errors="wizardStep6Ctl.postIndexSettingsErrors"></div>
+           is-forestdb-hidden="true"
+           ng-if="wizardStep6Ctl.firstTimeAddedServices.index"
+           mn-storage-mode="wizardStep6Ctl.indexSettings"
+           is-disabled="!wizardStep6Ctl.isEnterprise || wizardStep6Ctl.initialIndexSettings.storageMode !== ''"
+           errors="wizardStep6Ctl.postIndexSettingsErrors"></div>
       </div>
       <div class="config-bottom">
         <button

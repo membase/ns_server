@@ -4,15 +4,25 @@
   </div>
   <label for="index_ram_quota" ng-hide="noLabel" style="display: inline-block; vertical-align: top;">Index Storage Setting:</label>
   <div style="display: inline-block;">
-    <div>
+    <div ng-hide="isForestdbHidden">
       <input
-        type="radio"
-        value="forestdb"
-        id="storage_mode_forestdb"
-        ng-model="config.storageMode"
-        ng-disabled="isDisabled"
-        >
-      <label for="storage_mode_forestdb" style="width:auto;margin-right:5px;">Standard Global Secondary Indexes</label>
+         type="radio"
+         value="forestdb"
+         id="storage_mode_forestdb"
+         ng-model="config.storageMode"
+         ng-disabled="isDisabled">
+      <label for="storage_mode_forestdb" style="width:auto;margin-right:5px;">
+        Legacy Global Secondary Indexes</label>
+    </div>
+    <div ng-show="!poolDefault || poolDefault.compat.atLeast50">
+      <input
+         type="radio"
+         value="plasma"
+         id="storage_plasma_indexes"
+         ng-model="config.storageMode"
+         ng-disabled="isDisabled">
+      <label for="storage_plasma_indexes" style="width:auto;margin-right:5px;">
+        Standard Global Secondary Indexes</label>
     </div>
     <div>
       <input
@@ -21,7 +31,8 @@
         id="storage_memory_optimized"
         ng-model="config.storageMode"
         ng-disabled="isDisabled">
-      <label for="storage_memory_optimized" style="width:auto;">Memory-Optimized Global Secondary Indexes</label>
+      <label for="storage_memory_optimized" style="width:auto;">
+        Memory-Optimized Global Secondary Indexes</label>
     </div>
   </div>
 </div>
