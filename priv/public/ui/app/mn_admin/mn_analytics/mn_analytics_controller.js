@@ -52,7 +52,7 @@
     }
     function onSelectNode(selectedHostname) {
       $state.go('^.graph', {
-        statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? undefined : selectedHostname
+        statsHostname: selectedHostname.indexOf("All Server Nodes") > -1 ? "all" : selectedHostname
       });
     }
     function computeOps(key) {
