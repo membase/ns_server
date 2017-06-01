@@ -52,15 +52,17 @@
       });
     }
     function postIndexSettings(data, justValidate) {
+      var configData = {};
+      (["indexerThreads", "logLevel", "maxRollbackPoints", "storageMode"])
+        .forEach(function (name) {
+          if (data[name]) {
+            configData[name] = data[name];
+          }
+        });
       var config = {
         method: 'POST',
         url: '/settings/indexes',
-        data: {
-          indexerThreads: data.indexerThreads,
-          logLevel:  data.logLevel,
-          maxRollbackPoints:  data.maxRollbackPoints,
-          storageMode:  data.storageMode
-        }
+        data: configData
       };
       if (justValidate) {
         config.params = {

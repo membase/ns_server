@@ -70,8 +70,8 @@
       return addErrorHandler(mnSettingsClusterService.postPoolsDefault(data, false, newClusterState.clusterName), "postMemory");
     }
     function validateIndexSettings() {
-      return mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.config.startNewClusterConfig.indexSettings, true))
-        .catchErrorsFromSuccess('postIndexSettingsErrors')
+      return mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.config.startNewClusterConfig.indexSettings))
+        .catchErrors('postIndexSettingsErrors')
         .getPromise();
     }
     function postServices() {
