@@ -1488,14 +1488,14 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
                                   [{"v", menelaus_web_rbac:check_permissions_url_version(Config)}])},
                  {serverGroupsUri, <<"/pools/default/serverGroups?v=",
                                      (list_to_binary(integer_to_list(GroupsV)))/binary>>},
-                 {clusterName, list_to_binary(get_cluster_name())}],
+                 {clusterName, list_to_binary(get_cluster_name())},
+                 {balanced, ns_cluster_membership:is_balanced()}],
 
     PropList1 = build_memory_quota_info(Config) ++ PropList0,
     PropList2 =
         case InfoLevel of
             for_ui ->
-                [{balanced, ns_cluster_membership:is_balanced()},
-                 {failoverWarnings, ns_bucket:failover_warnings()},
+                [{failoverWarnings, ns_bucket:failover_warnings()},
                  {goxdcrEnabled, cluster_compat_mode:is_goxdcr_enabled(Config)},
                  {ldapEnabled, cluster_compat_mode:is_ldap_enabled()}
                  | PropList1];
