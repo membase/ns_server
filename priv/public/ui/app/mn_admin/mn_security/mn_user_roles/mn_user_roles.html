@@ -48,6 +48,7 @@
               ng-repeat="role in user.roles track by $index"
               tooltip-trigger="'mouseenter'"
               tooltip-append-to-body="true"
+              tooltip-placement="top"
               ng-click="$event.stopPropagation()"
               uib-tooltip="{{userRolesCtl.rolesByRole[role.role + (role.bucket_name ? '[' + role.bucket_name + ']' : '')].desc}}">
             <span class="ellipsis">

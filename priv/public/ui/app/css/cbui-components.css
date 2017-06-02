@@ -269,7 +269,7 @@ h1 a:active {
   flex: 0 1 auto;
 }
 input.filter-input {
-  width: auto;
+  width: 256px;
   padding-right: 2rem;
 }
 /* inserts magnifying glass inside filter input field ------------------- */
