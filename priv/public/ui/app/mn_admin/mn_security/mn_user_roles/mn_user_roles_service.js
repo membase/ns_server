@@ -27,13 +27,32 @@
       });
     }
 
+    function sort(array) {
+      if (angular.isArray(array) && angular.isArray(array[0])) {
+        array.forEach(sort);
+        array.sort(function(a, b) {
+          var aHasTitle = angular.isArray(a[1]) || !!a[0].bucket_name;
+          var bHasTitle = angular.isArray(b[1]) || !!b[0].bucket_name;
+          if (!aHasTitle && bHasTitle) {
+            return -1;
+          }
+          if (aHasTitle && !bHasTitle) {
+            return 1;
+          }
+          return 0;
+        });
+      }
+    }
+
     function getRolesTree(roles) {
+      roles = _.sortBy(roles, "name");
       var roles1 = _.groupBy(roles, 'role');
       var roles2 = _.groupBy(roles1, function (array, role) {
         return role.split("_")[0];
       });
-
-      return roles2;
+      var roles3 = _.values(roles2);
+      sort(roles3);
+      return roles3;
     }
 
     function getUsers(params) {
