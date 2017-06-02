@@ -79,6 +79,7 @@
 -define(CREATE_BUCKET_TIMEOUT, ns_config:get_timeout(create_bucket, 5000)).
 -define(RECOVERY_QUERY_STATES_TIMEOUT,
         ns_config:get_timeout(recovery_query_states, 5000)).
+-define(JANITOR_RUN_TIMEOUT, ns_config:get_timeout(ensure_janitor_run, 30000)).
 -define(JANITOR_INTERVAL, ns_config:read_key_fast(janitor_interval, 5000)).
 -define(STOP_REBALANCE_TIMEOUT, ns_config:get_timeout(stop_rebalance_timeout, 60000)).
 
@@ -261,7 +262,7 @@ ensure_janitor_run(Item) ->
                   Ret ->
                       Ret
               end
-      end, infinity, 1000).
+      end, ?JANITOR_RUN_TIMEOUT, 1000).
 
 -spec start_rebalance([node()], [node()], all | [bucket_name()]) ->
                              ok | in_progress | already_balanced |
