@@ -91,12 +91,15 @@ extract_ui_auth_token(Req) ->
 -spec generate_auth_cookie(mochiweb_request(), auth_token()) -> {string(), string()}.
 generate_auth_cookie(Req, Token) ->
     Options = [{path, "/"}, {http_only, true}],
-    mochiweb_cookies:cookie(ui_auth_cookie_name(Req), Token, Options).
+    SslOptions = case Req:get(socket) of
+                     {ssl, _} -> [{secure, true}];
+                     _ -> ""
+                 end,
+    mochiweb_cookies:cookie(ui_auth_cookie_name(Req), Token, Options ++ SslOptions).
 
 -spec kill_auth_cookie(mochiweb_request()) -> {string(), string()}.
 kill_auth_cookie(Req) ->
-    Options = [{path, "/"}, {http_only, true}],
-    {Name, Content} = mochiweb_cookies:cookie(ui_auth_cookie_name(Req), "", Options),
+    {Name, Content} = generate_auth_cookie(Req, ""),
     {Name, Content ++ "; expires=Thu, 01 Jan 1970 00:00:00 GMT"}.
 
 -spec complete_uilogout(mochiweb_request()) -> mochiweb_response().
