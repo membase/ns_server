@@ -55,6 +55,13 @@
       return roles3;
     }
 
+    function getUser(user) {
+      return $http({
+        method: "GET",
+        url: getUserUrl(user)
+      });
+    }
+
     function getUsers(params) {
       var config = {
         method: "GET",
@@ -159,12 +166,10 @@
       if (isEditingMode) {
         return doAddUser(user, roles);
       } else {
-        return getUsers().then(function (users) {
-          if (_.find(users, {id: user.id, domain: user.domain})) {
-            return $q.reject({username: "username already exists"});
-          } else {
-            return doAddUser(user, roles);
-          }
+        return getUser(user).then(function (users) {
+          return $q.reject({username: "username already exists"});
+        }, function () {
+          return doAddUser(user, roles);
         });
       }
 
