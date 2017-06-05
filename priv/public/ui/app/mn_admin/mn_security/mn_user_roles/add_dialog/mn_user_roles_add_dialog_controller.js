@@ -19,6 +19,7 @@
     vm.selectedRoles = {};
     vm.getUIID = getUIID;
     vm.toggleWrappers = toggleWrappers;
+    vm.focusError = false;
 
     activate();
 
@@ -83,11 +84,15 @@
 
     function save() {
       if (vm.form.$invalid) {
+        vm.focusError = true;
         return;
       }
       mnPromiseHelper(vm, mnUserRolesService.addUser(vm.user, _.clone(vm.selectedRoles), user), $uibModalInstance, vm.isEditingMode)
         .showGlobalSpinner()
-        .catchErrors()
+        .catchErrors(function (errors) {
+          vm.focusError = !!errors;
+          vm.errors = errors;
+        })
         .broadcast("reloadRolesPoller")
         .closeOnSuccess()
         .showGlobalSuccess("User saved successfully!", 4000);
