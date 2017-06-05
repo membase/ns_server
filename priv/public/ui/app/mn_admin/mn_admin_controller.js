@@ -25,6 +25,7 @@
     vm.runInternalSettingsDialog = runInternalSettingsDialog;
     vm.lostConnState = mnLostConnectionService.getState();
 
+    vm.clientAlerts = mnAlertsService.clientAlerts;
     vm.alerts = mnAlertsService.alerts;
     vm.closeAlert = mnAlertsService.removeItem;
 

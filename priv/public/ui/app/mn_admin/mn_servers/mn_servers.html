@@ -7,6 +7,12 @@
   </div>
   <div
      class="alert alert-warning"
+     ng-show="!('every' | lodash:('values' | lodash:poolDefault.compat)) && !adminCtl.clientAlerts.hideCompatibility">
+    <p>Multiple server versions present. Some {{::poolDefault.thisNode.clusterCompatibility | decodeCompatVersion}} features may require all {{::poolDefault.thisNode.clusterCompatibility | decodeCompatVersion}} nodes.</p>
+    <a ng-click="adminCtl.clientAlerts.hideCompatibility = true" class="close">X</a>
+  </div>
+  <div
+     class="alert alert-warning"
      ng-show="adminCtl.tasks.isLoadingSamples && rbac.cluster.tasks.read">
     <p>Warning: Rebalance is not available until data loading is completed.</p>
   </div>

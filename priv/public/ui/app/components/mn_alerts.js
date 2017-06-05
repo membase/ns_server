@@ -8,13 +8,17 @@
   function mnAlertsServiceFactory($uibModal, $rootScope, $window, $timeout) {
     var alerts = [];
     var alertsHistory = [];
+    var clientAlerts = {
+      hideCompatibility: false
+    };
     var mnAlertsService = {
       setAlert: setAlert,
       formatAndSetAlerts: formatAndSetAlerts,
       showAlertInPopup: showAlertInPopup,
       alerts: alerts,
       removeItem: removeItem,
-      isNewAlert: isNewAlert
+      isNewAlert: isNewAlert,
+      clientAlerts: clientAlerts
     };
 
     return mnAlertsService;
