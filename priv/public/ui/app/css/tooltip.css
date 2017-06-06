@@ -51,7 +51,7 @@
   border-color: transparent transparent #fff #fff;
   transform-origin: 0 0;
   transform: rotate(-315deg);
-  box-shadow: -3px 3px 8px 0 rgba(0, 0, 0, 0.14);
+  box-shadow: -5px 4px 8px 0 rgba(0, 0, 0, 0.12);
 }
 .tooltip.top .tooltip-inner:after {
   content: "";
@@ -65,7 +65,7 @@
   border-color: transparent transparent #fff #fff;
   transform-origin: 0 0;
   transform: rotate(-45deg);
-  box-shadow: -3px 3px 8px 0 rgba(0, 0, 0, 0.14);
+  box-shadow: -5px 4px 8px 0 rgba(0, 0, 0, 0.12);
 }
 .tooltip.left .tooltip-inner:after {
   content: "";
@@ -79,7 +79,7 @@
   border-color: transparent transparent #fff #fff;
   transform-origin: center;
   transform: rotate(-135deg);
-  box-shadow: -3px 3px 8px 0 rgba(0, 0, 0, 0.14);
+  box-shadow: -5px 4px 8px 0 rgba(0, 0, 0, 0.12);
 }
 .uib-position-measure {
   visibility: hidden;

@@ -162,42 +162,37 @@
     <div
        class="formrow checkbox-list"
        ng-if="bucketConf.bucketType === 'membase'">
-      <h4>
-        <label class="inline">Ejection Method</label>
-        <span
-           class="fa-stack icon-info"
-           uib-tooltip="VALUE EJECTION: During ejection, only the value will be ejected (key and metadata will remain in memory).
-                        &nbsp;FULL EJECTION: During ejection, everything (including key, metadata, and value) will be ejected.
-                        Value Ejection needs more system memory, but provides the best performance. Full Ejection reduces the memory overhead requirement."
-           tooltip-placement="top">
-          <span class="icon fa-circle-thin fa-stack-2x"></span>
-          <span class="icon fa-info fa-stack-1x"></span>
-        </span>
-      </h4>
-
-      <input
-         type="radio"
-         name="evictionPolicy"
-         value="valueOnly"
-         id="for-metadata-value-eject"
-         checked="checked"
-         ng-model="bucketConf.evictionPolicy">
-      <label for="for-metadata-value-eject">
-        Value-only
-      </label>
-      <input
-         type="radio"
-         name="evictionPolicy"
-         value="fullEviction"
-         id="for-metadata-full-eject"
-         ng-model="bucketConf.evictionPolicy">
-      <label for="for-metadata-full-eject">
-        Full
-      </label>
-      <div
-         class="error"
-         ng-show="!!evictionPolicyWarning">
-        {{evictionPolicyWarning}}
+      <h4 class="inline">Ejection Method</h4>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip="VALUE EJECTION: During ejection, only the value will be ejected (key and metadata will remain in memory).
+                      &nbsp;FULL EJECTION: During ejection, everything (including key, metadata, and value) will be ejected.
+                      Value Ejection needs more system memory, but provides the best performance. Full Ejection reduces the memory overhead requirement."
+         tooltip-placement="top">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
+      <div class="formrow checkbox-list">
+        <input
+           type="radio"
+           name="evictionPolicy"
+           value="valueOnly"
+           id="for-metadata-value-eject"
+           checked="checked"
+           ng-model="bucketConf.evictionPolicy">
+        <label for="for-metadata-value-eject">Value-only</label>
+        <input
+           type="radio"
+           name="evictionPolicy"
+           value="fullEviction"
+           id="for-metadata-full-eject"
+           ng-model="bucketConf.evictionPolicy">
+        <label for="for-metadata-full-eject">Full</label>
+        <div
+           class="error"
+           ng-show="!!evictionPolicyWarning">
+          {{evictionPolicyWarning}}
+        </div>
       </div>
     </div>
 
