@@ -5,12 +5,14 @@
   <div class="formrow form-inline">
     <input
        type="checkbox"
+       ng-change="maybeDisableTimeInterval()"
        id="for-data-frag-percent"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentageFlag"
        ng-disabled="(rbac && !rbac.cluster.settings.write)">
     <label for="for-data-frag-percent"></label>
     <input
        type="number"
+       ng-change="maybeDisableTimeInterval()"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.percentage"
        ng-class="{invalid: validationErrors.databaseFragmentationThreshold_percentage_}"
        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.percentageFlag || (rbac && !rbac.cluster.settings.write)">
@@ -25,12 +27,14 @@
   <div class="formrow form-inline">
     <input
        type="checkbox"
+       ng-change="maybeDisableTimeInterval()"
        id="for-data-frag-size"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.sizeFlag">
     <label for="for-data-frag-size"></label>
     <input
        type="number"
+       ng-change="maybeDisableTimeInterval()"
        ng-model="autoCompactionSettings.databaseFragmentationThreshold.size"
        ng-class="{invalid: validationErrors.databaseFragmentationThreshold_size_}"
        ng-disabled="!autoCompactionSettings.databaseFragmentationThreshold.sizeFlag || (rbac && !rbac.cluster.settings.write)">
@@ -47,11 +51,13 @@
   <div class="formrow form-inline">
     <input
        type="checkbox"
+       ng-change="maybeDisableTimeInterval()"
        id="for-view-frag-percent"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.percentageFlag">
     <label for="for-view-frag-percent"></label>
     <input
+       ng-change="maybeDisableTimeInterval()"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.percentage"
        ng-class="{invalid: validationErrors.viewFragmentationThreshold_percentage_}"
        ng-disabled="!autoCompactionSettings.viewFragmentationThreshold.percentageFlag || (rbac && !rbac.cluster.settings.write)"
@@ -66,12 +72,14 @@
 
   <div class="formrow form-inline">
     <input
+       ng-change="maybeDisableTimeInterval()"
        type="checkbox"
        id="for-view-frag-size"
        ng-disabled="(rbac && !rbac.cluster.settings.write)"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.sizeFlag">
     <label for="for-view-frag-size"></label>
     <input
+       ng-change="maybeDisableTimeInterval()"
        type="number"
        ng-model="autoCompactionSettings.viewFragmentationThreshold.size"
        ng-class="{invalid: validationErrors.viewFragmentationThreshold_size_}"
@@ -89,7 +97,7 @@
     <input
       type="checkbox"
       id="for-enable-compaction-timeperiod"
-      ng-disabled="(rbac && !rbac.cluster.settings.write)"
+      ng-disabled="(rbac && !rbac.cluster.settings.write) || !props.isFragmentationProvided"
       ng-model="autoCompactionSettings.allowedTimePeriodFlag">
     <label for="for-enable-compaction-timeperiod">Set the time interval for when compaction is allowed to run</label>
 

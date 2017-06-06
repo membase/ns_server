@@ -23,10 +23,26 @@
       $scope.daysOfWeek = daysOfWeek;
       $scope.rbac = mnPermissions.export;
       $scope.poolDefault = mnPoolDefault.export;
+      $scope.maybeDisableTimeInterval = maybeDisableTimeInterval;
+      $scope.props = {};
 
       if (mnPoolDefault.export.compat.atLeast40 && $scope.rbac.cluster.indexes.read) {
         mnPromiseHelper($scope, mnSettingsClusterService.getIndexSettings())
           .applyToScope("indexSettings");
+      }
+
+      function isFragmentationProvided(value) {
+        return (value.percentageFlag && value.percentage) ||
+          (value.sizeFlag && value.size);
+      }
+
+      function maybeDisableTimeInterval() {
+        $scope.props.isFragmentationProvided =
+          isFragmentationProvided($scope.autoCompactionSettings.databaseFragmentationThreshold) ||
+          isFragmentationProvided($scope.autoCompactionSettings.viewFragmentationThreshold);
+        if (!$scope.props.isFragmentationProvided) {
+          $scope.autoCompactionSettings.allowedTimePeriodFlag = false;
+        }
       }
     }
 
