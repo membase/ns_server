@@ -844,13 +844,22 @@ rebalancing({start_graceful_failover, _}, _From, State) ->
 rebalancing(stop_rebalance, _From,
             #rebalancing_state{rebalancer=Pid} = State) ->
     ?log_debug("Sending stop to rebalancer: ~p", [Pid]),
-    Pid ! stop,
-    Tref = gen_fsm:start_timer(?STOP_REBALANCE_TIMEOUT, stop_timeout),
-    {reply, ok, rebalancing, State#rebalancing_state{stop_timer = Tref}};
+    State1 = maybe_initiate_rebalance_stop(State),
+    {reply, ok, rebalancing, State1};
 rebalancing(rebalance_progress, _From,
             #rebalancing_state{progress = Progress} = State) ->
     AggregatedProgress = dict:to_list(rebalance_progress:get_progress(Progress)),
     {reply, {running, AggregatedProgress}, rebalancing, State};
+rebalancing({try_autofailover, Node} = Msg, From, State) ->
+    case ns_rebalancer:validate_autofailover(Node) of
+        {error, UnsafeBuckets} ->
+            {reply, {autofailover_unsafe, UnsafeBuckets}, rebalancing, State};
+        ok ->
+            ale:info(?USER_LOGGER,"Stopping rebalance as we received a ~p request", [Msg]),
+            State1 = maybe_initiate_rebalance_stop(State),
+            wait_for_rebalance_to_terminate(State1),
+            idle({try_autofailover, Node}, From, #idle_state{})
+    end;
 rebalancing(Event, _From, State) ->
     ?log_warning("Got event ~p while rebalancing.", [Event]),
     {reply, rebalance_running, rebalancing, State}.
@@ -941,6 +950,23 @@ recovery(_Event, _From, State) ->
 %%
 %% Internal functions
 %%
+
+maybe_initiate_rebalance_stop(#rebalancing_state{rebalancer=Pid} = State) when is_pid(Pid) ->
+    Pid ! stop,
+    Tref = gen_fsm:start_timer(?STOP_REBALANCE_TIMEOUT, stop_timeout),
+    State#rebalancing_state{stop_timer = Tref};
+maybe_initiate_rebalance_stop(State) ->
+    State.
+
+wait_for_rebalance_to_terminate(#rebalancing_state{rebalancer=Pid} = State) ->
+    receive
+        {'EXIT', Pid, _Reason} ->
+            cancel_stop_timer(State);
+        {timeout, _TRef, stop_timeout} ->
+            ?log_debug("Terminating rebalance after stop timeout (pid = ~p)", [Pid]),
+            exit(Pid, stopped),
+            wait_for_rebalance_to_terminate(State#rebalancing_state{stop_timer=undefined})
+    end.
 
 do_request_janitor_run(Item, FsmState, State) ->
     do_request_janitor_run(Item, fun(_Reason) -> ok end,
@@ -1182,7 +1208,8 @@ do_set_rebalance_status(Status, RebalancerPid, GracefulPid) ->
                    {graceful_failover_pid, RebalancerPid}]).
 
 cancel_stop_timer(State) ->
-    do_cancel_stop_timer(State#rebalancing_state.stop_timer).
+    do_cancel_stop_timer(State#rebalancing_state.stop_timer),
+    State#rebalancing_state{stop_timer = undefined}.
 
 do_cancel_stop_timer(undefined) ->
     ok;
@@ -1190,21 +1217,21 @@ do_cancel_stop_timer(TRef) when is_reference(TRef) ->
     gen_fsm:cancel_timer(TRef).
 
 handle_rebalance_completion(Reason, State) ->
-    cancel_stop_timer(State),
-    maybe_reset_autofailover_count(Reason, State),
-    maybe_reset_reprovision_count(Reason, State),
-    log_rebalance_completion(Reason, State),
-    update_rebalance_counters(Reason, State),
-    update_rebalance_status(Reason, State),
+    State1 = cancel_stop_timer(State),
+    maybe_reset_autofailover_count(Reason, State1),
+    maybe_reset_reprovision_count(Reason, State1),
+    log_rebalance_completion(Reason, State1),
+    update_rebalance_counters(Reason, State1),
+    update_rebalance_status(Reason, State1),
     rpc:eval_everywhere(diag_handler, log_all_dcp_stats, []),
 
     R = consider_switching_compat_mode_dont_exit(),
-    case maybe_start_service_upgrader(Reason, R, State) of
+    case maybe_start_service_upgrader(Reason, R, State1) of
         {started, NewState} ->
             {next_state, rebalancing, NewState};
         not_needed ->
-            maybe_eject_myself(Reason, State),
-            maybe_exit(R, State),
+            maybe_eject_myself(Reason, State1),
+            maybe_exit(R, State1),
             {next_state, idle, #idle_state{}}
     end.
 
