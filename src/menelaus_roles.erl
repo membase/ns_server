@@ -219,6 +219,7 @@ roles_spock() ->
        {[{bucket, bucket_name}, fts], [read, write, manage]},
        {[{bucket, bucket_name}, stats], [read]},
        {[{bucket, bucket_name}, settings], [read]},
+       {[{bucket, bucket_name}, n1ql, index], [create, list, build]},
        {[pools], [read]}]},
      {data_monitoring, [bucket_name],
       [{name, <<"Data Monitoring">>},
