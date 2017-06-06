@@ -1,7 +1,7 @@
 <div class="dialog-small">
   <div class="panel-header">
     <h2 ng-show="groupsGroupDialogCtl.isEditMode">Edit Group</h2>
-    <h2 ng-show="!groupsGroupDialogCtl.isEditMode">Create Group</h2>
+    <h2 ng-show="!groupsGroupDialogCtl.isEditMode">Add New Group</h2>
   </div>
   <form
      ng-submit="groupsGroupDialogCtl.onSubmit()"
@@ -28,7 +28,7 @@
     </div>
     <div class="panel-footer">
       <a  ng-click="$dismiss()">Cancel</a>
-      <button type="submit">{{ groupsGroupDialogCtl.isEditMode ? 'Rename' : 'Create'}}</button>
+      <button type="submit">{{ groupsGroupDialogCtl.isEditMode ? 'Rename' : 'Add'}} Group</button>
     </div>
   </form>
 </div>
