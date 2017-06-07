@@ -18,12 +18,13 @@
     // 3 "ABORTED";
     // 4 "INVALID";
     // 5 "IGNORED";
+    // 6 "ERROR";
     return function (exception, cause) {
       if (
-        exception.constructor.name === "TransitionRejection" &&
+        exception.constructor.name === "Rejection" &&
        (exception.type === 2 || exception.type === 3 || exception.type === 5)
       ) {
-        return; //we are not interested in these TransitionRejection exceptions;
+        return; //we are not interested in these Rejection exceptions;
       }
       exception.cause = cause;
       send(exception);
