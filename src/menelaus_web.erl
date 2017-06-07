@@ -1811,14 +1811,6 @@ streaming_inner(F, HTTPRes, LastRes) ->
     end,
     Res.
 
-consume_watcher_notifies() ->
-    receive
-        notify_watcher ->
-            consume_watcher_notifies()
-    after 0 ->
-            ok
-    end.
-
 handle_streaming(F, Req, HTTPRes, LastRes) ->
     Res =
         try streaming_inner(F, HTTPRes, LastRes)
@@ -1832,7 +1824,7 @@ handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
     receive
         notify_watcher ->
             timer:sleep(50),
-            consume_watcher_notifies(),
+            misc:flush(notify_watcher),
             ok;
         _ ->
             exit(normal)
