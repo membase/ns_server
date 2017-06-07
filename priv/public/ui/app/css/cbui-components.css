@@ -979,8 +979,14 @@ section.error {
   display: block;
 }
 .ui-select-container.single .ui-select-match {
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
+  -o-text-overflow: ellipsis;
   padding-right: 15px;
+  max-width: 182px;
+  line-height: 14px;
+  vertical-align: top;
 }
 .ui-select-container.single .ui-select-choices-row.disabled {
   background: #fff;
