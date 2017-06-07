@@ -83,9 +83,19 @@
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
 
--define(CACHE_CONTROL, "Cache-Control").  %% TODO: Move to an HTTP header file.
-
 %% External API
+
+-define(CACHE_CONTROL, "Cache-Control").  %% TODO: Move to an HTTP header file.
+%% TODO: Validate adding {"Content-Security-Policy", "script-src 'self'"} to
+%% BASE_HEADERS does not break anything.
+-define(BASE_HEADERS, [{"Server", "Couchbase Server"},
+                       {"X-Content-Type-Options", "nosniff"},
+                       {"X-Frame-Options", "DENY"},
+                       {"X-Permitted-Cross-Domain-Policies", "none"},
+                       {"X-XSS-Protection", "1; mode=block"}]).
+-define(NO_CACHE_HEADERS, [{?CACHE_CONTROL, "no-cache,no-store,must-revalidate"},
+                           {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
+                           {"Pragma", "no-cache"}]).
 
 %% response_header takes a proplist of headers or pseudo-header
 %% descripts and augments it with response specific headers.
@@ -106,16 +116,13 @@ response_headers(Headers) ->
              ({allow_cache, _Value = true}, {Acc, _}) ->
                   {[{?CACHE_CONTROL, "max-age=30000000"} | Acc], true};
              ({allow_cache, _Value = false}, {Acc, _}) ->
-                  {[{?CACHE_CONTROL, "no-cache,no-store,must-revalidate"},
-                    {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
-                    {"Pragma", "no-cache"} | Acc], true};
+                  {?NO_CACHE_HEADERS ++ Acc, true};
              ({Header = ?CACHE_CONTROL, Value}, {Acc, _}) ->
                   {[{Header, Value} | Acc], true};
              ({Header, Value}, {Acc, CacheControl}) when is_list(Header) ->
                   {[{Header, Value} | Acc], CacheControl}
           end, {[], false},
-          Headers ++ [{allow_cache, false},
-                      {"Server", "Couchbase Server"}]),
+          Headers ++ [{allow_cache, false} | ?BASE_HEADERS]),
     lists:ukeysort(1, lists:reverse(Expanded)).
 
 %% mostly extracted from mochiweb_request:maybe_redirect/3
@@ -583,37 +590,21 @@ send_chunked(Req, StatusCode, ExtraHeaders) ->
 -ifdef(EUNIT).
 
 response_headers_test() ->
-    ?assertEqual([{"Cache-Control", "no-cache,no-store,must-revalidate"},
-                  {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
-                  {"Pragma", "no-cache"},
-                  {"Server", "Couchbase Server"}],
+    ?assertEqual(lists:keysort(1, ?NO_CACHE_HEADERS ++ ?BASE_HEADERS),
                  response_headers([])),
-    ?assertEqual([{"Cache-Control", "no-cache,no-store,must-revalidate"},
-                  {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
-                  {"Pragma", "no-cache"},
-                  {"Server", "Couchbase Server"}],
+    ?assertEqual(lists:keysort(1, ?NO_CACHE_HEADERS ++ ?BASE_HEADERS),
                  response_headers([{allow_cache, false}])),
-    ?assertEqual([{"Cache-Control", "no-cache,no-store,must-revalidate"},
-                  {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
-                  {"Extra", "header"},
-                  {"Foo", "bar"},
-                  {"Pragma", "no-cache"},
-                  {"Server", "Couchbase Server"} ],
+    ?assertEqual(lists:keysort(1, [{"Extra", "header"}, {"Foo", "bar"}] ++
+                                   ?NO_CACHE_HEADERS ++ ?BASE_HEADERS),
                  response_headers([{"Foo", "bar"}, {"Extra", "header"}])),
-    ?assertEqual([{"Cache-Control", "max-age=30000000"},
-                  {"Server", "Couchbase Server"}],
+    ?assertEqual(lists:keysort(1, [{"Cache-Control", "max-age=30000000"}] ++ ?BASE_HEADERS),
                  response_headers([{allow_cache, true}])),
-    ?assertEqual([{"Cache-Control", "max-age=10"},
-                  {"Server", "Couchbase Server"}],
+    ?assertEqual(lists:keysort( 1, [{"Cache-Control", "max-age=10"}] ++ ?BASE_HEADERS),
                  response_headers([{?CACHE_CONTROL, "max-age=10"}])),
-    ?assertEqual([{"Cache-Control", "max-age=10"},
-                  {"Server", "Couchbase Server"}],
-                 response_headers([{?CACHE_CONTROL, "max-age=10"}, {allow_cache, true}])),
-    ?assertEqual([{"Cache-Control", "no-cache,no-store,must-revalidate"},
-                  {"Duplicate", "first"},
-                  {"Expires", "Thu, 01 Jan 1970 00:00:00 GMT"},
-                  {"Pragma", "no-cache"},
-                  {"Server", "Couchbase Server"}],
+    ?assertEqual(lists:keysort(1, [{"Cache-Control", "max-age=10"}] ++ ?BASE_HEADERS),
+                 response_headers([{?CACHE_CONTROL, "max-age=10"},
+                                   {allow_cache, true}])),
+    ?assertEqual(lists:keysort( 1, [{"Duplicate", "first"}] ++ ?NO_CACHE_HEADERS ++ ?BASE_HEADERS),
                  response_headers([{"Duplicate", "first"}, {"Duplicate", "second"}])).
 
 -endif.
