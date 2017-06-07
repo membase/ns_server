@@ -418,6 +418,18 @@ build_bucket_capabilities(BucketConfig) ->
 
 handle_sasl_buckets_streaming(_PoolId, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
+    ForMoxi = proplists:get_value("moxi", Req:parse_qs()) =:= "1",
+
+    GetSaslPassword =
+        fun (Name, BucketInfo) ->
+                case ForMoxi andalso Name =:= "default" of
+                    true ->
+                        "";
+                    false ->
+                        proplists:get_value(sasl_password, BucketInfo, "")
+                end
+        end,
+
     F = fun (_, _) ->
                 Config = ns_config:get(),
                 SASLBuckets = lists:filter(
@@ -448,10 +460,7 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                                         {nodeLocator,
                                          ns_bucket:node_locator(BucketInfo)},
                                         {saslPassword,
-                                         list_to_binary(
-                                           proplists:get_value(
-                                             sasl_password, BucketInfo,
-                                             ""))},
+                                         list_to_binary(GetSaslPassword(Name, BucketInfo))},
                                         {nodes, BucketNodes} | VBM]}
                       end, SASLBuckets),
                 {just_write, {struct, [{buckets, List}]}}

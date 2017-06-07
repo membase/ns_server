@@ -539,7 +539,7 @@ do_moxi_spec() ->
              "downstream_conn_queue_timeout=200,"
              "downstream_timeout=5000,wait_queue_timeout=200",
              [port]},
-      "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming",
+      "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming?moxi=1",
              [{misc, this_node_rest_port, []}]},
       "-p", "0",
       "-Y", "y",
