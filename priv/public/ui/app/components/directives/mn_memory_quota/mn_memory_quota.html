@@ -9,7 +9,7 @@
       <input
          ng-if="config.services"
          ng-model="config.services.model.kv"
-         ng-disabled="config.services.disabled.kv || !isEnterprise"
+         ng-disabled="config.services.disabled.kv"
          type="checkbox"
          id="kv_ram_quota">
       <label
@@ -41,7 +41,7 @@
       <input
          ng-if="config.services"
          ng-model="config.services.model.index"
-         ng-disabled="config.services.disabled.index || !isEnterprise"
+         ng-disabled="config.services.disabled.index"
          type="checkbox"
          id="index_ram_quota">
       <label
@@ -74,7 +74,7 @@
       <input
          ng-if="config.services"
          ng-model="config.services.model.fts"
-         ng-disabled="config.services.disabled.fts || !isEnterprise"
+         ng-disabled="config.services.disabled.fts"
          type="checkbox"
          id="fts_ram_quota">
       <label
@@ -107,7 +107,7 @@
          ng-if="config.services"
          ng-model="config.services.model.n1ql"
          type="checkbox"
-         ng-disabled="config.services.disabled.n1ql || !isEnterprise"
+         ng-disabled="config.services.disabled.n1ql"
          id="n1ql_ram_quota">
       <label
          for="n1ql_ram_quota"
