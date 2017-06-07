@@ -1308,7 +1308,7 @@ ensure_bucket_config(Sock, Bucket, membase,
     case ItemEvictionPolicyChanged of
         true ->
             ale:info(?USER_LOGGER,
-                     "Eviction policy changed form '~s' to '~s' for bucket ~p",
+                     "Eviction policy changed from '~s' to '~s' for bucket ~p",
                      [ActualItemEvictionPolicy, ItemEvictionPolicyBin, Bucket]);
         false ->
             ok
