@@ -801,7 +801,7 @@ run_check_config(Bucket, Parent) ->
     perform_very_long_call(
       fun(Sock) ->
               StartTS = os:timestamp(),
-              ensure_bucket(Sock, Bucket),
+              ok = ensure_bucket(Sock, Bucket),
               Diff = timer:now_diff(os:timestamp(), StartTS),
               if
                   Diff > ?SLOW_CALL_THRESHOLD_MICROS ->
