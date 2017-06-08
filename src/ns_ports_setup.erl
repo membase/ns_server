@@ -217,9 +217,7 @@ do_per_bucket_moxi_specs(Config) ->
     RestPort = ns_config:search_node_prop(Config, rest, port),
     Command = path_config:component_path(bin, "moxi"),
     lists:foldl(
-      fun ({"default", _}, Acc) ->
-              Acc;
-          ({BucketName, BucketConfig}, Acc) ->
+      fun ({BucketName, BucketConfig}, Acc) ->
               case proplists:get_value(moxi_port, BucketConfig) of
                   undefined ->
                       Acc;
