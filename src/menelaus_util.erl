@@ -553,7 +553,7 @@ reply_global_error(Req, Error) ->
     reply_error(Req, "_", Error).
 
 reply_error(Req, Field, Error) ->
-    menelaus_util:reply_json(
+    reply_json(
       Req, {struct, [{errors, {struct, [{iolist_to_binary([Field]), iolist_to_binary([Error])}]}}]}, 400).
 
 require_auth(Req) ->
