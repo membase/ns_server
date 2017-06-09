@@ -43,6 +43,10 @@ setup_body() ->
                                              []
                                      end
                              end),
+    ns_pubsub:subscribe_link(user_storage_events,
+                             fun (_) ->
+                                     Self ! check_children_update
+                             end),
     Children = dynamic_children(normal),
     set_children_and_loop(Children, undefined, normal).
 
@@ -508,8 +512,18 @@ format(Config, Name, Format, Keys) ->
                        end, Keys),
     lists:flatten(io_lib:format(Format, Values)).
 
+default_is_passwordless(Config) ->
+    lists:member({"default", local}, menelaus_users:get_passwordless()) andalso
+        lists:keymember("default", 1, ns_bucket:get_buckets(Config)).
+
+should_run_moxi(Config) ->
+    ns_cluster_membership:should_run_service(Config, kv, node())
+        andalso
+          ((not cluster_compat_mode:is_cluster_spock(Config)) orelse
+           default_is_passwordless(Config)).
+
 moxi_spec(Config) ->
-    case ns_cluster_membership:should_run_service(Config, kv, node()) of
+    case should_run_moxi(Config) of
         true ->
             do_moxi_spec();
         false ->
