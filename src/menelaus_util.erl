@@ -571,7 +571,7 @@ require_auth(Req) ->
 send_chunked(Req, StatusCode, ExtraHeaders) ->
     ?make_consumer(
        begin
-           Resp = menelaus_util:respond(
+           Resp = respond(
                     Req, {StatusCode, response_headers(ExtraHeaders), chunked}),
            pipes:foreach(?producer(),
                          fun (Part) ->
