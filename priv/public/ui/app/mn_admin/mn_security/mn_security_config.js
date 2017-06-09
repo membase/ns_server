@@ -46,6 +46,14 @@
           compat: "atLeast50"
         }
       })
+      .state('app.admin.security.internalRoles', {
+        url: '/internalRoles',
+        controller: 'mnInternalRolesController as internalRolesCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html',
+        data: {
+          permissions: "cluster.admin.security.write"
+        }
+      })
       .state('app.admin.security.rootCertificate', {
         url: '/rootCertificate',
         controller: 'mnRootCertificateController as rootCertificateCtl',

@@ -1,0 +1,81 @@
+
+<div
+   mn-spinner="internalRolesCtl.viewLoading">
+
+  <h3>Read-Only User</h3>
+
+  <p>This user will have read-only access and
+    cannot make any changes to the system. The user
+    can only view existing servers, buckets, views,
+    and stats.</p>
+
+  <form
+     class="forms width-300"
+     ng-show="!internalRolesCtl.roAdminName"
+     ng-submit="internalRolesCtl.createUser()">
+
+    <div class="formrow">
+      <label for="internal-username-filed">Username</label>
+      <input
+         id="internal-username-filed"
+         type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
+         ng-model="internalRolesCtl.creds.username"
+         maxlength="24">
+      <div
+         class="error error-field"
+         ng-show="internalRolesCtl.errors.username">
+        {{internalRolesCtl.errors.username}}
+      </div>
+    </div>
+
+    <div class="formrow">
+      <label for="internal-password-filed">Password</label>
+      <input
+         id="internal-password-filed"
+         type="password"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
+         ng-model="internalRolesCtl.creds.password"
+         mn-autocomplete-off>
+      <div
+         class="error error-field"
+         ng-show="internalRolesCtl.errors.password">
+        {{internalRolesCtl.errors.password}}
+      </div>
+    </div>
+
+    <div class="formrow">
+      <label for="intenal-verify-field">Verify Password</label>
+      <input
+         if="intenal-verify-field"
+         type="password"
+         mn-autocomplete-off
+         ng-model="internalRolesCtl.creds.verifyPassword">
+      <div
+         class="error error-field"
+         ng-show="internalRolesCtl.errors.verifyPassword">
+        {{internalRolesCtl.errors.verifyPassword}}
+      </div>
+    </div>
+
+    <div class="formrow">
+      <button type="submit">Create User</button>
+    </div>
+  </form>
+
+  <div ng-show="internalRolesCtl.roAdminName">
+    <p class="success">
+      User {{internalRolesCtl.roAdminName}} created successfully.
+    </p>
+    <button ng-click="internalRolesCtl.resetUserPassword()">
+      Reset Read-Only User Password
+    </button>
+    <button ng-click="internalRolesCtl.deleteUser()">
+      Delete Read-Only User
+    </button>
+  </div>
+</div>
