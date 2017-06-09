@@ -51,7 +51,8 @@
         controller: 'mnInternalRolesController as internalRolesCtl',
         templateUrl: 'app/mn_admin/mn_security/mn_internal_roles/mn_internal_roles.html',
         data: {
-          permissions: "cluster.admin.security.write"
+          permissions: "cluster.admin.security.read",
+          compat: "!atLeast50",
         }
       })
       .state('app.admin.security.rootCertificate', {

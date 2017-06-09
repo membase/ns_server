@@ -9,9 +9,13 @@
     can only view existing servers, buckets, views,
     and stats.</p>
 
+  <p ng-show="!internalRolesCtl.roAdminName && !rbac.cluster.admin.security.write">
+    Internal user doesn't exist.
+  </p>
+
   <form
      class="forms width-300"
-     ng-show="!internalRolesCtl.roAdminName"
+     ng-show="!internalRolesCtl.roAdminName && rbac.cluster.admin.security.write"
      ng-submit="internalRolesCtl.createUser()">
 
     <div class="formrow">
@@ -71,10 +75,14 @@
     <p class="success">
       User {{internalRolesCtl.roAdminName}} created successfully.
     </p>
-    <button ng-click="internalRolesCtl.resetUserPassword()">
+    <button
+       ng-show="rbac.cluster.admin.security.write"
+       ng-click="internalRolesCtl.resetUserPassword()">
       Reset Read-Only User Password
     </button>
-    <button ng-click="internalRolesCtl.deleteUser()">
+    <button
+       ng-show="rbac.cluster.admin.security.write"
+       ng-click="internalRolesCtl.deleteUser()">
       Delete Read-Only User
     </button>
   </div>
