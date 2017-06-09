@@ -19,6 +19,7 @@
       var promise = mnInternalRolesService.deleteReadOnlyAdmin();
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
+        .showGlobalSuccess("User deleted successfully!", 4000)
         .catchGlobalErrors()
         .closeFinally()
         .reloadState();

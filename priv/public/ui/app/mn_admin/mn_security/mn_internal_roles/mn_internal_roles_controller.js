@@ -45,6 +45,7 @@
       mnPromiseHelper(vm, mnInternalRolesService.postReadOnlyAdminName(vm.creds, true))
         .showErrorsSensitiveSpinner()
         .catchErrors()
+        .showGlobalSuccess("User created successfully!", 4000)
         .onSuccess(function () {
           mnPromiseHelper(vm, mnInternalRolesService.postReadOnlyAdminName(vm.creds))
             .reloadState();

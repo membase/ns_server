@@ -5,9 +5,9 @@
     .module("mnUserRoles")
     .controller("mnUserRolesAddDialogController", mnUserRolesAddDialogController);
 
-  function mnUserRolesAddDialogController($scope, mnUserRolesService, $uibModalInstance, mnPromiseHelper, user, isLdapEnabled) {
+  function mnUserRolesAddDialogController($scope, mnUserRolesService, $uibModalInstance, mnPromiseHelper, user, isLdapEnabled, mnPoolDefault) {
     var vm = this;
-    vm.user = _.clone(user) || {domain: "local"};
+    vm.user = _.clone(user) || {domain: mnPoolDefault.export.compat.atLeast50 ? "local" : "external"};
     vm.userID = vm.user.id || 'New';
     vm.roles = [];
     vm.save = save;

@@ -23,6 +23,22 @@
           title: "Security"
         }
       })
+      .state('app.admin.security.externalRoles', {
+        url: "/externalRoles?openedUsers",
+        controller: "mnUserRolesController as userRolesCtl",
+        templateUrl: "app/mn_admin/mn_security/mn_user_roles/mn_user_roles.html",
+        params: {
+          openedUsers: {
+            array: true,
+            dynamic: true
+          }
+        },
+        data: {
+          compat: "atLeast45 && !atLeast50",
+          ldap: true,
+          enterprise: true
+        }
+      })
       .state('app.admin.security.userRoles', {
         url: "/userRoles?openedUsers&startFrom&startFromDomain&{pageSize:int}",
         params: {

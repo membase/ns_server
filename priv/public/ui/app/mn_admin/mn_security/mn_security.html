@@ -8,6 +8,10 @@
        ui-sref="app.admin.security.userRoles"
        ui-sref-active="selected">Users</a>
     <a
+       ng-show="!poolDefault.compat.atLeast50 && poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read"
+       ui-sref="app.admin.security.externalRoles"
+       ui-sref-active="selected">External User/Roles</a>
+    <a
        ng-show="rbac.cluster.admin.security.read && !poolDefault.compat.atLeast50"
        ui-sref="app.admin.security.internalRoles"
        ui-sref-active="selected">Internal User/Roles</a>

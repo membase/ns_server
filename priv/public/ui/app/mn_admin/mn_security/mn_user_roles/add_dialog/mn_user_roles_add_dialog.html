@@ -24,7 +24,7 @@
         {{error}}
       </div>
       <div class="formrow checkbox-list">
-        <div ng-if="userRolesAddDialogCtl.isLdapEnabled">
+        <div ng-if="userRolesAddDialogCtl.isLdapEnabled && poolDefault.compat.atLeast50">
           <h4>Authentication Domain</h4>
           <input
              type="radio"

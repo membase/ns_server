@@ -5,7 +5,7 @@
     .module("mnUserRolesService", ['mnHelper'])
     .factory("mnUserRolesService", mnUserRolesFactory);
 
-  function mnUserRolesFactory($q, $http, mnHelper) {
+  function mnUserRolesFactory($q, $http, mnHelper, mnPoolDefault) {
     var mnUserRolesService = {
       getState: getState,
       addUser: addUser,
@@ -67,13 +67,14 @@
         method: "GET",
         url: "/settings/rbac/users"
       };
-      if (params) {
+      if (params && params.pageSize) {
         config.params = {
           pageSize: params.pageSize,
           startFromDomain: params.startFromDomain,
           startFrom: params.startFrom
         };
       }
+
       return $http(config);
     }
 
@@ -85,7 +86,12 @@
     }
 
     function getUserUrl(user) {
-      return "/settings/rbac/users/" + encodeURIComponent(user.domain) + "/"  + encodeURIComponent(user.id);
+      var base = "/settings/rbac/users/";
+      if (mnPoolDefault.export.compat.atLeast50) {
+        return base + encodeURIComponent(user.domain) + "/"  + encodeURIComponent(user.id);
+      } else {
+        return base + encodeURIComponent(user.id);
+      }
     }
 
     function prepareUserRoles(userRoles) {
@@ -190,7 +196,14 @@
               return prev;
             }, {});
         }
-        return resp.data;
+        if (!resp.data.users) {//in oreder to support compatibility mode
+          return {
+            users: resp.data
+          };
+        } else {
+          return resp.data;
+        }
+
       });
     }
   }

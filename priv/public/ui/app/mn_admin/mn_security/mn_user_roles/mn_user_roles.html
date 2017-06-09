@@ -70,7 +70,7 @@
            ng-click="userRolesCtl.deleteUser(user)">Delete</button>
         <button
            class="outline"
-           ng-show="user.domain !== 'external'"
+           ng-show="user.domain !== 'external' && user.domain !== 'saslauthd'"
            ng-click="userRolesCtl.resetUserPassword(user)">Reset Password</button>
         <button
            ng-click="userRolesCtl.editUser(user)">Edit</button>
@@ -80,10 +80,10 @@
     <div
        ng-if="!userRolesCtl.state.users.length"
        class="zero-content">
-      You don't have any users to display yet. Use ADD USER above to create one.
+      You don't have any users to display yet. <span ng-show="rbac.cluster.admin.security.write">Use ADD USER above to create one.</span>
     </div>
   </div>
-  <div class="row pagination">
+  <div class="row pagination" ng-show="poolDefault.compat.atLeast50">
     <select
        ng-change="userRolesCtl.pageSizeChanged()"
        ng-model="userRolesCtl.pageSize"

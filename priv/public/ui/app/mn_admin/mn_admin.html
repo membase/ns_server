@@ -184,7 +184,11 @@
       <span
          mn-tab="security"
          ng-class="{currentnav: ('app.admin.security' | includedByState)}"
-         ng-show="pools.isEnterprise || (rbac.cluster.admin.security.read && poolDefault.compat.atLeast50)">
+         ng-show="pools.isEnterprise || (rbac.cluster.admin.security.read && poolDefault.compat.atLeast45)">
+        <a
+           class="switch_security"
+           ui-sref="app.admin.security.externalRoles"
+           ng-show="pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45 && !poolDefault.compat.atLeast50">Security</a>
         <a
            ui-sref="app.admin.security.userRoles"
            ng-show="rbac.cluster.admin.security.read && poolDefault.compat.atLeast50">Security</a>
@@ -193,7 +197,7 @@
            ng-show="!(pools.isEnterprise && adminCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast45) && rbac.cluster.admin.security.write">Security</a>
         <a
            ui-sref="app.admin.security.rootCertificate"
-           ng-show="pools.isEnterprise && !poolDefault.compat.atLeast50">Security</a>
+           ng-show="pools.isEnterprise && !poolDefault.compat.atLeast45">Security</a>
       </span>
       <a
          mn-tab="settings"

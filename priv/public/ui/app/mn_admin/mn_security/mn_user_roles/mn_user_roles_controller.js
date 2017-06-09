@@ -93,7 +93,7 @@
     }
 
     function activate() {
-      mnHelper.initializeDetailsHashObserver(vm, 'openedUsers', 'app.admin.security.userRoles');
+      mnHelper.initializeDetailsHashObserver(vm, 'openedUsers', '.');
 
       mnPromiseHelper(vm, mnUserRolesService.getRoles())
         .applyToScope(function (roles) {
