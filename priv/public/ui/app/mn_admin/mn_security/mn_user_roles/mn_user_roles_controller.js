@@ -14,7 +14,8 @@
       "mnEqual",
       "mnFilters",
       "mnAutocompleteOff",
-      "mnFocus"
+      "mnFocus",
+      "mnSaslauthdAuth"
     ])
     .controller("mnUserRolesController", mnUserRolesController);
 
