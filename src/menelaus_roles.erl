@@ -137,7 +137,7 @@ roles_spock() ->
        {[{bucket, any}, data], none},
        {[admin, security], [read]},
        {[admin], none},
-       {[], [read]}]},
+       {[], [read, list]}]},
      {cluster_admin, [],
       [{name, <<"Cluster Admin">>},
        {desc, <<"Can manage all cluster features EXCEPT security.">>}],
