@@ -1600,7 +1600,8 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                  {struct, [{title, <<"slow queries/sec">>},
                            {name, per_fts_stat(Id, <<"total_queries_slow">>)},
                            {desc, <<"Number of slow queries per second"
-                                    " (measured from total_queries_slow)">>}]},
+                                    " (measured from total_queries_slow - those"
+                                    " taking >5s to run)">>}]},
                  {struct, [{isBytes, true},
                            {title, <<"disk size">>},
                            {name, per_fts_stat(Id, <<"num_bytes_used_disk">>)},
