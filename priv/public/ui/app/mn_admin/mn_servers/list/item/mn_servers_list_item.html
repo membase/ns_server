@@ -1,6 +1,6 @@
 <section
    class="has-hover"
-   ng-click="!serversItemCtl.isNodeUnhealthy && rbac.cluster.nodes.read && serversCtl.toggleDetails(node.hostname)"
+   ng-click="rbac.cluster.nodes.read && serversCtl.toggleDetails(node.hostname)"
    ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
   <div class="cbui-tablerow">
     <span class="cbui-table-cell flex-grow-2-5 cbui-tablerow-title row flex-left">
@@ -64,31 +64,72 @@
     </span>
   </div>
 
-  <!-- STATUSES & ACTIONS TO TAKE + REBALANCE PROGRESS METERS -->
-  <!-- unreachable/unresponsive node pre- and post-failover -->
+  <!-- InactiveFailed, InactiveAdded and Unhealthy states-->
   <div
      class="cbui-tablerow error"
-     ng-show="serversItemCtl.isNodeUnhealthy && !serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeInactiveAdded">
+     ng-show="!adminCtl.tasks.inRebalance && rbac.cluster.tasks.read &&
+              (serversItemCtl.isNodeInactiveFailed || serversItemCtl.isNodeInactiveAdded || serversItemCtl.isNodeUnhealthy)">
     <span>
-      Node unresponsive | Not taking traffic | FAILOVER to activate available replicas
+      <span>
+        {{serversItemCtl.isNodeInactiveAdded && node.recoveryType === 'none' ?
+        'New node' :
+        'Node'}}</span>
+      <span ng-show="serversItemCtl.isNodeUnhealthy">unresponsive</span><span ng-show="serversItemCtl.isNodeUnhealthy &&
+                                                                                       (serversItemCtl.isNodeInactiveFailed ||
+                                                                                       (serversItemCtl.isNodeInactiveAdded && node.recoveryType !== 'none'))">,</span>
+      <span ng-show="serversItemCtl.isNodeInactiveFailed ||
+                     (serversItemCtl.isNodeInactiveAdded && node.recoveryType !== 'none')">
+        failed-over
+      </span>
+      <span>
+        | Not taking traffic
+      </span>
+      <span ng-show="serversItemCtl.isNodeUnhealthy &&
+                     rbac.cluster.pools.write &&
+                     !serversItemCtl.isNodeInactiveFailed &&
+                     !serversItemCtl.isNodeInactiveAdded &&
+                     node.recoveryType === 'none'">
+        | FAILOVER to activate available replicas
+      </span>
+      <span ng-show="serversItemCtl.isNodeInactiveAdded &&
+                     node.recoveryType === 'none'">
+        | ADD pending rebalance
+      </span>
+      <span ng-show="serversItemCtl.isNodeInactiveFailed">
+        | REMOVAL pending rebalance
+      </span>
+      <span ng-show="serversItemCtl.isNodeInactiveAdded
+                     && node.recoveryType !== 'none'">
+        | <span class="allcaps">{{node.recoveryType}}</span> RECOVERY pending rebalance
+      </span>
     </span>
     <button
-       ng-show="rbac.cluster.pools.write"
+       ng-show="serversItemCtl.isNodeInactiveAdded &&
+                node.recoveryType !== 'none' &&
+                rbac.cluster.pools.write"
+       class="outline"
+       ng-disabled="adminCtl.tasks.inRecoveryMode"
+       ng-click="$event.stopPropagation(); serversItemCtl.cancelFailOverNode(node.otpNode)">
+      Cancel Add Back
+    </button>
+    <button
+       ng-show="serversItemCtl.isNodeUnhealthy &&
+                rbac.cluster.pools.write &&
+                !serversItemCtl.isNodeInactiveFailed &&
+                !serversItemCtl.isNodeInactiveAdded &&
+                node.recoveryType === 'none'"
        ng-click="serversItemCtl.failOverNode(node);$event.stopPropagation();">
       Failover
     </button>
-  </div>
-  <div
-     class="cbui-tablerow error"
-     ng-show="serversItemCtl.isNodeInactiveFailed && serversItemCtl.isNodeUnhealthy">
-    Node failed-over, unresponsive | Not taking traffic | REMOVAL pending rebalance
-  </div>
-
-  <!-- reachable failed-over node -->
-  <div
-     class="cbui-tablerow error"
-     ng-show="serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy">
-    Node failed-over | Not taking traffic | REMOVAL pending rebalance
+    <button
+       ng-show="rbac.cluster.pools.write &&
+                serversItemCtl.isNodeInactiveAdded &&
+                node.recoveryType === 'none'"
+       class="outline"
+       ng-disabled="adminCtl.tasks.inRecoveryMode"
+       ng-click="$event.stopPropagation(); serversItemCtl.ejectServer(node)">
+      Cancel Add
+    </button>
   </div>
   <div
      class="cbui-tablerow"
@@ -112,24 +153,10 @@
     </span>
   </div>
 
-  <!-- reachable failed-over node being added back -->
-  <div
-     class="cbui-tablerow"
-     ng-show="!adminCtl.tasks.inRebalance && serversItemCtl.isNodeInactiveAdded && node.recoveryType !== 'none' && rbac.cluster.tasks.read">
-    <span class="error">Node failed-over | Not taking traffic | <span class="allcaps">{{node.recoveryType}}</span> RECOVERY pending rebalance</span>
-    <button
-       ng-show="rbac.cluster.pools.write"
-       class="outline"
-       ng-disabled="adminCtl.tasks.inRecoveryMode"
-       ng-click="$event.stopPropagation(); serversItemCtl.cancelFailOverNode(node.otpNode)">
-      Cancel Add Back
-    </button>
-  </div>
-
   <!-- active node flagged for removal -->
   <div
      class="cbui-tablerow"
-     ng-if="!adminCtl.tasks.inRebalance && !serversItemCtl.isNodeInactiveAdded && node.pendingEject && rbac.cluster.tasks.read">
+     ng-if="!adminCtl.tasks.inRebalance && !serversItemCtl.isNodeInactiveAdded && !serversItemCtl.isNodeUnhealthy && node.pendingEject && rbac.cluster.tasks.read">
     <span class="error">Node flagged for removal | Still taking traffic | REMOVAL pending rebalance</span>
 
     <button
@@ -141,19 +168,6 @@
     </button>
   </div>
 
-  <!-- freshly added node -->
-  <div
-     class="cbui-tablerow"
-     ng-show="!adminCtl.tasks.inRebalance && serversItemCtl.isNodeInactiveAdded && node.recoveryType === 'none' && rbac.cluster.tasks.read">
-    <span class="error">New node | Not taking traffic | ADD pending rebalance</span>
-    <button
-       ng-show="rbac.cluster.pools.write"
-       class="outline"
-       ng-disabled="adminCtl.tasks.inRecoveryMode"
-       ng-click="$event.stopPropagation(); serversItemCtl.ejectServer(node)">
-      Cancel Add
-    </button>
-  </div>
 
   <!-- rebalance task progress metering -->
   <div

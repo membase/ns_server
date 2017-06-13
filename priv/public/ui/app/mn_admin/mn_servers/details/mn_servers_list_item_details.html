@@ -4,7 +4,7 @@
   <div class="row flex-left items-top resp-sml">
     <div class="cbui-table-props">
       <div>
-        <strong>Uptime:</strong> {{serversListItemDetailsCtl.server.details.uptime | mnFormatUptime}}
+        <strong>Uptime:</strong> {{(serversListItemDetailsCtl.server.details.uptime | mnFormatUptime) || 'unknown'}}
       </div>
       <div>
         <strong>OS:</strong> {{serversListItemDetailsCtl.server.details.os}}
@@ -13,7 +13,7 @@
         <strong>Version:</strong> {{serversListItemDetailsCtl.server.details.version | mnPrettyVersion:true}}
       </div>
       <div>
-        <strong>Data Service RAM Quota:</strong> {{serversListItemDetailsCtl.server.details.storageTotals.ram.quotaTotal | mnFormatMemSize}}
+        <strong>Data Service RAM Quota:</strong> {{(serversListItemDetailsCtl.server.details.storageTotals.ram.quotaTotal | mnFormatMemSize) || 'unknown'}}
       </div>
       <div
         title="{{serversListItemDetailsCtl.server.details.storage.hdd[0].path}}"
@@ -110,18 +110,22 @@
   </div>
 
   <div
-     ng-if="!adminCtl.tasks.inRebalance && !serversItemCtl.isNodeInactiveAdded && !node.pendingEject && rbac.cluster.tasks.read"
+     ng-if="!adminCtl.tasks.inRebalance &&
+            !serversItemCtl.isNodeInactiveAdded &&
+            !serversItemCtl.isNodeInactiveFailed &&
+            !serversItemCtl.isNodeUnhealthy &&
+            !node.pendingEject &&
+            rbac.cluster.tasks.read &&
+            rbac.cluster.nodes.write"
      class="row flex-right">
     <span>
       <button
-         ng-show="!(serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy) && rbac.cluster.nodes.write"
          class="outline"
          ng-disabled="serversItemCtl.disableRemoveBtn"
          ng-click="$event.stopPropagation(); serversItemCtl.ejectServer(node)">
         Remove
       </button>
       <button
-         ng-show="!(serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy) && rbac.cluster.nodes.write"
          ng-disabled="serversItemCtl.isFailOverDisabled"
          ng-click="$event.stopPropagation(); serversItemCtl.failOverNode(node)">
         Failover

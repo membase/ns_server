@@ -46,12 +46,8 @@
         var details = resp.data;
         var memoryCacheConfig = getBaseConfig(details.storageTotals.ram);
 
-        if (!memoryCacheConfig) {
-          return;
-        }
-
-        rv.getDiskStorageConfig = getBaseConfig(details.storageTotals.hdd);
-        rv.getMemoryCacheConfig = memoryCacheConfig;
+        rv.getDiskStorageConfig = getBaseConfig(details.storageTotals.hdd) || {};
+        rv.getMemoryCacheConfig = memoryCacheConfig || {};
         rv.details = details;
         return rv;
       });

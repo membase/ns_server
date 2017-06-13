@@ -87,6 +87,9 @@
     function isNodeUnhealthy(node) {
       return node.status === 'unhealthy';
     }
+    function isActive(node) {
+      return node.clusterMembership === 'active';
+    }
     function isNodeInactiveFailed(node) {
       return node.clusterMembership === 'inactiveFailed';
     }
@@ -100,7 +103,7 @@
            ? tasks.tasksRebalance.perNode[node.otpNode].progress : 0 );
     }
     function isActiveUnhealthy(node) {
-      return $state.params.type === "active" && isNodeUnhealthy(node);
+      return (isActive(node) || isNodeInactiveFailed(node)) && isNodeUnhealthy(node);
     }
     function ejectServer(node) {
       if (isNodeInactiveAdded(node)) {
