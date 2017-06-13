@@ -1592,7 +1592,8 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                  {struct, [{title, <<"partitions actual">>},
                            {name, per_fts_stat(Id, <<"num_pindexes_actual">>)},
                            {desc, <<"Number of index partitions"
-                                    " (measured from num_pindexes_actual)">>}]},
+                                    " (including replica partitions, measured from"
+                                    " num_pindexes_actual)">>}]},
                  {struct, [{title, <<"bytes returned/sec">>},
                            {name, per_fts_stat(Id, <<"total_bytes_query_results">>)},
                            {desc, <<"Number of bytes returned in results per second"
@@ -1610,7 +1611,8 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                  {struct, [{title, <<"partitions target">>},
                            {name, per_fts_stat(Id, <<"num_pindexes_target">>)},
                            {desc, <<"Number of index partitions expected"
-                                    " (measured from num_pindexes_target)">>}]},
+                                    " (including replica partitions, measured from"
+                                    " num_pindexes_target)">>}]},
                  {struct, [{title, <<"term searchers/sec">>},
                            {name, per_fts_stat(Id, <<"total_term_searchers">>)},
                            {desc, <<"Number of term searchers started per second"
