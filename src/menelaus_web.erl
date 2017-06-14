@@ -636,7 +636,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_buckets:handle_bucket_create/2,
                      ["default"]};
                 ["pools", "default", "buckets", Id, "docs", DocId] ->
-                    {{[{bucket, Id}, data, docs], write},
+                    {{[{bucket, Id}, data, docs], upsert},
                      fun menelaus_web_crud:handle_post/3, [Id, DocId]};
                 ["pools", "default", "buckets", Id, "controller", "doFlush"] ->
                     {{[{bucket, Id}], flush},
@@ -752,7 +752,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                       {[xdcr, remote_clusters], write},
                       fun menelaus_web_remote_clusters:handle_remote_cluster_delete/2, [Id]);
                 ["pools", "default", "buckets", Id, "docs", DocId] ->
-                    {{[{bucket, Id}, data, docs], write},
+                    {{[{bucket, Id}, data, docs], delete},
                      fun menelaus_web_crud:handle_delete/3, [Id, DocId]};
                 ["controller", "cancelXCDR", XID] ->
                     goxdcr_rest:spec(

@@ -204,7 +204,7 @@ roles_spock() ->
      {data_writer, [bucket_name],
       [{name, <<"Data Writer">>},
        {desc, <<"Can write information from/to specified bucket">>}],
-      [{[{bucket, bucket_name}, data, docs], [write]},
+      [{[{bucket, bucket_name}, data, docs], [insert, upsert, delete]},
        {[{bucket, bucket_name}, data, xattr], [write]},
        {[{bucket, bucket_name}, settings], [read]},
        {[pools], [read]}]},
