@@ -87,7 +87,10 @@
         vm.focusError = true;
         return;
       }
-      mnPromiseHelper(vm, mnUserRolesService.addUser(vm.user, _.clone(vm.selectedRoles), user), $uibModalInstance, vm.isEditingMode)
+      if (!vm.isEditingMode && vm.user.domain !== "local") {
+        delete vm.user.password;
+      }
+      mnPromiseHelper(vm, mnUserRolesService.addUser(vm.user, _.clone(vm.selectedRoles), vm.isEditingMode), $uibModalInstance)
         .showGlobalSpinner()
         .catchErrors(function (errors) {
           vm.focusError = !!errors;

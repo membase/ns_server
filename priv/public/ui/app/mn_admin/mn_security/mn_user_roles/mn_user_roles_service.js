@@ -116,12 +116,12 @@
       });
     }
 
-    function packData(user, roles, isEditingMode) {
+    function packData(user, roles) {
       var data = {
         roles: roles.join(','),
         name: user.name
       };
-      if (!isEditingMode && user.domain === "local") {
+      if (user.password) {
         data.password = user.password;
       }
       return data;
@@ -167,7 +167,7 @@
         return $q.reject({roles: "at least one role should be added"});
       }
       if (isEditingMode) {
-        return doAddUser(packData(user, roles, isEditingMode), user);
+        return doAddUser(packData(user, roles), user);
       } else {
         return getUser(user).then(function (users) {
           return $q.reject({username: "username already exists"});
