@@ -99,7 +99,7 @@ get_required_permission(BucketName, Method, xdcr) ->
 get_required_permission(BucketName, Method, views) ->
     {[{bucket, BucketName}, views], get_oper(Method)};
 get_required_permission(BucketName, Method, kv) ->
-    {[{bucket, BucketName}, data, docs], get_oper(Method)}.
+    {[{bucket, BucketName}, data, couchdb], get_oper(Method)}.
 
 continue_do_db_req(#httpd{user_ctx=UserCtx,
                           path_parts=[_DbName | RestPathParts]} = Req,
