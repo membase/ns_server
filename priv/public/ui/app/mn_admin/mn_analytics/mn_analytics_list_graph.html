@@ -9,16 +9,17 @@
         last {{analyticsListGraphCtl.selectedStat.visiblePeriod | mnFormatUptime}}
       </span>
     </h4>
-    <span
+    <div
        class="text-center margin-top4"
-       style="position: absolute; top: 40%; left: 30%;"
+       style="white-space: nowrap; width: 740px; height: 240px; line-height: 240px;"
        ng-show="!analyticsListGraphCtl.selectedStat.visiblePeriod">
       There are currently no statistics to show.
-    </span>
+    </div>
     <div
        class="inline margin-right-1 text-smaller"
        style="width: 740px; height: 240px;"
-       ng-if="analyticsListGraphCtl.selectedStat.graphConfig"
+       ng-if="analyticsListGraphCtl.selectedStat.visiblePeriod &&
+              analyticsListGraphCtl.selectedStat.graphConfig"
        mn-plot
        mn-plot-config="analyticsListGraphCtl.selectedStat.graphConfig">
     </div>
