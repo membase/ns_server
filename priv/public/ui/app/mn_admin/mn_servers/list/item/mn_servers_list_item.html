@@ -57,7 +57,7 @@
          ng-if="!serversItemCtl.isNodeInactiveFailed && !serversItemCtl.isNodeUnhealthy && rbac.cluster.stats.read && rbac.cluster.bucket['.'].stats.read"
          title="{{'View Analytics for ' + node.hostname}}"
          ng-click="$event.stopPropagation()"
-         ui-state="'app.admin.servers.list.analytics.list.graph'"
+         ui-state="'app.admin.servers.list.analytics.list'"
          ui-state-params="{statsHostname: node.hostname, bucket: rbac.bucketNames['.stats!read'][0] || null}">
         Statistics
       </a>

@@ -301,7 +301,6 @@
         }
       })
       .state(parent + '.analytics.list', {
-        abstract: true,
         url: '?openedStatsBlock&openedSpecificStatsBlock',
         params: {
           openedStatsBlock: {
@@ -311,10 +310,58 @@
           openedSpecificStatsBlock: {
             array: true,
             dynamic: true
+          },
+          transZoom: {
+            dynamic: true
+          },
+          transGraph: {
+            dynamic: true
           }
         },
         controller: 'mnAnalyticsListController as analyticsListCtl',
-        templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list.html'
+        templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list.html',
+        redirectTo: function (trans) {
+          var mnAnalyticsService = trans.injector().get("mnAnalyticsService");
+          var params = _.clone(trans.params(), true);
+          params.zoom = params.transZoom || "minute";
+          params.graph = params.transGraph;
+          return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
+            if (!state.status) {
+              function checkLackOfParam(paramName) {
+                return !params[paramName] || !params[paramName].length || !_.intersection(params[paramName], _.pluck(state.statsDirectoryBlocks, 'blockName')).length;
+              }
+              if (params.specificStat) {
+                if (checkLackOfParam("openedSpecificStatsBlock")) {
+                  params.openedSpecificStatsBlock = [state.statsDirectoryBlocks[0].blockName];
+                }
+              } else {
+                if (checkLackOfParam("openedStatsBlock")) {
+                  params.openedStatsBlock = [
+                    state.statsDirectoryBlocks[0].blockName,
+                    state.statsDirectoryBlocks[1].blockName
+                  ];
+                }
+              }
+              var selectedStat = state.statsByName && state.statsByName[params.graph];
+              if (!params.graph && (!selectedStat || !selectedStat.config.data.length)) {
+                var findBy = function (info) {
+                  return info.config.data.length;
+                };
+                if (params.specificStat) {
+                  var directoryForSearch = state.statsDirectoryBlocks[0];
+                } else {
+                  var directoryForSearch = state.statsDirectoryBlocks[1];
+                }
+                selectedStat = _.detect(directoryForSearch.stats, findBy) ||
+                  _.detect(state.statsByName, findBy);
+                if (selectedStat) {
+                  params.graph = selectedStat.name;
+                }
+              }
+            }
+            return {state: parent + ".analytics.list.graph", params: params};
+          });
+        }
       })
       .state(parent + '.analytics.list.graph', {
         url: '/:graph?zoom',
@@ -323,57 +370,11 @@
             value: null
           },
           zoom: {
-            value: 'minute'
+            value: null
           }
         },
         controller: 'mnAnalyticsListGraphController as analyticsListGraphCtl',
-        templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html',
-        redirectTo: function (trans) {
-          var mnAnalyticsService = trans.injector().get("mnAnalyticsService");
-          var $q = trans.injector().get("$q");
-          var params = _.clone(trans.params(), true);
-
-          return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
-            if (state.status) {
-              return;
-            }
-            var originalParams = _.clone(params);
-            function checkLackOfParam(paramName) {
-              return !params[paramName] || !params[paramName].length || !_.intersection(params[paramName], _.pluck(state.statsDirectoryBlocks, 'blockName')).length;
-            }
-            if (params.specificStat) {
-              if (checkLackOfParam("openedSpecificStatsBlock")) {
-                params.openedSpecificStatsBlock = [state.statsDirectoryBlocks[0].blockName];
-              }
-            } else {
-              if (checkLackOfParam("openedStatsBlock")) {
-                params.openedStatsBlock = [
-                  state.statsDirectoryBlocks[0].blockName,
-                  state.statsDirectoryBlocks[1].blockName
-                ];
-              }
-            }
-            var selectedStat = state.statsByName && state.statsByName[params.graph];
-            if (!params.graph && (!selectedStat || !selectedStat.config.data.length)) {
-              var findBy = function (info) {
-                return info.config.data.length;
-              };
-              if (params.specificStat) {
-                var directoryForSearch = state.statsDirectoryBlocks[0];
-              } else {
-                var directoryForSearch = state.statsDirectoryBlocks[1];
-              }
-              selectedStat = _.detect(directoryForSearch.stats, findBy) ||
-                _.detect(state.statsByName, findBy);
-                if (selectedStat) {
-                  params.graph = selectedStat.name;
-                }
-              }
-              if (!_.isEqual(originalParams, params)) {
-                return {state: parent + ".analytics.list.graph", params: params};
-              }
-            });
-        }
+        templateUrl: 'app/mn_admin/mn_analytics/mn_analytics_list_graph.html'
       });
   }
   }
