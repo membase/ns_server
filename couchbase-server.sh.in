@@ -65,12 +65,12 @@ then
 fi
 
 _check_nofile () {
-    if [ `ulimit -n` -lt 40960 ]
+    if [ `ulimit -n` -lt 70000 ]
     then
         cat <<EOF
 
 The maximum number of open files for the couchbase user is set too low.
-It must be at least 40960.
+It must be at least 70000.
 
 EOF
 
@@ -83,7 +83,7 @@ Normally this can be increased by adding the following lines to
 couchbase              soft    nofile                  <value>
 couchbase              hard    nofile                  <value>
 
-Where <value> is greater than 40960. The procedure may be totally
+Where <value> is greater than 70000. The procedure may be totally
 different if you're running so called "non-root/non-sudo install" or
 if you've built Couchbase Server from source.
 
