@@ -326,7 +326,8 @@ delete_user(Identity) ->
             delete_user_45(Identity)
     end.
 
-delete_user_45(Identity) ->
+delete_user_45({UserName, external}) ->
+    Identity = {UserName, saslauthd},
     ns_config:run_txn(
       fun (Config, SetFn) ->
               case ns_config:search(Config, user_roles) of
