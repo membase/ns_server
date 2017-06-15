@@ -8,7 +8,7 @@
   <div
      class="alert alert-warning"
      ng-show="!('every' | lodash:('values' | lodash:poolDefault.compat)) && !adminCtl.clientAlerts.hideCompatibility">
-    <p>Multiple server versions present. Some {{::poolDefault.thisNode.clusterCompatibility | decodeCompatVersion}} features may require all {{::poolDefault.thisNode.clusterCompatibility | decodeCompatVersion}} nodes.</p>
+    <p>This cluster contains multiple server versions and is running in {{::poolDefault.thisNode.clusterCompatibility | decodeCompatVersion}} compatibility mode.</p>
     <a ng-click="adminCtl.clientAlerts.hideCompatibility = true" class="close">X</a>
   </div>
   <div
