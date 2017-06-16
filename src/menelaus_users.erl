@@ -146,7 +146,7 @@ on_save({auth, Identity}, Value, Deleted, State = #state{base = Base}) ->
 
 on_empty(_State) ->
     true = ets:delete_all_objects(versions_name()),
-    init_versions().
+    #state{base = init_versions()}.
 
 maybe_update_passwordless(_Identity, _Value, _Deleted, State = #state{passwordless = undefined}) ->
     State;
