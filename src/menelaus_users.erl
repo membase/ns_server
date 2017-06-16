@@ -385,7 +385,8 @@ get_auth_info(Identity) ->
         false ->
             get_auth_info_on_ns_server(Identity);
         true ->
-            versioned_cache:get(auth_cache_name(), Identity)
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, get_auth_info_on_ns_server,
+                     [Identity])
     end.
 
 get_auth_info_on_ns_server(Identity) ->
