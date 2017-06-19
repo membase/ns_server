@@ -94,8 +94,8 @@
        ng-options="o as o for o in [10,20,50,100]"></select>
     <span>
       <a
-         ui-sref="(userRolesCtl.state.links.first)"
-         ng-show="userRolesCtl.state.links.first">
+         ng-hide="userRolesCtl.state.skipped == 0"
+         ui-sref="{pageSize: userRolesCtl.pageSize, startFromDomain: null, startFrom: null}">
         &lt;&lt; First</a>
       <a
          ui-sref="(userRolesCtl.state.links.prev)"
