@@ -46,6 +46,9 @@ init([]) ->
 
 child_specs() ->
     [
+     {menelaus_users_auth_cache, {menelaus_users, start_auth_cache, []},
+      permanent, 1000, worker, [versioned_cache]},
+
      {cb_couch_sup, {cb_couch_sup, start_link, []},
       permanent, 5000, supervisor, [cb_couch_sup]},
 
@@ -69,6 +72,9 @@ child_specs() ->
      {ns_couchdb_config_sup, {ns_couchdb_config_sup, start_link, []},
       permanent, infinity, supervisor,
       [ns_couchdb_config_sup]},
+
+     {compiled_roles_cache, {menelaus_roles, start_compiled_roles_cache, []},
+      permanent, 1000, worker, [versioned_cache]},
 
      {request_throttler, {request_throttler, start_link, []},
       permanent, 1000, worker, [request_throttler]},

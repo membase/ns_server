@@ -532,12 +532,7 @@ start_compiled_roles_cache() ->
 
 -spec get_compiled_roles(rbac_identity()) -> [rbac_compiled_role()].
 get_compiled_roles(Identity) ->
-    case ns_node_disco:couchdb_node() == node() of
-        false ->
-            versioned_cache:get(compiled_roles_cache_name(), Identity);
-        true ->
-            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, get_compiled_roles, [Identity])
-    end.
+    versioned_cache:get(compiled_roles_cache_name(), Identity).
 
 build_compiled_roles(Identity) ->
     case ns_node_disco:couchdb_node() == node() of
