@@ -216,7 +216,7 @@ handle_cast(leave, State) ->
     misc:create_marker(leave_marker_path()),
 
     %% empty users storage
-    users_sup:stop_replicator(),
+    users_storage_sup:stop_replicator(),
     menelaus_users:empty_storage(),
 
     %% stop nearly everything

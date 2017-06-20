@@ -13,13 +13,13 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc supervisor for all things related to user storage
+%% @doc supervisor for users storage and corresponding replicator
 
--module(users_sup).
+-module(users_storage_sup).
 
 -behaviour(supervisor).
 
--export([start_link/0]).
+-export([start_link/0, stop_replicator/0]).
 -export([init/1]).
 
 -include("ns_common.hrl").
@@ -28,16 +28,21 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    {ok, {{one_for_one, 3, 10}, child_specs()}}.
+    {ok, {{one_for_all, 3, 10}, child_specs()}}.
+
+stop_replicator() ->
+    case supervisor:terminate_child(?MODULE, users_replicator) of
+        ok ->
+            ok = supervisor:delete_child(?MODULE, users_replicator);
+        Error ->
+            ?log_debug("Error terminating users_replicator ~p", [Error])
+    end.
 
 child_specs() ->
-    [{user_storage_events,
-      {gen_event, start_link, [{local, user_storage_events}]},
-      permanent, 1000, worker, []},
+    [{users_replicator,
+      {menelaus_users, start_replicator, []},
+      permanent, 1000, worker, [doc_replicator]},
 
-     {users_storage_sup,
-      {users_storage_sup, start_link, []},
-      permanent, infinity, supervisor, []},
-
-     {compiled_roles_cache, {menelaus_roles, start_compiled_roles_cache, []},
-      permanent, 1000, worker, [versioned_cache]}].
+     {users_storage,
+      {menelaus_users, start_storage, []},
+      permanent, 1000, worker, [replicated_dets, replicated_storage]}].
