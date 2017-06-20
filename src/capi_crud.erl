@@ -20,7 +20,7 @@
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
--export([get/3, set/4, delete/2]).
+-export([get/3, set/3, set/4, delete/2]).
 
 -export([is_valid_json/1]).
 
@@ -29,6 +29,10 @@ handle_mutation_rv(#mc_header{status = ?SUCCESS} = _Header, _Entry) ->
     ok;
 handle_mutation_rv(#mc_header{status = ?NOT_MY_VBUCKET} = _Header, _Entry) ->
     throw(not_my_vbucket).
+
+%% Retaining the old API for backward compatibility.
+set(BucketBin, DocId, Value) ->
+    set(BucketBin, DocId, Value, 0).
 
 set(BucketBin, DocId, Value, Flags) ->
     Bucket = binary_to_list(BucketBin),

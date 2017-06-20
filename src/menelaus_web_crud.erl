@@ -192,9 +192,13 @@ do_mutate(BucketId, DocId, BodyOrUndefined, Flags) ->
                     BinaryDocId,
                     capi_crud, delete, [BinaryBucketId, BinaryDocId]);
         _ ->
-            attempt(BinaryBucketId,
-                    BinaryDocId,
-                    capi_crud, set, [BinaryBucketId, BinaryDocId, BodyOrUndefined, Flags])
+            Args = case cluster_compat_mode:is_cluster_spock() of
+                       true ->
+                           [BinaryBucketId, BinaryDocId, BodyOrUndefined, Flags];
+                       false ->
+                           [BinaryBucketId, BinaryDocId, BodyOrUndefined]
+                   end,
+            attempt(BinaryBucketId, BinaryDocId, capi_crud, set, Args)
     end.
 
 handle_post(BucketId, DocId, Req) ->
