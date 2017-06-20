@@ -855,7 +855,9 @@ handle_change_password_with_identity(Req, Identity) ->
                       ns_audit:password_change(Req, Identity),
                       menelaus_util:reply(Req, 200);
                   user_not_found ->
-                      menelaus_util:reply_json(Req, <<"User was not found.">>, 404)
+                      menelaus_util:reply_json(Req, <<"User was not found.">>, 404);
+                  unchanged ->
+                      menelaus_util:reply(Req, 200)
               end
       end, Req, validate_change_password(Req:parse_post())).
 
