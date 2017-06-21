@@ -11,7 +11,16 @@
     'mnEnv'
   ]).run(appRun);
 
-  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window) {
+  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window, $rootScope, $location) {
+
+    $rootScope.$on("$locationChangeStart", function (event, newUrl) {
+      //angular do not replace url when it tries
+      //to insert hashprefix in accordance with config (e.g. when user navigates
+      //from url that starts with #!/ to #/). Such behaviour breaks back button.
+      if ($location.url().indexOf("#") === 0) {
+        $location.replace();
+      }
+    });
 
     var originalOnerror = $window.onerror;
     $window.onerror = onError;

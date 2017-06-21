@@ -28,6 +28,17 @@
       trigger: "outsideClick"
     });
 
+    $urlRouterProvider.rule(function ($injector, $location) {
+      //If hashprefix entered incorrectly, angular redirects to
+      //url with correct hashprefix and inserts everything
+      //after it using encodeURIcompoment (e.g #/asdasd -> #!#%2Fasdasd)
+      //With this rule, we insert orinal hash right after correct
+      //hashprefix (e.g. #!/asdasd)
+      if ($location.url().indexOf("#") === 0) {
+        return $location.hash();
+      }
+    });
+
     $urlRouterProvider.otherwise(function ($injector, $location) {
       $injector.get("mnPools").get().then(function (pools) {
         if (pools.isInitialized) {
