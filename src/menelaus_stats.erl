@@ -413,7 +413,7 @@ get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window
 %% List of different types of stats
 kinds_list(BucketName) ->
     ["@system", BucketName, "@query", "@index-" ++ BucketName,
-     "@fts-" ++ BucketName, "@xdcr-" ++ BucketName, "@index"].
+     "@fts-" ++ BucketName, "@xdcr-" ++ BucketName, "@index", "@fts"].
 
 %% For many stats, their kind can be identified by their prefix.
 get_possible_kind(StatName, BucketName) ->
