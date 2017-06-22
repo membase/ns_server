@@ -61,7 +61,7 @@
           .showErrorsSensitiveSpinner()
           .catchErrors()
           .reloadState("app.admin.security")
-          .showGlobalSuccess("User saved successfully!", 4000);
+          .showGlobalSuccess("User saved successfully!");
       }
       function activate() {
         mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())

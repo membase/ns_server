@@ -23,7 +23,7 @@
 
       mnPromiseHelper(vm, promise)
         .showGlobalSpinner()
-        .showGlobalSuccess("View copied successfully!", 4000);
+        .showGlobalSuccess("View copied successfully!");
     }
     function prepareToCopy(url, ddoc) {
       return function () {

@@ -93,7 +93,7 @@
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadTasksPoller")
-        .showGlobalSuccess("Replication created successfully!", 4000);
+        .showGlobalSuccess("Replication created successfully!");
     };
   }
 })();

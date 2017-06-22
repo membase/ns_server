@@ -24,7 +24,7 @@
         .catchErrors()
         .closeOnSuccess()
         .reloadState("app.admin.servers.list.groups")
-        .showGlobalSuccess("Group saved successfully!", 4000);
+        .showGlobalSuccess("Group saved successfully!");
     }
   }
 })();

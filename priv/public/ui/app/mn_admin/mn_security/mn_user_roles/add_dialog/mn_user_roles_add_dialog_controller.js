@@ -98,7 +98,7 @@
         })
         .broadcast("reloadRolesPoller")
         .closeOnSuccess()
-        .showGlobalSuccess("User saved successfully!", 4000);
+        .showGlobalSuccess("User saved successfully!");
     }
   }
 })();

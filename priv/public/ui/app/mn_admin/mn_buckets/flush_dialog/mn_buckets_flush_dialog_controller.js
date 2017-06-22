@@ -16,7 +16,7 @@
         .closeFinally()
         .catchGlobalErrors()
         .broadcast("reloadBucketStats")
-        .showGlobalSuccess("Bucket flushed successfully!", 4000);
+        .showGlobalSuccess("Bucket flushed successfully!");
     }
   }
 })();

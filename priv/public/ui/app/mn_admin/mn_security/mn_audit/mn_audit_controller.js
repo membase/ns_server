@@ -35,7 +35,7 @@
         .catchErrorsFromSuccess()
         .showSpinner()
         .reloadState("app.admin.security")
-        .showGlobalSuccess("Audit settings changed successfully!", 4000);
+        .showGlobalSuccess("Audit settings changed successfully!");
     };
   }
 })();

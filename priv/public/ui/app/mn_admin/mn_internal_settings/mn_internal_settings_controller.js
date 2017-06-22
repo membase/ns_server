@@ -26,7 +26,7 @@
         .catchErrors()
         .closeOnSuccess()
         .reloadState()
-        .showGlobalSuccess("Settings saved successfully!", 4000);
+        .showGlobalSuccess("Settings saved successfully!");
     }
 
     function activate() {

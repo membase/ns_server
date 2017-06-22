@@ -59,7 +59,7 @@
         .closeOnSuccess()
         .broadcast("reloadServersPoller")
         .broadcast("maybeShowMemoryQuotaDialog", vm.addNodeConfig.services.model)
-        .showGlobalSuccess("Server added successfully!", 4000);
+        .showGlobalSuccess("Server added successfully!");
     };
   }
 })();

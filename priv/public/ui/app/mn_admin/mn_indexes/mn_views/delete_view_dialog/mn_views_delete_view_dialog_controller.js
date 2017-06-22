@@ -24,7 +24,7 @@
         .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadViewsPoller")
-        .showGlobalSuccess("View deleted successfully!", 4000);
+        .showGlobalSuccess("View deleted successfully!");
     };
   }
 })();

@@ -17,7 +17,7 @@
         .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadViewsPoller")
-        .showGlobalSuccess("Design document deleted successfully!", 4000);
+        .showGlobalSuccess("Design document deleted successfully!");
     }
   }
 })();

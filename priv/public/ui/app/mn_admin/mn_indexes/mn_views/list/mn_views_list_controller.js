@@ -111,7 +111,7 @@
               type: 'production'
             });
           })
-          .showGlobalSuccess("Design document published successfully!", 4000)
+          .showGlobalSuccess("Design document published successfully!")
           .getPromise();
       };
     }

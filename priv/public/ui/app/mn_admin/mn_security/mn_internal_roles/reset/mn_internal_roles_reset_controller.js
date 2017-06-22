@@ -19,7 +19,7 @@
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showSpinner()
         .catchErrors()
-        .showGlobalSuccess("Password reset successfully!", 4000)
+        .showGlobalSuccess("Password reset successfully!")
         .closeOnSuccess()
         .reloadState();
     }

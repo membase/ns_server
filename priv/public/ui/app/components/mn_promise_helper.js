@@ -101,6 +101,9 @@
         return this;
       }
       function showGlobalSuccess(successMessage, timeout) {
+        if (timeout === undefined) {
+          timeout = 2500;
+        }
         promise.then(function (resp) {
           mnAlertsService.formatAndSetAlerts(successMessage || resp.data, 'success', timeout);
         });

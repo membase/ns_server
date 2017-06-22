@@ -41,7 +41,7 @@
         .showGlobalSpinner()
         .catchGlobalErrors()
         .reloadState("app.admin.settings")
-        .showGlobalSuccess("Task added successfully!", 4000);
+        .showGlobalSuccess("Task added successfully!");
     }
 
     function isAnyBucketSelected() {

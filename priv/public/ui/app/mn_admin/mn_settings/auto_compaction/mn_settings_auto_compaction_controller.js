@@ -38,7 +38,7 @@
       mnPromiseHelper(vm, mnSettingsAutoCompactionService.saveAutoCompaction(vm.autoCompactionSettings))
         .showGlobalSpinner()
         .catchErrors()
-        .showGlobalSuccess("Settings saved successfully!", 4000);
+        .showGlobalSuccess("Settings saved successfully!");
     }
   }
 })();

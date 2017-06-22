@@ -20,9 +20,9 @@
      class="alert alert-warning"
      ng-show="serversCtl.autoFailoverSettings.data.count > 0 && rbac.cluster.settings.read">
     <p>A server was automatically failed over.</p>
-    <button
+    <a
        ng-show="rbac.cluster.settings.write"
-       ng-click="adminCtl.resetAutoFailOverCount()">Reset Quota</button>
+       ng-click="adminCtl.resetAutoFailOverCount()">Reset Quota</a>
   </div>
 </mn-element-cargo>
 <mn-element-cargo depot="actions">

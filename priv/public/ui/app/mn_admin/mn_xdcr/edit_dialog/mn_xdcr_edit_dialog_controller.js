@@ -19,7 +19,7 @@
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadTasksPoller")
-        .showGlobalSuccess("Settings saved successfully!", 4000);
+        .showGlobalSuccess("Settings saved successfully!");
     };
   }
 })();

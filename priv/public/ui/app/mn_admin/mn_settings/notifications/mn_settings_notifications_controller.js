@@ -25,7 +25,7 @@
       mnPromiseHelper(vm, mnSettingsNotificationsService.saveSendStatsFlag(vm.updates.enabled))
         .showGlobalSpinner()
         .catchGlobalErrors('An error occured, update notifications settings were not saved.')
-        .showGlobalSuccess("Settings saved successfully!", 4000);
+        .showGlobalSuccess("Settings saved successfully!");
     }
   }
 })();

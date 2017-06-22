@@ -19,7 +19,7 @@
         .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadDocumentsPoller")
-        .showGlobalSuccess("Document deleted successfully!", 4000);
+        .showGlobalSuccess("Document deleted successfully!");
     }
   }
 })();

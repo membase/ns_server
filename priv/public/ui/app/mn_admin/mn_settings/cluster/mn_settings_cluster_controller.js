@@ -61,7 +61,7 @@
       var promise3 = $q.all(queries);
       mnPromiseHelper(vm, promise3)
         .showGlobalSpinner()
-        .showGlobalSuccess("Settings saved successfully!", 4000);
+        .showGlobalSuccess("Settings saved successfully!");
     }
     function saveVisualInternalSettings() {
       if (vm.clusterSettingsLoading) {

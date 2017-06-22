@@ -52,7 +52,7 @@
         .onSuccess(function (doc) {
           vm.isDocumentChanged = false;
         })
-        .showGlobalSuccess("Document saved successfully!", 4000);
+        .showGlobalSuccess("Document saved successfully!");
     }
     function codemirrorLoaded(cm) {
       activate().then(function (resp) {

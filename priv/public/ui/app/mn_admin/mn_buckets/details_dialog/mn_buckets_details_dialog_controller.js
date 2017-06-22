@@ -36,7 +36,7 @@
             $rootScope.$broadcast("reloadBucketStats");
           }
         })
-        .showGlobalSuccess("Bucket settings saved successfully!", 4000);
+        .showGlobalSuccess("Bucket settings saved successfully!");
     };
   }
 })();

@@ -45,7 +45,7 @@
       mnPromiseHelper(vm, mnSettingsAutoFailoverService.saveAutoFailoverSettings(data))
         .showGlobalSpinner()
         .catchErrors()
-        .showGlobalSuccess("Settings saved successfully!", 4000);
+        .showGlobalSuccess("Settings saved successfully!");
     };
   }
 })();

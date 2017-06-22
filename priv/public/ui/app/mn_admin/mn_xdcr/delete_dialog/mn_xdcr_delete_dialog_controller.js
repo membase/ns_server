@@ -14,7 +14,7 @@
         .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadTasksPoller")
-        .showGlobalSuccess("Replication deleted successfully!", 4000);
+        .showGlobalSuccess("Replication deleted successfully!");
     }
   }
 })();

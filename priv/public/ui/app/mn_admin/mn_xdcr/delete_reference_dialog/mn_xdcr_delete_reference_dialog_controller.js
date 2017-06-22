@@ -16,7 +16,7 @@
         .closeFinally()
         .catchGlobalErrors()
         .broadcast("reloadXdcrPoller")
-        .showGlobalSuccess("Cluster reference deleted successfully!", 4000);
+        .showGlobalSuccess("Cluster reference deleted successfully!");
     }
   }
 })();

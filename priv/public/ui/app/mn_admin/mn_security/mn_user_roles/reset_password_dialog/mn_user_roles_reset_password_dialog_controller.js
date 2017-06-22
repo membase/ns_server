@@ -21,7 +21,7 @@
         .catchErrors()
         .broadcast("reloadRolesPoller")
         .closeOnSuccess()
-        .showGlobalSuccess("Password reset successfully!", 4000);
+        .showGlobalSuccess("Password reset successfully!");
     }
   }
 })();

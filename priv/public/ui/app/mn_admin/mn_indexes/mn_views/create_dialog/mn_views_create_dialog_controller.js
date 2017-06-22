@@ -73,7 +73,7 @@
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadViewsPoller")
-        .showGlobalSuccess("View created successfully!", 4000);
+        .showGlobalSuccess("View created successfully!");
     };
 
   }

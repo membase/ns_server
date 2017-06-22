@@ -21,7 +21,7 @@
         .catchErrors()
         .closeFinally()
         .reloadState("app.admin.servers.list.groups")
-        .showGlobalSuccess("Group deleted successfully!", 4000);
+        .showGlobalSuccess("Group deleted successfully!");
     }
   }
 })();

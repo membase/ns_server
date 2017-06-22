@@ -23,7 +23,7 @@
         .catchErrors()
         .closeOnSuccess()
         .broadcast("reloadXdcrPoller")
-        .showGlobalSuccess("Cluster reference saved successfully!", 4000);
+        .showGlobalSuccess("Cluster reference saved successfully!");
     };
   }
 })();

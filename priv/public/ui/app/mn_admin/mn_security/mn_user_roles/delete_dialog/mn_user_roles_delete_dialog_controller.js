@@ -15,7 +15,7 @@
         .showGlobalSpinner()
         .closeFinally()
         .broadcast("reloadRolesPoller")
-        .showGlobalSuccess("User deleted successfully!", 4000);
+        .showGlobalSuccess("User deleted successfully!");
     }
   }
 })();

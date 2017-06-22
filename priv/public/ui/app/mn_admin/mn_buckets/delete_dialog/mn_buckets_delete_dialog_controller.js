@@ -15,7 +15,7 @@
         .showGlobalSpinner()
         .catchGlobalErrors()
         .closeFinally()
-        .showGlobalSuccess("Bucket deleted successfully!", 4000);
+        .showGlobalSuccess("Bucket deleted successfully!");
     }
   }
 })();
