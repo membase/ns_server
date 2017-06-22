@@ -39,7 +39,7 @@
     max-width: 40px;
   }
   .logobug-wrapper {
-    flex: 1 1 0;
+    flex: 1 1 0%;
     white-space: nowrap;
     flex: 0 1 auto;
   }
