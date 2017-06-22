@@ -990,7 +990,7 @@ section.error {
   -o-text-overflow: ellipsis;
   padding-right: 15px;
   max-width: 182px;
-  line-height: 14px;
+  line-height: 16px;
   vertical-align: top;
 }
 .ui-select-container.single .ui-select-choices-row.disabled {
