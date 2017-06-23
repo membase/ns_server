@@ -235,7 +235,11 @@ handle_info({cache, Id} = Msg, #state{name = TableName} = State) ->
             ok
     end,
     misc:flush(Msg),
-    {noreply, State}.
+    {noreply, State};
+handle_info(Msg, #state{child_module = ChildModule,
+                        child_state = ChildState} = State) ->
+    {noreply, NewChildState} = ChildModule:handle_info(Msg, ChildState),
+    {noreply, State#state{child_state = NewChildState}}.
 
 select_from_dets(Name, MatchSpec, N, Yield) ->
     {ok, TableName} = gen_server:call(Name, suspend, infinity),

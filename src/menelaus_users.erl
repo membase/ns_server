@@ -50,7 +50,7 @@
          cleanup_bucket_roles/1]).
 
 %% callbacks for replicated_dets
--export([init/1, on_save/4, on_empty/1, handle_call/4]).
+-export([init/1, on_save/4, on_empty/1, handle_call/4, handle_info/2]).
 
 -export([start_storage/0, start_replicator/0, start_auth_cache/0]).
 
@@ -134,15 +134,19 @@ init_versions() ->
     gen_event:notify(user_storage_events, {auth_version, {0, Base}}),
     Base.
 
-on_save({user, _}, _Value, _Deleted, State = #state{base = Base}) ->
-    Ver = ets:update_counter(versions_name(), user_version, 1),
-    gen_event:notify(user_storage_events, {user_version, {Ver, Base}}),
+on_save({user, _}, _Value, _Deleted, State) ->
+    self() ! {change_version, user_version},
     State;
-on_save({auth, Identity}, Value, Deleted, State = #state{base = Base}) ->
+on_save({auth, Identity}, Value, Deleted, State) ->
     NewState = maybe_update_passwordless(Identity, Value, Deleted, State),
-    Ver = ets:update_counter(versions_name(), auth_version, 1),
-    gen_event:notify(user_storage_events, {auth_version, {Ver, Base}}),
+    self() ! {change_version, auth_version},
     NewState.
+
+handle_info({change_version, Key} = Msg, #state{base = Base} = State) ->
+    misc:flush(Msg),
+    Ver = ets:update_counter(versions_name(), Key, 1),
+    gen_event:notify(user_storage_events, {Key, {Ver, Base}}),
+    {noreply, State}.
 
 on_empty(_State) ->
     true = ets:delete_all_objects(versions_name()),
