@@ -8,10 +8,23 @@
   function mnBucketsListItemController(mnServersService, $scope) {
     var vm = this;
     vm.getWarmUpProgress = getWarmUpProgress;
+    vm.getResidentRatio = getResidentRatio;
 
     $scope.$watch("bucket", function (bucket) {
       vm.bucketStatus = mnServersService.addNodesByStatus(bucket.nodes);
     }, true);
+
+    function getResidentRatio(bucket) {
+      var items = bucket.basicStats.itemCount;
+      var activeResident = bucket.basicStats.vbActiveNumNonResident;
+      if (items === 0) {
+        return 100;
+      }
+      if (items < activeResident) {
+        return 0;
+      }
+      return (items - activeResident) * 100 / items;
+    }
 
     function getWarmUpProgress(bucket, tasks) {
       if (!bucket || !tasks) {
