@@ -1914,3 +1914,9 @@ fact(0) ->
     1;
 fact(N) ->
     N * fact(N-1).
+
+compress(Term) ->
+    zlib:compress(term_to_binary(Term)).
+
+decompress(Blob) ->
+    binary_to_term(zlib:uncompress(Blob)).

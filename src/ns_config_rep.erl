@@ -88,7 +88,7 @@ merger_loop() ->
     receive
         {merge_compressed, Blob} ->
             WakeTime = os:timestamp(),
-            KVList = decompress(Blob),
+            KVList = misc:decompress(Blob),
             system_stats_collector:increment_counter(total_config_merger_sleep_time, timer:now_diff(WakeTime, EnterTime)),
             merge_one_remote_config(KVList),
             system_stats_collector:increment_counter(total_config_merger_run_time, timer:now_diff(os:timestamp(), WakeTime)),
@@ -272,7 +272,7 @@ pull_and_push(Nodes) ->
 
 get_remote(Node, Timeout) ->
     Blob = ns_config_replica:get_compressed(Node, Timeout),
-    decompress(Blob).
+    misc:decompress(Blob).
 
 pull_remotes(Nodes) ->
     gen_server:call(?MODULE, {pull_remotes, Nodes}, infinity).
@@ -333,7 +333,7 @@ do_push(RawKVList) ->
 do_push(_RawKVList, []) ->
     ok;
 do_push(RawKVList, OtherNodes) ->
-    Blob = compress(RawKVList),
+    Blob = misc:compress(RawKVList),
     misc:parallel_map(fun(Node) ->
                               gen_server:cast({ns_config_rep, Node},
                                               {merge_compressed, Blob})
@@ -370,7 +370,7 @@ pull_from_all_nodes(Nodes) ->
 
     case Bad =:= [] of
         true ->
-            KVLists = [decompress(Blob) || {_, Blob} <- Good],
+            KVLists = [misc:decompress(Blob) || {_, Blob} <- Good],
             merge_remote_configs(KVLists);
         false ->
             {error, {get_compressed_failed, Bad}}
@@ -407,9 +407,3 @@ merge_remote_configs(KVLists) ->
 do_merge_one_remote_config(UUID, RemoteKVList, AccKVList, AccTouched) ->
     {Merged, Touched} = ns_config:merge_kv_pairs(RemoteKVList, AccKVList, UUID),
     {Merged, ordsets:union(AccTouched, Touched)}.
-
-compress(KVList) ->
-    zlib:compress(term_to_binary(KVList)).
-
-decompress(Blob) ->
-    binary_to_term(zlib:uncompress(Blob)).
