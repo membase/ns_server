@@ -163,15 +163,22 @@ handle_cast({replicated_batch, CompressedBatch}, #state{child_module = Module,
                                                         child_state = ChildState} = State) ->
     ?log_debug("Applying replicated batch. Size: ~p", [size(CompressedBatch)]),
     Batch = misc:decompress(CompressedBatch),
-    NewChildState =
-        lists:foldl(fun (Doc, CS) ->
-                            handle_replicated_update(Doc, Module, CS)
-                    end, ChildState, Batch),
+    DocsToWrite =
+        lists:filter(fun (Doc) ->
+                             should_be_written(Doc, Module, ChildState)
+                     end, Batch),
+    {ok, NewChildState} = Module:save_docs(DocsToWrite, ChildState),
     {noreply, State#state{child_state = NewChildState}};
 handle_cast({replicated_update, Doc}, #state{child_module = Module,
                                              child_state = ChildState} = State) ->
-    NewChildState = handle_replicated_update(Doc, Module, ChildState),
-    {noreply, State#state{child_state = NewChildState}};
+    case should_be_written(Doc, Module, ChildState) of
+        true ->
+            ?log_debug("Writing replicated doc ~p", [Doc]),
+            {ok, NewChildState} = Module:save_docs([Doc], ChildState),
+            {noreply, State#state{child_state = NewChildState}};
+        false ->
+            {noreply, State}
+    end;
 handle_cast(Msg, #state{child_module = Module, child_state = ChildState} = State) ->
     {noreply, NewChildState} = Module:handle_cast(Msg, ChildState),
     {noreply, State#state{child_state = NewChildState}}.
@@ -190,25 +197,18 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-handle_replicated_update(Doc, Module, ChildState) ->
+should_be_written(Doc, Module, ChildState) ->
     %% this is replicated from another node in the cluster. We only accept it
     %% if it doesn't exist or the rev is higher than what we have.
     Rev = Module:get_revision(Doc),
-    Proceed = case Module:find_doc(Module:get_id(Doc), ChildState) of
-                  false ->
-                      true;
-                  ExistingDoc ->
-                      case Module:get_revision(ExistingDoc) of
-                          DiskRev when Rev > DiskRev ->
-                              true;
-                          _ ->
-                              false
-                      end
-              end,
-    if Proceed ->
-            ?log_debug("Writing replicated doc ~p", [Doc]),
-            {ok, NewChildState} = Module:save_docs([Doc], ChildState),
-            NewChildState;
-       true ->
-            ChildState
+    case Module:find_doc(Module:get_id(Doc), ChildState) of
+        false ->
+            true;
+        ExistingDoc ->
+            case Module:get_revision(ExistingDoc) of
+                DiskRev when Rev > DiskRev ->
+                    true;
+                _ ->
+                    false
+            end
     end.

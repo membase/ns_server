@@ -185,20 +185,22 @@ set_revision(Doc, NewRev) ->
 is_deleted(#doc{deleted = Deleted}) ->
     Deleted.
 
-save_docs([#doc{id = Id,
-                deleted = Deleted,
-                value = Value} = Doc],
-          #state{name = TableName,
-                 child_module = ChildModule,
-                 child_state = ChildState} = State) ->
-    ok = dets:insert(TableName, [Doc]),
-    case Deleted of
-        true ->
-            _ = mru_cache:delete(TableName, Id);
-        false ->
-            _ = mru_cache:update(TableName, Id, Value)
-    end,
-    NewChildState = ChildModule:on_save(Id, Value, Deleted, ChildState),
+save_docs(Docs, #state{name = TableName,
+                       child_module = ChildModule,
+                       child_state = ChildState} = State) ->
+    ok = dets:insert(TableName, Docs),
+    NewChildState =
+        lists:foldl(fun (#doc{id = Id,
+                              deleted = Deleted,
+                              value = Value}, CS) ->
+                            case Deleted of
+                                true ->
+                                    _ = mru_cache:delete(TableName, Id);
+                                false ->
+                                    _ = mru_cache:update(TableName, Id, Value)
+                            end,
+                            ChildModule:on_save(Id, Value, Deleted, CS)
+                    end, ChildState, Docs),
     {ok, State#state{child_state = NewChildState}}.
 
 handle_call(suspend, {Pid, _} = From, #state{name = TableName} = State) ->
