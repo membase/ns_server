@@ -30,7 +30,7 @@
 -callback get_revision(term()) -> term().
 -callback set_revision(term(), term()) -> term().
 -callback is_deleted(term()) -> boolean().
--callback save_doc(term(), term()) -> {ok, term()} | {error, term()}.
+-callback save_docs([term()], term()) -> {ok, term()} | {error, term()}.
 
 -include("ns_common.hrl").
 -include("pipes.hrl").
@@ -111,7 +111,7 @@ handle_call({interactive_update, Doc}, _From,
         false ->
             NewDoc = Module:set_revision(Doc, NewRev),
             ?log_debug("Writing interactively saved doc ~p", [NewDoc]),
-            case Module:save_doc(NewDoc, ChildState) of
+            case Module:save_docs([NewDoc], ChildState) of
                 {ok, NewChildState} ->
                     Replicator ! {replicate_change, NewDoc},
                     {reply, ok, State#state{child_state = NewChildState}};
@@ -207,7 +207,7 @@ handle_replicated_update(Doc, Module, ChildState) ->
               end,
     if Proceed ->
             ?log_debug("Writing replicated doc ~p", [Doc]),
-            {ok, NewChildState} = Module:save_doc(Doc, ChildState),
+            {ok, NewChildState} = Module:save_docs([Doc], ChildState),
             NewChildState;
        true ->
             ChildState

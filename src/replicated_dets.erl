@@ -27,7 +27,7 @@
 
 -export([init/1, init_after_ack/1, handle_call/3, handle_info/2,
          get_id/1, find_doc/2, all_docs/1,
-         get_revision/1, set_revision/2, is_deleted/1, save_doc/2, handle_mass_update/3]).
+         get_revision/1, set_revision/2, is_deleted/1, save_docs/2, handle_mass_update/3]).
 
 -record(state, {child_module :: atom(),
                 child_state :: term(),
@@ -185,12 +185,12 @@ set_revision(Doc, NewRev) ->
 is_deleted(#doc{deleted = Deleted}) ->
     Deleted.
 
-save_doc(#doc{id = Id,
-              deleted = Deleted,
-              value = Value} = Doc,
-         #state{name = TableName,
-                child_module = ChildModule,
-                child_state = ChildState} = State) ->
+save_docs([#doc{id = Id,
+                deleted = Deleted,
+                value = Value} = Doc],
+          #state{name = TableName,
+                 child_module = ChildModule,
+                 child_state = ChildState} = State) ->
     ok = dets:insert(TableName, [Doc]),
     case Deleted of
         true ->

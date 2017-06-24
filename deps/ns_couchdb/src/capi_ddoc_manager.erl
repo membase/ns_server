@@ -28,7 +28,7 @@
 
 -export([init/1, init_after_ack/1, handle_call/3, handle_cast/2,
          handle_info/2, get_id/1, find_doc/2, all_docs/1,
-         get_revision/1, set_revision/2, is_deleted/1, save_doc/2]).
+         get_revision/1, set_revision/2, is_deleted/1, save_docs/2]).
 
 -include("ns_common.hrl").
 -include("couch_db.hrl").
@@ -165,7 +165,7 @@ set_revision(Doc, NewRev) ->
 is_deleted(#doc{deleted = Deleted}) ->
     Deleted.
 
-save_doc(NewDoc, State) ->
+save_docs([NewDoc], State) ->
     try
         {ok, do_save_doc(NewDoc, State)}
     catch throw:{invalid_design_doc, _} = Error ->

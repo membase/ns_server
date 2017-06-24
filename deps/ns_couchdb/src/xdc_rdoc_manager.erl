@@ -30,7 +30,7 @@
 
 -export([init/1, init_after_ack/1, handle_call/3,
          get_id/1, find_doc/2, all_docs/1,
-         get_revision/1, set_revision/2, is_deleted/1, save_doc/2]).
+         get_revision/1, set_revision/2, is_deleted/1, save_docs/2]).
 
 -record(state, {rep_manager :: pid(),
                 local_docs = [] :: [#doc{}]}).
@@ -105,9 +105,9 @@ set_revision(Doc, NewRev) ->
 is_deleted(_) ->
     false.
 
-save_doc(#doc{id = Id} = Doc,
-         #state{local_docs = Docs,
-                rep_manager = RepManager}=State) ->
+save_docs([#doc{id = Id} = Doc],
+          #state{local_docs = Docs,
+                 rep_manager = RepManager}=State) ->
     RepManager ! {rep_db_update, Doc},
 
     {ok, Db} = open_replicator_db(),
