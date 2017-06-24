@@ -95,8 +95,9 @@ loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
     loop(Module, GetNodes, StorageFrontend, NewRemoteNodes).
 
 replicate_changes_to_node(_Module, StorageFrontend, Node, {batch, Docs}) ->
-    ?log_debug("Sending batch to ~p", [Node]),
-    gen_server:cast({StorageFrontend, Node}, {replicated_batch, Docs});
+    CompressedBatch = misc:compress(Docs),
+    ?log_debug("Sending batch of size ~p to ~p", [size(CompressedBatch), Node]),
+    gen_server:cast({StorageFrontend, Node}, {replicated_batch, CompressedBatch});
 replicate_changes_to_node(Module, StorageFrontend, Node, Docs) ->
     lists:foreach(
       fun (Doc) ->

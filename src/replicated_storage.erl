@@ -159,9 +159,10 @@ handle_call(Msg, From, #state{child_module = Module, child_state = ChildState} =
             {noreply, State#state{child_state = NewChildState}}
     end.
 
-handle_cast({replicated_batch, Batch}, #state{child_module = Module,
-                                              child_state = ChildState} = State) ->
-    ?log_debug("Applying replicated batch"),
+handle_cast({replicated_batch, CompressedBatch}, #state{child_module = Module,
+                                                        child_state = ChildState} = State) ->
+    ?log_debug("Applying replicated batch. Size: ~p", [size(CompressedBatch)]),
+    Batch = misc:decompress(CompressedBatch),
     NewChildState =
         lists:foldl(fun (Doc, CS) ->
                             handle_replicated_update(Doc, Module, CS)
