@@ -64,9 +64,8 @@ loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
                         pipes:foreach(
                           Producer,
                           fun (Docs) ->
-                                  [replicate_change_to_node(Module, StorageFrontend, S, D)
-                                   || S <- NewNodes,
-                                      D <- Docs]
+                                  [replicate_changes_to_node(Module, StorageFrontend, S, Docs)
+                                   || S <- NewNodes]
                           end)
                 end,
                 AllNodes;
@@ -94,6 +93,15 @@ loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
         end,
 
     loop(Module, GetNodes, StorageFrontend, NewRemoteNodes).
+
+replicate_changes_to_node(_Module, StorageFrontend, Node, {batch, Docs}) ->
+    ?log_debug("Sending batch to ~p", [Node]),
+    gen_server:cast({StorageFrontend, Node}, {replicated_batch, Docs});
+replicate_changes_to_node(Module, StorageFrontend, Node, Docs) ->
+    lists:foreach(
+      fun (Doc) ->
+              replicate_change_to_node(Module, StorageFrontend, Node, Doc)
+      end, Docs).
 
 replicate_change_to_node(Module, StorageFrontend, Node, Doc) ->
     ?log_debug("Sending ~p to ~p", [Module:get_id(Doc), Node]),

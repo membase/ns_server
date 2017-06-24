@@ -173,7 +173,8 @@ find_doc(Id, #state{name = TableName}) ->
     end.
 
 all_docs(Pid) ->
-    ?make_producer(select_from_dets(Pid, [{'_', [], ['$_']}], 500, ?yield())).
+    ?make_producer(select_from_dets(Pid, [{'_', [], ['$_']}], 500,
+                                    fun (Batch) -> ?yield({batch, Batch}) end)).
 
 get_revision(#doc{rev = Rev}) ->
     Rev.

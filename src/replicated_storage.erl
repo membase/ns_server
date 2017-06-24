@@ -159,29 +159,18 @@ handle_call(Msg, From, #state{child_module = Module, child_state = ChildState} =
             {noreply, State#state{child_state = NewChildState}}
     end.
 
+handle_cast({replicated_batch, Batch}, #state{child_module = Module,
+                                              child_state = ChildState} = State) ->
+    ?log_debug("Applying replicated batch"),
+    NewChildState =
+        lists:foldl(fun (Doc, CS) ->
+                            handle_replicated_update(Doc, Module, CS)
+                    end, ChildState, Batch),
+    {noreply, State#state{child_state = NewChildState}};
 handle_cast({replicated_update, Doc}, #state{child_module = Module,
                                              child_state = ChildState} = State) ->
-    %% this is replicated from another node in the cluster. We only accept it
-    %% if it doesn't exist or the rev is higher than what we have.
-    Rev = Module:get_revision(Doc),
-    Proceed = case Module:find_doc(Module:get_id(Doc), ChildState) of
-                  false ->
-                      true;
-                  ExistingDoc ->
-                      case Module:get_revision(ExistingDoc) of
-                          DiskRev when Rev > DiskRev ->
-                              true;
-                          _ ->
-                              false
-                      end
-              end,
-    if Proceed ->
-            ?log_debug("Writing replicated doc ~p", [Doc]),
-            {ok, NewChildState} = Module:save_doc(Doc, ChildState),
-            {noreply, State#state{child_state = NewChildState}};
-       true ->
-            {noreply, State}
-    end;
+    NewChildState = handle_replicated_update(Doc, Module, ChildState),
+    {noreply, State#state{child_state = NewChildState}};
 handle_cast(Msg, #state{child_module = Module, child_state = ChildState} = State) ->
     {noreply, NewChildState} = Module:handle_cast(Msg, ChildState),
     {noreply, State#state{child_state = NewChildState}}.
@@ -199,3 +188,26 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+handle_replicated_update(Doc, Module, ChildState) ->
+    %% this is replicated from another node in the cluster. We only accept it
+    %% if it doesn't exist or the rev is higher than what we have.
+    Rev = Module:get_revision(Doc),
+    Proceed = case Module:find_doc(Module:get_id(Doc), ChildState) of
+                  false ->
+                      true;
+                  ExistingDoc ->
+                      case Module:get_revision(ExistingDoc) of
+                          DiskRev when Rev > DiskRev ->
+                              true;
+                          _ ->
+                              false
+                      end
+              end,
+    if Proceed ->
+            ?log_debug("Writing replicated doc ~p", [Doc]),
+            {ok, NewChildState} = Module:save_doc(Doc, ChildState),
+            NewChildState;
+       true ->
+            ChildState
+    end.
