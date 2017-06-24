@@ -26,7 +26,7 @@
          select_with_update/4]).
 
 -export([init/1, init_after_ack/1, handle_call/3, handle_info/2,
-         get_id/1, find_doc/2, get_all_docs/1,
+         get_id/1, find_doc/2, all_docs/1,
          get_revision/1, set_revision/2, is_deleted/1, save_doc/2, handle_mass_update/3]).
 
 -record(state, {child_module :: atom(),
@@ -111,8 +111,10 @@ select(Name, KeySpec, N, Locked) ->
         end,
 
     ?make_producer(Select(Name, MatchSpec, N,
-                          fun (#doc{id = Id, value = Value}) ->
-                                  ?yield({Id, Value})
+                          fun (Selection) ->
+                                  lists:foreach(fun (#doc{id = Id, value = Value}) ->
+                                                        ?yield({Id, Value})
+                                                end, Selection)
                           end)).
 
 select_with_update(Name, KeySpec, N, UpdateFun) ->
@@ -170,11 +172,8 @@ find_doc(Id, #state{name = TableName}) ->
             false
     end.
 
-get_all_docs(#state{name = TableName}) ->
-    %% TODO to be replaced with something that does not read the whole thing to memory
-    dets:foldl(fun(Doc, Acc) ->
-                       [Doc | Acc]
-               end, [], TableName).
+all_docs(Pid) ->
+    ?make_producer(select_from_dets(Pid, [{'_', [], ['$_']}], 500, ?yield())).
 
 get_revision(#doc{rev = Rev}) ->
     Rev.
@@ -263,7 +262,7 @@ do_select_from_dets(TableName, MatchSpec, N, Yield) ->
     end.
 
 do_select_from_dets_continue(Selection, Continuation, Yield) ->
-    lists:foreach(Yield, Selection),
+    Yield(Selection),
     case dets:select(Continuation) of
         {Selection2, Continuation2} when is_list(Selection2) ->
             do_select_from_dets_continue(Selection2, Continuation2, Yield);

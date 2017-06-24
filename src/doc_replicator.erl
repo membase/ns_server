@@ -19,6 +19,7 @@
 -module(doc_replicator).
 
 -include("ns_common.hrl").
+-include("pipes.hrl").
 
 -export([start_link/4]).
 
@@ -50,7 +51,7 @@ loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
                 [replicate_change_to_node(Module, StorageFrontend, Node, Doc)
                  || Node <- RemoteNodes],
                 RemoteNodes;
-            {replicate_newnodes_docs, Docs} ->
+            {replicate_newnodes_docs, Producer} ->
                 AllNodes = GetNodes(),
                 ?log_debug("doing replicate_newnodes_docs"),
 
@@ -60,9 +61,13 @@ loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
                         ok;
                     _ ->
                         [monitor(process, {StorageFrontend, Node}) || Node <- NewNodes],
-                        [replicate_change_to_node(Module, StorageFrontend, S, D)
-                         || S <- NewNodes,
-                            D <- Docs]
+                        pipes:foreach(
+                          Producer,
+                          fun (Docs) ->
+                                  [replicate_change_to_node(Module, StorageFrontend, S, D)
+                                   || S <- NewNodes,
+                                      D <- Docs]
+                          end)
                 end,
                 AllNodes;
             {sync_token, From} ->

@@ -26,7 +26,7 @@
 -callback init_after_ack(term()) -> term().
 -callback get_id(term()) -> term().
 -callback find_doc(term(), term()) -> term() | false.
--callback get_all_docs(term()) -> [term()].
+-callback all_docs(pid()) -> term().
 -callback get_revision(term()) -> term().
 -callback set_revision(term(), term()) -> term().
 -callback is_deleted(term()) -> boolean().
@@ -187,9 +187,8 @@ handle_cast(Msg, #state{child_module = Module, child_state = ChildState} = State
     {noreply, State#state{child_state = NewChildState}}.
 
 handle_info(replicate_newnodes_docs, #state{child_module = Module,
-                                            child_state = ChildState,
                                             replicator = Replicator} = State) ->
-    Replicator ! {replicate_newnodes_docs, Module:get_all_docs(ChildState)},
+    Replicator ! {replicate_newnodes_docs, Module:all_docs(self())},
     {noreply, State};
 handle_info(Msg, #state{child_module = Module, child_state = ChildState} = State) ->
     {noreply, NewChildState} = Module:handle_info(Msg, ChildState),
