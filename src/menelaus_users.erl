@@ -50,7 +50,7 @@
          cleanup_bucket_roles/1]).
 
 %% callbacks for replicated_dets
--export([init/1, on_save/4, on_empty/1, handle_call/4, handle_info/2]).
+-export([init/1, on_save/2, on_empty/1, handle_call/4, handle_info/2]).
 
 -export([start_storage/0, start_replicator/0, start_auth_cache/0]).
 
@@ -134,12 +134,24 @@ init_versions() ->
     gen_event:notify(user_storage_events, {auth_version, {0, Base}}),
     Base.
 
-on_save({user, _}, _Value, _Deleted, State) ->
-    self() ! {change_version, user_version},
-    State;
-on_save({auth, Identity}, Value, Deleted, State) ->
-    NewState = maybe_update_passwordless(Identity, Value, Deleted, State),
-    self() ! {change_version, auth_version},
+on_save(Docs, State) ->
+    {MessagesToSend, NewState} =
+        lists:foldl(
+          fun (Doc, {MessagesAcc, StateAcc}) ->
+                  case replicated_dets:get_id(Doc) of
+                      {user, _} ->
+                          {sets:add_element({change_version, user_version}, MessagesAcc), StateAcc};
+                      {auth, Identity} ->
+                          NState = maybe_update_passwordless(Identity,
+                                                             replicated_dets:get_value(Doc),
+                                                             replicated_dets:is_deleted(Doc),
+                                                             StateAcc),
+                          {sets:add_element({change_version, auth_version}, MessagesAcc), NState}
+                  end
+          end, {sets:new(), State}, Docs),
+    lists:foreach(fun (Msg) ->
+                          self() ! Msg
+                  end, sets:to_list(MessagesToSend)),
     NewState.
 
 handle_info({change_version, Key} = Msg, #state{base = Base} = State) ->

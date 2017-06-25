@@ -26,7 +26,7 @@
          select_with_update/4]).
 
 -export([init/1, init_after_ack/1, handle_call/3, handle_info/2,
-         get_id/1, find_doc/2, all_docs/1,
+         get_id/1, get_value/1, find_doc/2, all_docs/1,
          get_revision/1, set_revision/2, is_deleted/1, save_docs/2, handle_mass_update/3]).
 
 -record(state, {child_module :: atom(),
@@ -164,6 +164,9 @@ open(#state{path = Path, name = TableName}) ->
 get_id(#doc{id = Id}) ->
     Id.
 
+get_value(#doc{value = Value}) ->
+    Value.
+
 find_doc(Id, #state{name = TableName}) ->
     case dets:lookup(TableName, Id) of
         [Doc] ->
@@ -189,18 +192,12 @@ save_docs(Docs, #state{name = TableName,
                        child_module = ChildModule,
                        child_state = ChildState} = State) ->
     ok = dets:insert(TableName, Docs),
-    NewChildState =
-        lists:foldl(fun (#doc{id = Id,
-                              deleted = Deleted,
-                              value = Value}, CS) ->
-                            case Deleted of
-                                true ->
-                                    _ = mru_cache:delete(TableName, Id);
-                                false ->
-                                    _ = mru_cache:update(TableName, Id, Value)
-                            end,
-                            ChildModule:on_save(Id, Value, Deleted, CS)
-                    end, ChildState, Docs),
+    lists:foreach(fun (#doc{id = Id, deleted = true}) ->
+                          _ = mru_cache:delete(TableName, Id);
+                      (#doc{id = Id, deleted = false, value = Value}) ->
+                          _ = mru_cache:update(TableName, Id, Value)
+                  end, Docs),
+    NewChildState = ChildModule:on_save(Docs, ChildState),
     {ok, State#state{child_state = NewChildState}}.
 
 handle_call(suspend, {Pid, _} = From, #state{name = TableName} = State) ->
