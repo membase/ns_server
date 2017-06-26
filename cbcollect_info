@@ -595,7 +595,7 @@ def make_os_tasks():
         LinuxTask("Raw /proc/net/dev", "cat /proc/net/dev"),
         LinuxTask("Network link statistics", "ip -s link"),
         UnixTask("Network status", "netstat -anp || netstat -an"),
-        WindowsTask("Network status", "netstat -ano"),
+        WindowsTask("Network status", "netstat -anotb"),
         AllOsTask("Network routing table", "netstat -rn"),
         LinuxTask("Network socket statistics", "ss -an"),
         LinuxTask("Extended socket statistics", "ss -an --info --processes"),
