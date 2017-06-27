@@ -95,7 +95,7 @@
       function catchGlobalErrors(errorMessage, timeout) {
         promise.then(null, function (resp) {
           if (resp.status !== -1) {
-            mnAlertsService.showAlertInPopup(errorMessage || extractErrors(resp.data), 'error', timeout);
+            mnAlertsService.formatAndSetAlerts(errorMessage || extractErrors(resp.data), 'error', timeout);
           }
         });
         return this;
