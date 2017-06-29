@@ -1296,6 +1296,10 @@ merge_values({K, RV} = RP, {_, LV} = LP, UUID) ->
         {false, true} -> LP
     end.
 
+sanitize_just_value(K, V) ->
+    {_, Sanitized} = ns_config_log:sanitize({K, V}),
+    Sanitized.
+
 -spec merge_values_using_timestamps(key(),
                                     kvpair(), vclock(),
                                     kvpair(), vclock()) -> kvpair().
@@ -1311,8 +1315,8 @@ merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
                     "Conflicting configuration changes to field "
                     "~p:~n~p and~n~p, choosing the former.",
                     [K,
-                     ns_config_log:sanitize(Winner),
-                     ns_config_log:sanitize(Loser)]),
+                     sanitize_just_value(K, Winner),
+                     sanitize_just_value(K, Loser)]),
 
             Winner;
         {LocalNewer, RemoteNewer} ->
@@ -1330,8 +1334,8 @@ merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
                     "Conflicting configuration changes to field "
                     "~p:~n~p and~n~p, choosing the former, which looks newer.",
                     [K,
-                     ns_config_log:sanitize(Winner),
-                     ns_config_log:sanitize(Loser)]),
+                     sanitize_just_value(K, Winner),
+                     sanitize_just_value(K, Loser)]),
 
             Winner
     end.
