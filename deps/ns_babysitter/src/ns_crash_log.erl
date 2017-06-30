@@ -123,8 +123,7 @@ read_crash_log(Path) ->
         {ok, <<>>} -> queue:new();
         {ok, B} ->
             try
-                B2 = zlib:uncompress(B),
-                Q = binary_to_term(B2),
+                Q = misc:decompress(B),
                 true = queue:is_queue(Q),
                 Q
             catch T:E ->
@@ -137,7 +136,7 @@ read_crash_log(Path) ->
     end.
 
 save_crash_log(Path, Q) ->
-    Compressed = zlib:compress(term_to_binary(Q)),
+    Compressed = misc:compress(Q),
     case misc:atomic_write_file(Path, Compressed) of
         ok -> ok;
         E ->

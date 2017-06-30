@@ -116,7 +116,7 @@ read_logs(Filename) ->
     case file:read_file(Filename) of
         {ok, <<>>} -> [];
         {ok, B} ->
-            try upgrade_entries(binary_to_term(zlib:uncompress(B))) of
+            try upgrade_entries(misc:decompress(B)) of
                 B2 ->
                     B2
             catch error:Error ->
@@ -217,7 +217,7 @@ handle_cast({do_log, Entry}, State) ->
 handle_cast({sync, SrcNode, Compressed}, StateBefore) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
-    case binary_to_term(zlib:uncompress(Compressed)) of
+    case misc:decompress(Compressed) of
         Recent ->
             {noreply, State, hibernate};
         Logs ->
@@ -246,7 +246,7 @@ send_sync_to(Recent, Node, Src) ->
                   false ->
                       downgrade_entries(Recent)
               end,
-    gen_server:cast({?MODULE, Node}, {sync, Src, zlib:compress(term_to_binary(Entries))}).
+    gen_server:cast({?MODULE, Node}, {sync, Src, misc:compress(Entries)}).
 
 %% Not handling any other state.
 
@@ -268,7 +268,7 @@ handle_info(sync, StateBefore) ->
 handle_info(save, StateBefore = #state{filename=Filename}) ->
     State = flush_pending(StateBefore),
     Recent = State#state.unique_recent,
-    Compressed = zlib:compress(term_to_binary(Recent)),
+    Compressed = misc:compress(Recent),
     case misc:write_file(Filename, Compressed) of
         ok -> ok;
         E ->

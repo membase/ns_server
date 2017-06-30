@@ -92,7 +92,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(get_compressed, _From, State) ->
-    RV = zlib:compress(term_to_binary(ns_config:get_kv_list())),
+    RV = misc:compress(ns_config:get_kv_list()),
     {reply, RV, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,

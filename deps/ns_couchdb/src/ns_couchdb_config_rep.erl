@@ -84,7 +84,7 @@ handle_call(Msg, _From, State) ->
     {reply, error, State}.
 
 handle_cast({merge_compressed, Blob}, State) ->
-    KVList = binary_to_term(zlib:uncompress(Blob)),
+    KVList = misc:decompress(Blob),
 
     meld_config(KVList, ns_node_disco:ns_server_node()),
 
