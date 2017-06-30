@@ -229,4 +229,6 @@ node_certificate_warning(mismatch) ->
 node_certificate_warning(expired) ->
     <<"Certificate is expired.">>;
 node_certificate_warning(expires_soon) ->
-    <<"Certificate will expire soon.">>.
+    <<"Certificate will expire soon.">>;
+node_certificate_warning(self_signed) ->
+    <<"Out-of-the-box certificates are self-signed. To further secure your system, you must create new X.509 certificates signed by a trusted CA.">>.

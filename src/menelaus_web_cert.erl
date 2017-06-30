@@ -58,7 +58,9 @@ warning_props(Warning) ->
     [{message, ns_error_messages:node_certificate_warning(Warning)}].
 
 translate_warning({Node, Warning}) ->
-    [{node, Node} | warning_props(Warning)].
+    [{node, Node} | warning_props(Warning)];
+translate_warning(Warning) ->
+    warning_props(Warning).
 
 jsonify_cert_props(Props) ->
     lists:map(fun ({expires, UTCSeconds}) ->
@@ -74,7 +76,7 @@ handle_cluster_certificate_extended(Req) ->
         case ns_server_cert:cluster_ca() of
             {GeneratedCert, _} ->
                 {[{type, generated},
-                  {pem, GeneratedCert}], []};
+                  {pem, GeneratedCert}], [{translate_warning(self_signed)}]};
             {UploadedCAProps, _, _} ->
                 Warnings = ns_server_cert:get_warnings(UploadedCAProps),
                 {[{type, uploaded} | UploadedCAProps],
