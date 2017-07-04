@@ -8,10 +8,11 @@
     'mnHttp',
     'mnExceptionReporter',
     'ui.bootstrap',
-    'mnEnv'
+    'mnEnv',
+    'mnFilters'
   ]).run(appRun);
 
-  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window, $rootScope, $location) {
+  function appRun($state, $urlRouter, $exceptionHandler, mnPools, $window, $rootScope, $location, $http, mnPrettyVersionFilter) {
 
     $rootScope.$on("$locationChangeStart", function (event, newUrl) {
       //angular do not replace url when it tries
@@ -34,6 +35,12 @@
       });
       originalOnerror && originalOnerror.apply($window, Array.prototype.slice.call(arguments));
     }
+
+    $http({method: "GET", url: "/versions"}).then(function (resp) {
+      var pools = resp.data;
+      var version = mnPrettyVersionFilter(pools.implementationVersion);
+      $rootScope.mnTitle = "Couchbase Console" + (version ? ' ' + version : '');
+    });
 
     mnPools.get().then(function (pools) {
       if (!pools.isInitialized) {
