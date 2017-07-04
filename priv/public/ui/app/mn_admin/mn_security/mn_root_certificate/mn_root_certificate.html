@@ -20,7 +20,10 @@
   <div class="error error-field" ng-show="rootCertificateCtl.certificate.warnings.length">
     Warning:
     <div ng-repeat="warn in rootCertificateCtl.certificate.warnings">
-      {{warn.node}}: {{warn.message}} {{warn.expires}}
+      -
+      <span ng-show="warn.node">{{warn.node}}:</span>
+      {{warn.message}}
+      <span ng-show="warn.expires">{{warn.expires}}</span>
     </div>
   </div>
 </div>
