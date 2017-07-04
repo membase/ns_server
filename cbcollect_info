@@ -912,7 +912,17 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
 
         CollectFile("Users storage", read_guts(guts, "users_storage_path")),
 
-        make_stats_archives_task(guts, initargs_path)
+        make_stats_archives_task(guts, initargs_path),
+        AllOsTask("Phosphor Trace",
+                  ["kv_trace_dump",
+                   "-H", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
+                   "-u", read_guts(guts, "memcached_admin"),
+                   "-P", memcached_pass,
+                   "kv_trace.json"],
+                  timeout=120,
+                  log_file="stats.log",
+                  change_dir=True,
+                  artifacts=["kv_trace.json"]),
         ]
 
     _tasks = flatten([lookup_tasks, query_tasks, index_tasks, projector_tasks, fts_tasks, _tasks])
