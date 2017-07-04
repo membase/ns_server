@@ -14,10 +14,6 @@
       </div>
       <input
          type="hidden"
-         ng-model="internalSettingsCtl.state.indexAwareRebalanceDisabled"
-         value="false">
-      <input
-         type="hidden"
          ng-model="internalSettingsCtl.state.rebalanceIndexWaitingDisabled"
          value="false">
       <input
@@ -36,23 +32,6 @@
          type="hidden"
          ng-model="internalSettingsCtl.state.certUseSha1"
          value="false">
-      <div class="formrow">
-        <input
-           type="checkbox"
-           id="for_view_aware_rebalance"
-           ng-model="internalSettingsCtl.state.indexAwareRebalanceDisabled"
-           value="true">
-        <label for="for_view_aware_rebalance" class="margin-right-zero">
-          Disable view-index aware rebalance
-        </label>
-        <span
-           class="fa-stack icon-info"
-           uib-tooltip="When not disabled makes sure indexes are always up-to-date during rebalance"
-           tooltip-placement="right">
-          <span class="icon fa-circle-thin fa-stack-2x"></span>
-          <span class="icon fa-info fa-stack-1x"></span>
-        </span>
-      </div>
       <div class="formrow">
         <input
            type="checkbox"
