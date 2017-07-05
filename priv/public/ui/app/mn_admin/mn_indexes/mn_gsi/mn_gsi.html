@@ -35,7 +35,7 @@
         <span class="cbui-table-cell">
           <span ng-class="{closed:!gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))}">{{row.bucket}}</span>
         </span>
-        <span class="cbui-table-cell">{{row.hosts[0]}}</span>
+        <span class="cbui-table-cell" ng-click="$event.stopPropagation();">{{row.hosts[0]}}</span>
         <span class="cbui-table-cell" title="{{row.index}}">{{row.index}}</span>
         <span class="cbui-table-cell">{{row.storageMode | mnFormatStorageMode}}</span>
         <span class="cbui-table-cell">{{row.status}}</span>

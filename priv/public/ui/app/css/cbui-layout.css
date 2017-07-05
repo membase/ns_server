@@ -457,6 +457,10 @@ footer {
   padding-left: 2.5rem;
 }
 
+.padding-right-min {
+  padding-right: 4px;
+}
+
 .padding-bottom-6 {
   padding-bottom: 6rem;
 }
