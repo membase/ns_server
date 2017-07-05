@@ -245,6 +245,8 @@ saslauthd_authenticate(Username, Password) ->
                     Identity = {Username, external},
                     case menelaus_users:user_exists(Identity) of
                         false ->
+                            ?log_debug("User ~p succesfully authenticated with saslauthd, but it is not a configured user",
+                                       [Username]),
                             false;
                         true ->
                             {ok, Identity}
