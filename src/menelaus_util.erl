@@ -623,21 +623,29 @@ send_chunked(Req, StatusCode, ExtraHeaders) ->
 -ifdef(EUNIT).
 
 response_headers_test() ->
-    ?assertEqual(lists:keysort(1, ?NO_CACHE_HEADERS ++ ?BASE_HEADERS),
+    meck:new(ns_config, [passthrough]),
+    meck:expect(ns_config, latest, fun() -> [] end),
+    meck:expect(ns_config, search, fun(_, _) -> {value, []} end),
+    ?assertEqual(lists:keysort(1, ?NO_CACHE_HEADERS ++ ?BASE_HEADERS ++ ?SEC_HEADERS),
                  response_headers([])),
-    ?assertEqual(lists:keysort(1, ?NO_CACHE_HEADERS ++ ?BASE_HEADERS),
+    ?assertEqual(lists:keysort(1, ?NO_CACHE_HEADERS ++ ?BASE_HEADERS ++ ?SEC_HEADERS),
                  response_headers([{allow_cache, false}])),
     ?assertEqual(lists:keysort(1, [{"Extra", "header"}, {"Foo", "bar"}] ++
-                                   ?NO_CACHE_HEADERS ++ ?BASE_HEADERS),
+                                   ?NO_CACHE_HEADERS ++ ?BASE_HEADERS ++ ?SEC_HEADERS),
                  response_headers([{"Foo", "bar"}, {"Extra", "header"}])),
-    ?assertEqual(lists:keysort(1, [{"Cache-Control", "max-age=30000000"}] ++ ?BASE_HEADERS),
+    ?assertEqual(lists:keysort(1, [{"Cache-Control", "max-age=30000000"}] ++ ?BASE_HEADERS ++ ?SEC_HEADERS),
                  response_headers([{allow_cache, true}])),
-    ?assertEqual(lists:keysort( 1, [{"Cache-Control", "max-age=10"}] ++ ?BASE_HEADERS),
+    ?assertEqual(lists:keysort( 1, [{"Cache-Control", "max-age=10"}] ++ ?BASE_HEADERS ++ ?SEC_HEADERS),
                  response_headers([{?CACHE_CONTROL, "max-age=10"}])),
-    ?assertEqual(lists:keysort(1, [{"Cache-Control", "max-age=10"}] ++ ?BASE_HEADERS),
+    ?assertEqual(lists:keysort(1, [{"Cache-Control", "max-age=10"}] ++ ?BASE_HEADERS ++ ?SEC_HEADERS),
                  response_headers([{?CACHE_CONTROL, "max-age=10"},
                                    {allow_cache, true}])),
+    ?assertEqual(lists:keysort( 1, [{"Duplicate", "first"}] ++ ?NO_CACHE_HEADERS ++ ?BASE_HEADERS ++ ?SEC_HEADERS),
+                 response_headers([{"Duplicate", "first"}, {"Duplicate", "second"}])),
+    meck:expect(ns_config, search, fun(_, _) -> {value, [{enabled, false}]} end),
     ?assertEqual(lists:keysort( 1, [{"Duplicate", "first"}] ++ ?NO_CACHE_HEADERS ++ ?BASE_HEADERS),
-                 response_headers([{"Duplicate", "first"}, {"Duplicate", "second"}])).
+                 response_headers([{"Duplicate", "first"}, {"Duplicate", "second"}])),
+    true = meck:validate(ns_config),
+    meck:unload(ns_config).
 
 -endif.
