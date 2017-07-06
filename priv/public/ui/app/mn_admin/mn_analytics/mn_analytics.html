@@ -11,17 +11,9 @@
 </mn-element-cargo>
 
 <div style="width: 888px;" mn-spinner="!analyticsCtl.state" min-height="240px">
-  <div class="row flex-center text-smaller">
-    <!--TODO move dropboxes into separate state -->
-    <span ng-show="!analyticsCtl.isSpecificStats">
-      Bucket: &nbsp;
-    </span>
-    <span ng-show="analyticsCtl.isSpecificStats">
-      <h4 class="initialcaps inline">{{analyticsCtl.state.origTitle}} &nbsp;</h4>
-      for bucket: &nbsp;
-    </span>
+  <div class="row flex-center">
     <ui-select
-       class="inline middle"
+       class="cbui-select"
        ng-model="analyticsCtl.currentBucket"
        theme="selectize"
        ng-disabled="!rbac.bucketNames['.stats!read'].length"
@@ -34,10 +26,9 @@
         <span class="select-item ellipsis" ng-bind-html="name | highlight: $select.search"></span>
       </ui-select-choices>
     </ui-select>
-    <span ng-if="!analyticsCtl.isSpecificStats">
-      &nbsp; on&nbsp;
+    <span ng-if="!analyticsCtl.isSpecificStats" class="margin-left-2">
       <ui-select
-         class="inline middle"
+         class="cbui-select"
          ng-model="analyticsCtl.nodes.nodesNames.selected"
          theme="selectize"
          on-select="analyticsCtl.onSelectNode($item)">

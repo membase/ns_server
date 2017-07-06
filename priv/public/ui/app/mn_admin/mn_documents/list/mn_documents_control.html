@@ -19,13 +19,13 @@
   <ui-view></ui-view>
 
   <div class="row" ng-if="!buckets.details.byName[documentsCtl.currentBucketName].isEphemeral">
-    <div>
+    <div class="row">
       <ui-select
          ng-model="documentsControlCtl.state.pageLimits.selected"
          theme="selectize"
          ng-disabled="documentsControlCtl.isEmptyState()"
          on-select="documentsControlCtl.onSelectPageLimits($item)"
-         class="inline middle cbui narrow">
+         class="cbui-select narrow">
         <ui-select-match
            class="ui-select-match">{{$select.selected}}</ui-select-match>
         <ui-select-choices
@@ -36,7 +36,7 @@
              ng-bind-html="name | highlight: $select.search"></span>
         </ui-select-choices>
       </ui-select>
-      <span class="text-smaller">&nbsp;per page</span>
+      <span class="text-smaller margin-left-half">per page</span>
     </div>
     <p class="inline middle text-smaller">
       &lt; page {{documentsControlCtl.state.pageNumber + 1}} &gt;

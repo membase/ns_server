@@ -33,7 +33,7 @@
        on-select="viewsCtl.onSelectBucket($item)"
        theme="selectize"
        ng-disabled="!rbac.bucketNames['.views!read'].length"
-       class="inline">
+       class="cbui-select">
       <ui-select-match
          class="ui-select-match">{{$select.selected}}</ui-select-match>
       <ui-select-choices
