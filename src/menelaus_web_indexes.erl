@@ -69,12 +69,13 @@ validate_storage_mode(State) ->
     State1 = validate_string(State, storageMode),
 
     %% Do not allow:
-    %% - changing index storage mode to mem optimized in community edition
+    %% - setting index storage mode to mem optimized or plasma in community edition
+    %% - changing index storage mode in community edition
     %% - changing index storage mode when there are nodes running index
-    %%   service in the cluster.
+    %%   service in the cluster in enterprise edition.
     %% - changing index storage mode back to forestdb after having it set to either
-    %%   memory_optimized or plasma.
-    %% - setting the storage mode to forestdb on a newly configured spock cluster.
+    %%   memory_optimized or plasma in enterprise edition.
+    %% - setting the storage mode to forestdb on a newly configured spock enterprise cluster.
     IndexErr = "Changing the optimization mode of global indexes is not supported when index service nodes are present in the cluster. Please remove all index service nodes to change this option.",
 
     OldValue = index_settings_manager:get(storageMode),
@@ -115,9 +116,10 @@ is_storage_mode_acceptable(Value) ->
 
     case Value of
         ?INDEX_STORAGE_MODE_FORESTDB ->
-            case cluster_compat_mode:is_cluster_spock() of
+            case cluster_compat_mode:is_cluster_spock() andalso
+                cluster_compat_mode:is_enterprise() of
                 true ->
-                    ReportError("Storage mode cannot be set to 'forestdb' in Spock.");
+                    ReportError("Storage mode cannot be set to 'forestdb' in Spock enterprise edition.");
                 false ->
                     ok
             end;
@@ -130,11 +132,13 @@ is_storage_mode_acceptable(Value) ->
                                 "are not available in the community edition.")
             end;
         ?INDEX_STORAGE_MODE_PLASMA ->
-            case cluster_compat_mode:is_cluster_spock() of
+            case cluster_compat_mode:is_cluster_spock() andalso
+                cluster_compat_mode:is_enterprise() of
                 true ->
                     ok;
                 false ->
-                    ReportError("Storage mode can be set to 'plasma' only if the cluster is Spock.")
+                    ReportError("Storage mode can be set to 'plasma' only if the cluster is "
+                                "Spock enterprise edition.")
             end;
         _ ->
             ReportError(io_lib:format("Invalid value '~s'", [binary_to_list(Value)]))
