@@ -296,7 +296,7 @@ store_user_spock({_UserName, Domain} = Identity, Props, Password, Roles, Config)
 store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->
     case menelaus_roles:validate_roles(Roles, Config) of
         {NewRoles, []} ->
-            store_user_spock_validated(Identity, [{roles, NewRoles} | Props], Auth),
+            ok = store_user_spock_validated(Identity, [{roles, NewRoles} | Props], Auth),
             {commit, ok};
         {_, BadRoles} ->
             {abort, {error, roles_validation, BadRoles}}
@@ -304,7 +304,12 @@ store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->
 
 store_user_spock_validated(Identity, Props, Auth) ->
     ok = replicated_dets:set(storage_name(), {user, Identity}, Props),
-    store_auth(Identity, Auth).
+    case store_auth(Identity, Auth) of
+        ok ->
+            ok;
+        unchanged ->
+            ok
+    end.
 
 store_auth(_Identity, same) ->
     unchanged;
