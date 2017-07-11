@@ -103,9 +103,9 @@
   function mnFormatStorageMode() {
     return function (value) {
       switch (value) {
-      case "plasma": return "Standard Global Secondary Indexes";
-      case "forestdb": return "Legacy Global Secondary Indexes";
-      case "memory_optimized": return "Memory-Optimized Global Secondary Indexes";
+      case "plasma": return "Standard Global Secondary";
+      case "forestdb": return "Legacy Global Secondary";
+      case "memory_optimized": return "Memory-Optimized Global Secondary";
       default: return value;
       }
     };
