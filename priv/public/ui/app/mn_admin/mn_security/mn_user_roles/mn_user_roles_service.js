@@ -13,7 +13,8 @@
       deleteUser: deleteUser,
       getRolesByRole: getRolesByRole,
       getRolesTree: getRolesTree,
-      prepareUserRoles: prepareUserRoles
+      prepareUserRoles: prepareUserRoles,
+      getUsers: getUsers
     };
 
     return mnUserRolesService;

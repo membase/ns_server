@@ -8,11 +8,12 @@
       'mnFilters',
       'mnAutocompleteOff',
       'mnPromiseHelper',
-      'mnBarUsage'
+      'mnBarUsage',
+      'mnUserRolesService'
     ])
     .directive('mnBucketsForm', mnBucketsFormDirective);
 
-  function mnBucketsFormDirective($http, mnBucketsDetailsDialogService, mnPromiseHelper) {
+  function mnBucketsFormDirective($http, mnBucketsDetailsDialogService, mnPromiseHelper, mnUserRolesService) {
 
     var mnBucketsForm = {
       restrict: 'A',
@@ -21,7 +22,8 @@
         autoCompactionSettings: '=',
         validation: '=',
         poolDefault: '=?',
-        pools: '='
+        pools: '=',
+        rbac: '='
       },
       isolate: false,
       replace: true,
@@ -45,6 +47,27 @@
     function controller($scope) {
       $scope.replicaNumberEnabled = $scope.bucketConf.replicaNumber != 0;
       $scope.canChangeBucketsSettings = $scope.bucketConf.isNew;
+
+      if ($scope.rbac && $scope.rbac.cluster.admin.security.read) {
+        mnUserRolesService.getUsers().then(function (users) {
+          var interestedRoles = {
+            "admin": " (read/write)",
+            "cluster_admin": " (read/write)",
+            "ro_admin": " (read)",
+            "bucket_admin*": " (read/write)"
+          };
+          var users1 = _.reduce(users.data, function (acc, user) {
+            var role1 = _.find(user.roles, function (role) {
+              return interestedRoles[role.role + (role.bucket_name || "")];
+            });
+            if (role1) {
+              acc.push(user.id + interestedRoles[role1.role + (role1.bucket_name || "")]);
+            }
+            return acc;
+          }, []);
+          $scope.users = users1;
+        });
+      }
 
       $scope.$watch('replicaNumberEnabled', function (isEnabled) {
         if (!isEnabled) {
