@@ -1573,10 +1573,10 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                            {name, per_fts_stat(Id, <<"num_mutations_to_index">>)},
                            {desc, <<"Number of mutations not yet indexed"
                                     " (measured from num_mutations_to_index)">>}]},
-                 {struct, [{title, <<"compactions/sec">>},
-                           {name, per_fts_stat(Id, <<"total_compactions">>)},
-                           {desc, <<"Number of compactions completed per second"
-                                    " (measured from total_compactions)">>}]},
+                 {struct, [{title, <<"compaction bytes written/sec">>},
+                           {name, per_fts_stat(Id, <<"total_compaction_written_bytes">>)},
+                           {desc, <<"Number of compaction bytes written per second"
+                                    " (measured from total_compaction_written_bytes)">>}]},
                  {struct, [{title, <<"avg query latency(ms)">>},
                            {name, per_fts_stat(Id, <<"avg_queries_latency">>)},
                            {desc, <<"Average time to answer query"
