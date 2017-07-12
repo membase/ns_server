@@ -90,7 +90,9 @@
       var promise = mnXDCRService.postRelication(replication);
       mnPromiseHelper(vm, promise, $uibModalInstance)
         .showGlobalSpinner()
-        .catchErrors()
+        .catchErrors(function (error) {
+          vm.errors = angular.isString(error) ? {_: error} : error;
+        })
         .closeOnSuccess()
         .broadcast("reloadTasksPoller")
         .showGlobalSuccess("Replication created successfully!");
