@@ -101,7 +101,9 @@
         <span class="icon fa-angle-right"></span>
       </span>
       <span ng-if="adminCtl.$state.current.data.child">
-        <a href="{{adminCtl.$state.href(adminCtl.$state.current.data.child, adminCtl.$state.params)}}">
+        <a
+           ui-state="adminCtl.$state.current.data.child"
+           ui-state-params="('merge' | lodash:{}:adminCtl.$state.params:adminCtl.$state.current.data.childParams)">
           {{adminCtl.$state.get(adminCtl.$state.current.data.child).data.title}} <!-- the back-to-parent page name -->
         </a>
       </span>

@@ -5,16 +5,19 @@
     .module('mnAnalytics')
     .controller('mnAnalyticsListGraphController', mnAnalyticsListGraphController);
 
-  function mnAnalyticsListGraphController($scope, $rootScope, $transition$) {
+  function mnAnalyticsListGraphController($scope, $rootScope, $transition$, $state) {
     var vm = this;
     var selectedStat;
-
     activate();
 
     function activate() {
       $rootScope.$broadcast('reloadAnalyticsPoller');
       $scope.$watch('analyticsCtl.state', watchOnAnalyticsState);
       $scope.$on('$destroy', onScopeDestroy);
+      if ($state.params.specificStat) {
+        $state.current.data.childParams.transGraph = $state.params.specificStat;
+        $state.current.data.childParams.transZoom = $state.params.zoom;
+      }
     }
     function onScopeDestroy() {
       selectedStat && (selectedStat.config.isSelected = false);
