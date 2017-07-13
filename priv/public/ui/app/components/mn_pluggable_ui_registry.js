@@ -13,20 +13,25 @@
       getTabTemplate: getTabTemplate
     };
 
-    function getTabTemplate(tabBarName, index) {
-      var configLocation = "::" + tabBarName + ".pluggableUiConfigs[" + index + "]";
-      var defaultTemplate = "<a ng-show=\"{{" + configLocation + ".ngShow}}\" ui-sref=\"{{ " + configLocation + ".state }}\" ui-sref-active=\"selected\">{{ " + configLocation + ".name }}</a>"
-      var tabTemplates = {
-        adminTab: "<a ng-show=\"{{" + configLocation + ".ngShow}}\" class=\"line resp-hide-sml\" ui-sref-active=\"currentnav\" ui-sref=\"{{" + configLocation + ".state}}\">{{" + configLocation + ".name}}</a>",
-        indexesTab:  "<a class=\"pills\" ng-show=\"{{" + configLocation + ".ngShow}}\" ui-sref=\"{{" + configLocation + ".state}}\" ui-sref-active=\"selected\">{{" + configLocation + ".name}}</a>"
-     };
+    function getTabTemplate(config, tabBarName) {
+      return "<a " +
+        "ng-show=\"" + config.ngShow +
+        "\"class=\"" +
+        (tabBarName == "adminTab" ? "line resp-hide-sml" :
+         tabBarName == "indexesTab" ? "pills" :
+         "") +
+        "\"ui-sref=\"" + config.state +
+        (config.includedByState ?
+         "\"ng-class=\"{currentnav: ('" + config.includedByState + "' | includedByState)}\"" :
+         "\"ui-sref-active=\"currentnav\"") + ">" +
+        config.name +
+        "</a>";
+    };
 
-      return tabTemplates[tabBarName] || defaultTemplate;
-    }
   }
 
-  function mnPluggableUiTabs(mnPluggableUiRegistry, mnPluggableTabUtil, $compile) {
 
+  function mnPluggableUiTabs(mnPluggableUiRegistry, mnPluggableTabUtil, $compile) {
     return {
       link: link
     };
@@ -36,9 +41,6 @@
       if (!pluggableUiConfigs.length) {
         return;
       }
-      $scope[$attrs.mnTabBarName] = {
-        pluggableUiConfigs: pluggableUiConfigs
-      };
       angular.forEach(pluggableUiConfigs, function (config, index) {
         config.ngShow = config.ngShow == undefined ? true : config.ngShow;
         if (config.after) {
@@ -46,10 +48,10 @@
           if (!targetTab) {
             throw new Error("There is no tab with mn-tab=" + config.after + " in " + $attrs.mnTabBarName);
           }
-          var compiled = $compile(mnPluggableTabUtil.getTabTemplate($attrs.mnTabBarName, index))($scope);
+          var compiled = $compile(mnPluggableTabUtil.getTabTemplate(config, $attrs.mnTabBarName))($scope);
           angular.element(targetTab).after(compiled);
         } else {
-          var compiled = $compile(mnPluggableTabUtil.getTabTemplate($attrs.mnTabBarName, index))($scope);
+          var compiled = $compile(mnPluggableTabUtil.getTabTemplate(config, $attrs.mnTabBarName))($scope);
           $element.append(compiled);
         }
       });
