@@ -12,6 +12,9 @@
 
 <div style="width: 888px;" mn-spinner="!analyticsCtl.state" min-height="240px">
   <div class="row flex-center">
+    <h4 class="initialcaps inline"
+        ng-show="analyticsCtl.isSpecificStats"
+        >{{analyticsCtl.state.origTitle}} &nbsp;</h4>
     <ui-select
        class="cbui-select"
        ng-model="analyticsCtl.currentBucket"
