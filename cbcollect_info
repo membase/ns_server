@@ -871,7 +871,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                             "-P", memcached_pass, kind]),
                    log_file="stats.log",
                    timeout=60)
-         for kind in ["connections"]],
+         for kind in ["connections", "tracing"]],
 
         [AllOsTask("fts mossScope (%s)" % path,
                    ["mossScope", "stats", "diag", path],
