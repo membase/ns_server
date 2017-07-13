@@ -720,46 +720,54 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth, Services) ->
             {error, complete_join, M, E}
     end.
 
+do_node_add_transaction(Cfg, SetFn, Node, NWanted, Services, GroupUUID) ->
+    NewNWanted = lists:usort([Node | NWanted]),
+    Cfg1 = SetFn(nodes_wanted, NewNWanted, Cfg),
+    Cfg2 = SetFn({node, Node, membership}, inactiveAdded, Cfg1),
+    CfgPreGroups = SetFn({node, Node, services}, Services, Cfg2),
+    case ns_config:search(Cfg, cluster_compat_version, undefined) of
+        [_A, _B] = CompatVersion when CompatVersion >= ?VERSION_25 ->
+            {value, Groups} = ns_config:search(Cfg, server_groups),
+            MaybeGroup0 = [G || G <- Groups,
+                                proplists:get_value(uuid, G) =:= GroupUUID],
+            MaybeGroup = case MaybeGroup0 of
+                             [] ->
+                                 case GroupUUID of
+                                     undefined ->
+                                         [hd(Groups)];
+                                     _ ->
+                                         []
+                                 end;
+                             _ ->
+                                 true = (undefined =/= GroupUUID),
+                                 MaybeGroup0
+                         end,
+            case MaybeGroup of
+                [] ->
+                    {abort, notfound};
+                [TheGroup] ->
+                    GroupNodes = proplists:get_value(nodes, TheGroup),
+                    true = (is_list(GroupNodes)),
+                    NewGroupNodes = lists:usort([Node | GroupNodes]),
+                    NewGroup = lists:keystore(nodes, 1, TheGroup, {nodes, NewGroupNodes}),
+                    NewGroups = lists:usort([NewGroup | (Groups -- MaybeGroup)]),
+                    Cfg3 = SetFn(server_groups, NewGroups, CfgPreGroups),
+                    {commit, Cfg3}
+            end;
+        _ ->
+            %% we're pre 2.5 compat mode. Not touching server groups
+            {commit, CfgPreGroups}
+    end.
+
 node_add_transaction(Node, GroupUUID, Services, Body) ->
     TXNRV = ns_config:run_txn(
               fun (Cfg, SetFn) ->
                       {value, NWanted} = ns_config:search(Cfg, nodes_wanted),
-                      NewNWanted = lists:usort([Node | NWanted]),
-                      Cfg1 = SetFn(nodes_wanted, NewNWanted, Cfg),
-                      Cfg2 = SetFn({node, Node, membership}, inactiveAdded, Cfg1),
-                      CfgPreGroups = SetFn({node, Node, services}, Services, Cfg2),
-                      case ns_config:search(Cfg, cluster_compat_version, undefined) of
-                          [_A, _B] = CompatVersion when CompatVersion >= ?VERSION_25 ->
-                              {value, Groups} = ns_config:search(Cfg, server_groups),
-                              MaybeGroup0 = [G || G <- Groups,
-                                                  proplists:get_value(uuid, G) =:= GroupUUID],
-                              MaybeGroup = case MaybeGroup0 of
-                                               [] ->
-                                                   case GroupUUID of
-                                                       undefined ->
-                                                           [hd(Groups)];
-                                                       _ ->
-                                                           []
-                                                   end;
-                                               _ ->
-                                                   true = (undefined =/= GroupUUID),
-                                                   MaybeGroup0
-                                           end,
-                              case MaybeGroup of
-                                  [] ->
-                                      {abort, notfound};
-                                  [TheGroup] ->
-                                      GroupNodes = proplists:get_value(nodes, TheGroup),
-                                      true = (is_list(GroupNodes)),
-                                      NewGroupNodes = lists:usort([Node | GroupNodes]),
-                                      NewGroup = lists:keystore(nodes, 1, TheGroup, {nodes, NewGroupNodes}),
-                                      NewGroups = lists:usort([NewGroup | (Groups -- MaybeGroup)]),
-                                      Cfg3 = SetFn(server_groups, NewGroups, CfgPreGroups),
-                                      {commit, Cfg3}
-                              end;
-                          _ ->
-                              %% we're pre 2.5 compat mode. Not touching server groups
-                              {commit, CfgPreGroups}
+                      case lists:member(Node, NWanted) of
+                          true ->
+                              {abort, node_present};
+                          false ->
+                              do_node_add_transaction(Cfg, SetFn, Node, NWanted, Services, GroupUUID)
                       end
               end),
     case TXNRV of
@@ -768,6 +776,10 @@ node_add_transaction(Node, GroupUUID, Services, Body) ->
         {abort, notfound} ->
             M = iolist_to_binary([<<"Could not find group with uuid: ">>, GroupUUID]),
             {error, unknown_group, M, {unknown_group, GroupUUID}};
+        {abort, node_present} ->
+            M = iolist_to_binary([<<"Node already exists in cluster: ">>,
+                                  atom_to_list(Node)]),
+            {error, node_present, M, {node_present, Node}};
         retry_needed ->
             erlang:error(exceeded_retries)
     end.
