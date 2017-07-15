@@ -19,7 +19,7 @@
         <span mn-sortable-title="index" class="sorter">index name</span>
       </span>
       <span class="cbui-table-cell">
-        <span mn-sortable-title="storageMode | mnFormatStorageMode" class="sorter">storage type</span>
+        <span mn-sortable-title="storageMode | mnFormatStorageMode:pools.isEnterprise" class="sorter">storage type</span>
       </span>
       <span class="cbui-table-cell flex-grow-half">
         <span mn-sortable-title="status" class="sorter">status</span>
@@ -37,7 +37,7 @@
         </span>
         <span class="cbui-table-cell">{{row.hosts[0]}}</span>
         <span class="cbui-table-cell" title="{{row.index}}">{{row.index}}</span>
-        <span class="cbui-table-cell nocaps">{{row.storageMode | mnFormatStorageMode}}</span>
+        <span class="cbui-table-cell nocaps">{{row.storageMode | mnFormatStorageMode:pools.isEnterprise}}</span>
         <span class="cbui-table-cell flex-grow-half nocaps">{{row.status}}</span>
         <span class="cbui-table-cell flex-grow-half"><span ng-if="row.progress">{{row.progress}}%</span></span>
       </div>

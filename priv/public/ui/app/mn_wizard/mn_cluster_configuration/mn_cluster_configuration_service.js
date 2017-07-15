@@ -2,10 +2,11 @@
   "use strict";
 
   angular.module('mnClusterConfigurationService', [
-    'mnHelper'
+    'mnHelper',
+    'mnPools'
   ]).factory('mnClusterConfigurationService', mnClusterConfigurationServiceFactory);
 
-  function mnClusterConfigurationServiceFactory($http, mnHelper, IEC) {
+  function mnClusterConfigurationServiceFactory($http, mnHelper, IEC, mnPools) {
     var mnClusterConfigurationService = {
       getDynamicRamQuota: getDynamicRamQuota,
       getJoinClusterConfig: getJoinClusterConfig,
@@ -51,7 +52,7 @@
       ftsMemoryQuota: undefined,
       minMemorySize: 256,
       indexSettings: {
-        storageMode: "plasma"
+        storageMode: mnPools.export.isEnterprise ? "plasma" : "forestdb"
       }
     };
 

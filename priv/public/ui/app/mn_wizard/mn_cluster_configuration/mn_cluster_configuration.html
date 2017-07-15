@@ -95,13 +95,14 @@
              mn-memory-quota="clusterConfigurationCtl.config.startNewClusterConfig"
              errors="clusterConfigurationCtl.postMemoryErrors">
           </div>
-          <div
+          <label>Index Storage Setting</label>
+          <mn-storage-mode
              class="formrow"
-             is-forestdb-hidden="true"
-             mn-storage-mode="clusterConfigurationCtl.config.startNewClusterConfig.indexSettings"
-             is-disabled="!clusterConfigurationCtl.isEnterprise || !clusterConfigurationCtl.config.startNewClusterConfig.services.model.index"
-             errors="clusterConfigurationCtl.postIndexSettingsErrors">
-          </div>
+             mn-is-enterprise="clusterConfigurationCtl.isEnterprise"
+             mn-services-model="clusterConfigurationCtl.config.startNewClusterConfig.services.model"
+             mn-model="clusterConfigurationCtl.config.startNewClusterConfig.indexSettings"
+             mn-errors="clusterConfigurationCtl.postIndexSettingsErrors">
+          </mn-storage-mode>
         </div>
       </div>
       <div class="formrow">

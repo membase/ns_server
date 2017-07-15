@@ -28,14 +28,15 @@
 
    function mnStorageModeDirective() {
     var mnStorageMode = {
-      restrict: 'A',
+      restrict: 'E',
       scope: {
-        config: '=mnStorageMode',
-        errors: "=",
-        isDisabled: "=",
-        noLabel: "=",
-        poolDefault: "=?",
-        isForestdbHidden: "="
+        mnIsEnterprise: "=",
+        mnModel: "=",
+        mnErrors: "=",
+        mnCompat: "=?",
+        mnPermissions: "=?",
+        mnServicesModel: "=?",
+        mnInitial: "=?"
       },
       templateUrl: 'app/components/directives/mn_storage_mode/mn_storage_mode.html'
     };

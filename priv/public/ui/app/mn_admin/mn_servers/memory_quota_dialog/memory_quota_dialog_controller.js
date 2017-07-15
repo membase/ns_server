@@ -15,7 +15,7 @@
     vm.firstTimeAddedServices = firstTimeAddedServices;
 
     if (indexSettings.storageMode === "") {
-      vm.indexSettings.storageMode = "plasma";
+      vm.indexSettings.storageMode = vm.isEnterprise ? "plasma" : "forestdb";
     }
 
     function onSubmit() {

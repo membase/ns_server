@@ -1,25 +1,31 @@
-<label for="index_ram_quota" ng-hide="noLabel">Index Storage Setting</label>
 <div class="checkbox-list storage-mode">
-  <div ng-hide="isForestdbHidden">
+  <div ng-show="!mnIsEnterprise ||
+                (mnInitial && mnInitial.storageMode === 'forestdb')">
     <input
        type="radio"
        value="forestdb"
        id="storage_mode_forestdb"
-       ng-model="config.storageMode"
-       ng-disabled="isDisabled">
+       ng-model="mnModel.storageMode"
+       ng-disabled="!mnIsEnterprise ||
+                    (mnServices && !mnServicesModel.index) ||
+                    (mnPermissions && !mnPermissions.cluster.indexes.write) ||
+                    (mnInitial && mnInitial.storageMode === 'forestdb')">
     <label for="storage_mode_forestdb" class="checkbox">
-      Legacy Global Secondary Indexes
+      Standard Global Secondary Indexes ({{:: mnIsEnterprise ? 'Legacy' : 'Community'}} Version)
     </label>
   </div>
-  <div ng-show="!poolDefault || poolDefault.compat.atLeast50">
+  <div ng-show="mnIsEnterprise &&
+                (!mnCompat || mnCompat.atLeast50)">
     <input
        type="radio"
        value="plasma"
        id="storage_plasma_indexes"
-       ng-model="config.storageMode"
-       ng-disabled="isDisabled">
+       ng-model="mnModel.storageMode"
+       ng-disabled="!mnIsEnterprise ||
+                    (mnServicesModel && !mnServicesModel.index) ||
+                    (mnPermissions && !mnPermissions.cluster.indexes.write)">
     <label for="storage_plasma_indexes" class="checkbox">
-      Standard Global Secondary Indexes
+      Standard Global Secondary Indexes (Enterprise Version)
     </label>
   </div>
   <div>
@@ -27,8 +33,10 @@
        type="radio"
        value="memory_optimized"
        id="storage_memory_optimized"
-       ng-model="config.storageMode"
-       ng-disabled="isDisabled">
+       ng-model="mnModel.storageMode"
+       ng-disabled="!mnIsEnterprise ||
+                    (mnServices && !mnServicesModel.index) ||
+                    (mnPermissions && !mnPermissions.cluster.indexes.write)">
     <label for="storage_memory_optimized" class="checkbox margin-right-zero">
       Memory-Optimized Global Secondary Indexes
     </label>
@@ -40,7 +48,7 @@
       <span class="icon fa-info fa-stack-1x"></span>
     </span>
   </div>
-  <div class="error error-field" ng-show="errors.storageMode">
-    {{errors.storageMode | mnFormatStorageModeError}}
+  <div class="error error-field" ng-show="mnErrors.storageMode">
+    {{mnErrors.storageMode | mnFormatStorageModeError}}
   </div>
 </div>

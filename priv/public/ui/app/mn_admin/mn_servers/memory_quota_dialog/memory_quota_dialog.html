@@ -18,15 +18,17 @@
          rbac="rbac"
          errors="serversMemoryQuotaDialogCtl.errors">
       </div>
-      <div
-         class="formrow"
+      <label>Index Storage Setting</label>
+      <mn-storage-mode
          ng-if="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index"
-         is-forestdb-hidden="true"
-         mn-storage-mode="serversMemoryQuotaDialogCtl.indexSettings"
-         is-disabled="!serversMemoryQuotaDialogCtl.isEnterprise || serversMemoryQuotaDialogCtl.initialIndexSettings.storageMode !== ''"
-         errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors"
-         pool-default="poolDefault">
-      </div>
+         mn-is-enterprise="serversMemoryQuotaDialogCtl.isEnterprise"
+         mn-model="serversMemoryQuotaDialogCtl.indexSettings"
+         mn-errors="serversMemoryQuotaDialogCtl.postIndexSettingsErrors"
+         mn-initial="serversMemoryQuotaDialogCtl.initialIndexSettings"
+         mn-permissions="rbac"
+         mn-compat="poolDefault.compat"
+         class="formrow">
+      </mn-storage-mode>
     </div>
     <div class="panel-footer">
       <button type="submit">Save Settings</button>
