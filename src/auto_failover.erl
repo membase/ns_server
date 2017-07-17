@@ -327,6 +327,16 @@ handle_info(tick, State0) ->
                               false ->
                                   S
                           end;
+                      rebalance_running ->
+                          case should_report(#state.reported_rebalance_running, S) of
+                              true ->
+                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                                            "Could not automatically fail over node (~p). "
+                                            "Rebalance is running.", [Node]),
+                                  note_reported(#state.reported_rebalance_running, S);
+                              false ->
+                                  S
+                          end;
                       in_recovery ->
                           case should_report(#state.reported_in_recovery, S) of
                               true ->
