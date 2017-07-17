@@ -4,7 +4,7 @@
    ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
   <div class="cbui-tablerow">
     <span class="cbui-table-cell flex-grow-2-5 cbui-tablerow-title row flex-left">
-      <span class="ellipsis padding-right-min" title="{{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}" ng-click="$event.stopPropagation();">
+      <span class="ellipsis padding-right-min cursor-text" title="{{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}" ng-click="$event.stopPropagation();">
       {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
       </span>
       <span

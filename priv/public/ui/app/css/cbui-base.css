@@ -1299,3 +1299,6 @@ select.select-small {
 .cursor-move {
   cursor: move;
 }
+.cursor-text {
+  cursor: text;
+}

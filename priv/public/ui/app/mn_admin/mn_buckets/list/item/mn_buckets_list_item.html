@@ -4,7 +4,7 @@
    ng-click="bucketsListCtl.toggleDetails(bucket.name)">
   <div class="cbui-tablerow">
     <span class="cbui-table-cell flex-grow-3 row">
-      <div class="cbui-tablerow-title ellipsis">{{bucket.name}}</div>
+      <div class="cbui-tablerow-title ellipsis cursor-text" ng-click="$event.stopPropagation();">{{bucket.name}}</div>
       <span class="label lt-blue" ng-show="bucket.isMemcached">
         memcached
       </span>

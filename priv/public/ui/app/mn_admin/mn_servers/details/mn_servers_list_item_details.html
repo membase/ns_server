@@ -2,7 +2,7 @@
    mn-spinner="!serversListItemDetailsCtl.server.getMemoryCacheConfig || !serversListItemDetailsCtl.server.getDiskStorageConfig">
 
   <div class="row flex-left items-top resp-sml">
-    <div class="cbui-table-props">
+    <div class="cbui-table-props cursor-text" ng-click="$event.stopPropagation();">
       <div>
         <strong>Uptime:</strong> {{(serversListItemDetailsCtl.server.details.uptime | mnFormatUptime) || 'unknown'}}
       </div>
