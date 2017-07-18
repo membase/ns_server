@@ -46,7 +46,7 @@
       .reloadOnScopeEvent("reloadAnalyticsPoller");
     }
     function onSelectBucket(selectedBucket) {
-      $state.go('^.graph', {
+      $state.go(vm.isSpecificStats ? '^.specificGraph' : '^.graph', {
         bucket: selectedBucket
       });
     }
