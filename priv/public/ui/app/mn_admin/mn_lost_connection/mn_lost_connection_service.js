@@ -35,7 +35,7 @@
     function runTimer() {
       state.interval = $interval(function () {
         state.repeatAt -= 1;
-        if (state.repeatAt === 0) {
+        if (state.repeatAt <= 0) {
           $uibModalStack.dismissAll();
           resendQueries();
         }
