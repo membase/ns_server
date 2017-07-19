@@ -48,8 +48,10 @@ loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
     NewRemoteNodes =
         receive
             {replicate_change, Doc} ->
-                [replicate_change_to_node(Module, StorageFrontend, Node, Doc)
-                 || Node <- RemoteNodes],
+                lists:foreach(
+                  fun (Node) ->
+                          replicate_change_to_node(Module, StorageFrontend, Node, Doc)
+                  end, RemoteNodes),
                 RemoteNodes;
             {replicate_newnodes_docs, Producer} ->
                 AllNodes = GetNodes(),
@@ -60,12 +62,18 @@ loop(Module, GetNodes, StorageFrontend, RemoteNodes) ->
                     [] ->
                         ok;
                     _ ->
-                        [monitor(process, {StorageFrontend, Node}) || Node <- NewNodes],
+                        lists:foreach(
+                          fun (Node) ->
+                                  monitor(process, {StorageFrontend, Node})
+                          end, NewNodes),
                         pipes:foreach(
                           Producer,
                           fun (Docs) ->
-                                  [replicate_changes_to_node(Module, StorageFrontend, S, Docs)
-                                   || S <- NewNodes]
+                                  lists:foreach(
+                                    fun (Node) ->
+                                            replicate_changes_to_node(Module, StorageFrontend,
+                                                                      Node, Docs)
+                                    end, NewNodes)
                           end)
                 end,
                 AllNodes;
