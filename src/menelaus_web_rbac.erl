@@ -316,9 +316,10 @@ handle_get_users_with_domain(Req, DomainAtom, Path) ->
 handle_get_users_45(Req) ->
     Users = menelaus_users:get_users_45(ns_config:latest()),
     Json = lists:map(
-             fun ({Identity, Props}) ->
+             fun ({{LdapUser, saslauthd}, Props}) ->
                      Roles = proplists:get_value(roles, Props, []),
-                     get_user_json(Identity, proplists:get_value(name, Props), false, Roles)
+                     get_user_json({LdapUser, external}, proplists:get_value(name, Props),
+                                   false, Roles)
              end, Users),
     menelaus_util:reply_json(Req, Json).
 
