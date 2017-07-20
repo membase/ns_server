@@ -1,10 +1,10 @@
-<mn-element-cargo depot="alerts">
-  <div
-     class="interim alert alert-warning"
-     ng-if="!viewsCtl.mnPoolDefault.value.isKvNode">
-    <p>This node does not have the data service running (required for Views). You may access the interface here: <a ng-href="{{viewsCtl.kvNodeLink}}">{{viewsCtl.kvNodeLink}}</a></p>
+
+  <div ng-if="!viewsCtl.mnPoolDefault.value.isKvNode" class="margin-top-half">
+    <p>The views interface is only available on Couchbase nodes running the data service.</p>
+    <p>The data service was found on the following node:</p>
+    <a ng-href="{{viewsCtl.kvNodeLink}}">{{viewsCtl.kvNodeLink}}</a>
   </div>
-</mn-element-cargo>
+
 
 <div
    ng-if="viewsCtl.mnPoolDefault.value.isKvNode"
