@@ -9,7 +9,6 @@
       'ui.bootstrap',
       'mnServersService',
       'mnHelper',
-      'mnVerticalBar',
       'mnBarUsage',
       'mnServersListItemDetailsService',
       'mnFilters',

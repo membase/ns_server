@@ -49,26 +49,22 @@
       var total = node.memoryTotal;
       var free = node.memoryFree;
       var used = total - free;
+
       ramUsageConf.exist = (total > 0) && _.isFinite(free);
-      ramUsageConf.height = used / total * 100;
-      ramUsageConf.top = 105 - used / total * 100;
       ramUsageConf.value = used / total * 100;
+
       return ramUsageConf;
     }
     function getSwapUsageConf(node) {
       var swapTotal = node.systemStats.swap_total;
       var swapUsed = node.systemStats.swap_used;
       swapUsageConf.exist = swapTotal > 0 && _.isFinite(swapUsed);
-      swapUsageConf.height = swapUsed / swapTotal * 100;
-      swapUsageConf.top = 105 - (swapUsed / swapTotal * 100);
       swapUsageConf.value = (swapUsed / swapTotal) * 100;
       return swapUsageConf;
     }
     function getCpuUsageConf(node) {
       var cpuRate = node.systemStats.cpu_utilization_rate;
       cpuUsageConf.exist = _.isFinite(cpuRate);
-      cpuUsageConf.height = Math.floor(cpuRate * 100) / 100;
-      cpuUsageConf.top = 105 - (Math.floor(cpuRate * 100) / 100);
       cpuUsageConf.value = Math.floor(cpuRate * 100) / 100;
       return cpuUsageConf;
     }
