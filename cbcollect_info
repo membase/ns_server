@@ -184,9 +184,6 @@ class Task(object):
                                  stderr=subprocess.STDOUT,
                                  shell=use_shell,
                                  **extra_flags)
-            if hasattr(self, 'to_stdin'):
-                p.stdin.write(self.to_stdin)
-
         except OSError, e:
             # if use_shell is False then Popen may raise exception
             # if binary is missing. In this case we mimic what
@@ -445,11 +442,14 @@ class CollectFile(AllOsTask):
 def make_curl_task(name, user, password, url,
                    timeout=60, log_file="couchbase.log", base_task=AllOsTask,
                    **kwargs):
-    return base_task(name, ["curl", "-sS", "--proxy", "", "-u", user, url],
+    def make_cmd(pwd):
+        return ["curl", "-sS", "--proxy", "",
+                "-u", "%s:%s" % (user, pwd), url]
+
+    return base_task(name, make_cmd(password),
                      timeout=timeout,
                      log_file=log_file,
-                     to_stdin="%s\n" % password,
-                     **kwargs)
+                     command_to_print=make_cmd("*****"), **kwargs)
 
 def make_cbstats_task(kind, memcached_pass, guts):
     port = read_guts(guts, "memcached_port")
