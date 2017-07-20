@@ -405,16 +405,17 @@ delete_disk_buckets_databases_loop(Pred, [Bucket | Rest]) ->
 delete_unused_buckets_db_files() ->
     Config = ns_config:get(),
     Services = ns_cluster_membership:node_services(Config, node()),
+    BCfgs = ns_bucket:get_buckets(Config),
     BucketNames =
         case lists:member(kv, Services) of
             true ->
-                ns_bucket:node_bucket_names_of_type(node(), membase, couchstore,
-                                                    ns_bucket:get_buckets(Config));
+                ns_bucket:node_bucket_names_of_type(node(), membase, couchstore, BCfgs)
+                    ++ ns_bucket:node_bucket_names_of_type(node(), membase, ephemeral, BCfgs);
             false ->
                 case ns_cluster_membership:get_cluster_membership(node(), Config) of
                     active ->
-                        ns_bucket:get_bucket_names_of_type(membase, couchstore,
-                                                           ns_bucket:get_buckets(Config));
+                        ns_bucket:get_bucket_names_of_type(membase, couchstore, BCfgs)
+                            ++ ns_bucket:get_bucket_names_of_type(membase, ephemeral, BCfgs);
                     _ ->
                         []
                 end
