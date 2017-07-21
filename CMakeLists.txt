@@ -206,6 +206,7 @@ IF (OTP_RELEASE MATCHES "^R?1[5-9].*$$")
 ENDIF ()
 ADD_CUSTOM_TARGET (ns_dialyzer
   COMMAND "${CMAKE_COMMAND}" -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
+  -D "DIALYZER_EXECUTABLE=${DIALYZER_EXECUTABLE}"
   -D "DIALYZER_FLAGS=${dialyzer_args}"
   -D "COUCHBASE_PLT=${COUCHBASE_PLT}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-dialyzer.cmake"
@@ -216,6 +217,7 @@ SET (obsessive_args -Wunmatched_returns -Werror_handling -Wrace_conditions
   -Wbehaviours -Wunderspecs)
 ADD_CUSTOM_TARGET (ns_dialyzer_obsessive
   COMMAND "${CMAKE_COMMAND}" -D "COUCHDB_BIN_DIR=${COUCHDB_BIN_DIR}"
+  -D "DIALYZER_EXECUTABLE=${DIALYZER_EXECUTABLE}"
   -D "DIALYZER_FLAGS=${obsessive_args}"
   -D "COUCHBASE_PLT=${COUCHBASE_PLT}"
   -P "${PROJECT_SOURCE_DIR}/cmake_modules/do-dialyzer.cmake"

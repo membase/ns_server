@@ -4,14 +4,14 @@ GET_FILENAME_COMPONENT (_couchdb_bin_dir "${COUCHDB_BIN_DIR}" REALPATH)
 IF (NOT EXISTS "${COUCHBASE_PLT}")
   MESSAGE ("Generating ${COUCHBASE_PLT}...")
   EXECUTE_PROCESS (COMMAND "${CMAKE_COMMAND}" -E echo
-    dialyzer --output_plt "${COUCHBASE_PLT}" --build_plt
+    "${DIALYZER_EXECUTABLE}" --output_plt "${COUCHBASE_PLT}" --build_plt
     --apps compiler crypto erts inets kernel os_mon sasl ssl stdlib xmerl
     ${_couchdb_bin_dir}/src/mochiweb
     ${_couchdb_bin_dir}/src/snappy ${_couchdb_bin_dir}/src/etap
     ${_couchdb_bin_dir}/src/lhttpc
     ${_couchdb_bin_dir}/src/erlang-oauth deps/gen_smtp/ebin)
 
-  EXECUTE_PROCESS (COMMAND dialyzer --output_plt "${COUCHBASE_PLT}" --build_plt
+  EXECUTE_PROCESS (COMMAND "${DIALYZER_EXECUTABLE}" --output_plt "${COUCHBASE_PLT}" --build_plt
     --apps compiler crypto erts inets kernel os_mon sasl ssl stdlib xmerl
     ${_couchdb_bin_dir}/src/mochiweb
     ${_couchdb_bin_dir}/src/snappy ${_couchdb_bin_dir}/src/etap
@@ -29,7 +29,7 @@ STRING (REGEX REPLACE "deps/ns_couchdb/ebin/couch_log.beam\;?" "" couchdb_beamfi
 # If you update the dialyzer command, please also update this echo
 # command so it displays what is invoked. Yes, this is annoying.
 EXECUTE_PROCESS (COMMAND "${CMAKE_COMMAND}" -E echo
-  dialyzer --plt "${COUCHBASE_PLT}" ${DIALYZER_FLAGS}
+  "${DIALYZER_EXECUTABLE}" --plt "${COUCHBASE_PLT}" ${DIALYZER_FLAGS}
   --apps ${beamfiles}
   deps/ale/ebin
   ${_couchdb_bin_dir}/src/couchdb ${_couchdb_bin_dir}/src/couch_set_view ${_couchdb_bin_dir}/src/couch_view_parser
@@ -39,7 +39,7 @@ EXECUTE_PROCESS (COMMAND "${CMAKE_COMMAND}" -E echo
   deps/ns_ssl_proxy/ebin
   ${couchdb_beamfiles})
 EXECUTE_PROCESS (RESULT_VARIABLE _failure
-  COMMAND dialyzer --plt "${COUCHBASE_PLT}" ${DIALYZER_FLAGS}
+  COMMAND "${DIALYZER_EXECUTABLE}" --plt "${COUCHBASE_PLT}" ${DIALYZER_FLAGS}
   --apps ${beamfiles}
   deps/ale/ebin
   ${_couchdb_bin_dir}/src/couchdb ${_couchdb_bin_dir}/src/couch_set_view ${_couchdb_bin_dir}/src/couch_view_parser
