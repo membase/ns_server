@@ -122,17 +122,16 @@
       self.doCallPromise = self.doCall(timestamp);
 
       if (self.extractInterval) {
-        if (angular.isFunction(self.extractInterval)) {
-          self.doCallPromise.then(function (result) {
-            if (self.isStopped(timestamp)) {
-              return;
-            }
-            var interval = self.extractInterval(result);
-            self.timeout = $timeout(self.doCycle.bind(self), interval);
-          });
-        } else {
-          self.timeout = $timeout(self.doCycle.bind(self), self.extractInterval);
-        }
+        self.doCallPromise.then(function (result) {
+          if (self.isStopped(timestamp)) {
+            return;
+          }
+          var interval = angular.isFunction(self.extractInterval) ?
+              self.extractInterval(result) :
+              self.extractInterval;
+
+          self.timeout = $timeout(self.doCycle.bind(self), interval);
+        });
       }
       self.doCallPromise.then(null, function (resp) {
         self.stop(); //stop cycle on any http error;
