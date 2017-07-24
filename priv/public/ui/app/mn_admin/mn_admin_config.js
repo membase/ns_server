@@ -328,10 +328,10 @@
           params.zoom = params.transZoom || "minute";
           params.graph = params.transGraph;
           return mnAnalyticsService.getStats({$stateParams: params}).then(function (state) {
+            function checkLackOfParam(paramName) {
+              return !params[paramName] || !params[paramName].length || !_.intersection(params[paramName], _.pluck(state.statsDirectoryBlocks, 'blockName')).length;
+            }
             if (!state.status) {
-              function checkLackOfParam(paramName) {
-                return !params[paramName] || !params[paramName].length || !_.intersection(params[paramName], _.pluck(state.statsDirectoryBlocks, 'blockName')).length;
-              }
               if (params.specificStat) {
                 if (checkLackOfParam("openedSpecificStatsBlock")) {
                   params.openedSpecificStatsBlock = [state.statsDirectoryBlocks[0].blockName];
