@@ -21,6 +21,9 @@
            ng-messages="authCtl.error"
            class="error error-form"
            ng-if="authCtl.error">
+          <span ng-message="_initialized">
+            This cluster has been initialized.
+          </span>
           <span ng-message="_400">
             Login failed. Please try again.
           </span>

@@ -11,6 +11,10 @@
     vm.loginFailed = false;
     vm.submit = submit;
 
+    if ($state.transition.$from().includes["app.wizard"]) {
+      error({status: "initialized"})
+    }
+
     function error(resp) {
       vm.error = {};
       vm.error["_" + resp.status] = true;
