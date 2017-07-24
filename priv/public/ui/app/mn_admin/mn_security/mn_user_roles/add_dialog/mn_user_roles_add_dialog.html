@@ -144,11 +144,17 @@
                  for="for-{{::getUIID}}">
                 {{::!role.bucket_name ? role.name : role.bucket_name == "*" ? "all [*]" : role.bucket_name}}
                 <span
+                   ng-if="role.bucket_name == '*'"
+                   tooltip-trigger="'mouseenter'"
+                   tooltip-append-to-body="true"
+                   class="fa-exclamation-circle icon orange-3"
+                   uib-tooltip="Note: This role will have access to all current and future data buckets.">
+                </span>
+                <span
                    ng-if="getUIID === 'query_external_access'"
                    tooltip-trigger="'mouseenter'"
                    tooltip-append-to-body="true"
-                   class="fa-exclamation-circle icon"
-                   style="color: #F9CA78;"
+                   class="fa-exclamation-circle icon orange-3"
                    uib-tooltip="Warning: Granting the query_external_access role permits execution of the N1QL function CURL() and may allow access to other network endpoints in the local network and the Internet.">
                 </span>
               </label>
