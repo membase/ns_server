@@ -103,8 +103,8 @@
   function mnFormatStorageMode() {
     return function (value, isEnterprise) {
       switch (value) {
-      case "plasma": return "Standard GSI (Enterprise Version)";
-      case "forestdb": return "Standard GSI (" + (isEnterprise ? "Legacy" : "Community") + " Version)";
+      case "plasma": return "Standard GSI";
+      case "forestdb": return (isEnterprise ? "Legacy" : "Standard") + " GSI";
       case "memory_optimized": return "Memory Optimized GSI";
       default: return value;
       }

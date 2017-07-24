@@ -1,6 +1,5 @@
 <div class="checkbox-list storage-mode">
-  <div ng-show="!mnIsEnterprise ||
-                (mnInitial && mnInitial.storageMode === 'forestdb')">
+  <div ng-show="(mnInitial && mnInitial.storageMode === 'forestdb')">
     <input
        type="radio"
        value="forestdb"
@@ -11,7 +10,7 @@
                     (mnPermissions && !mnPermissions.cluster.indexes.write) ||
                     (mnInitial && mnInitial.storageMode === 'forestdb')">
     <label for="storage_mode_forestdb" class="checkbox">
-      Standard Global Secondary Indexes ({{:: mnIsEnterprise ? 'Legacy' : 'Community'}} Version)
+      {{:: mnIsEnterprise ? 'Legacy' : 'Standard'}} Global Secondary
     </label>
   </div>
   <div ng-show="mnIsEnterprise &&
@@ -25,7 +24,7 @@
                     (mnServicesModel && !mnServicesModel.index) ||
                     (mnPermissions && !mnPermissions.cluster.indexes.write)">
     <label for="storage_plasma_indexes" class="checkbox">
-      Standard Global Secondary Indexes (Enterprise Version)
+      Standard Global Secondary
     </label>
   </div>
   <div>
@@ -38,7 +37,7 @@
                     (mnServices && !mnServicesModel.index) ||
                     (mnPermissions && !mnPermissions.cluster.indexes.write)">
     <label for="storage_memory_optimized" class="checkbox margin-right-zero">
-      Memory-Optimized Global Secondary Indexes
+      Memory-Optimized
     </label>
     <span
        class="fa-stack icon-info"

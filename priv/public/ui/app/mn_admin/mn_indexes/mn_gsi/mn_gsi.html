@@ -37,7 +37,7 @@
         </span>
         <span class="cbui-table-cell">{{row.hosts[0]}}</span>
         <span class="cbui-table-cell" title="{{row.index}}">{{row.index}}</span>
-        <span class="cbui-table-cell nocaps">{{row.storageMode | mnFormatStorageMode:pools.isEnterprise}}</span>
+        <span class="cbui-table-cell">{{row.storageMode | mnFormatStorageMode:pools.isEnterprise}}</span>
         <span class="cbui-table-cell flex-grow-half nocaps">{{row.status}}</span>
         <span class="cbui-table-cell flex-grow-half"><span ng-if="row.progress">{{row.progress}}%</span></span>
       </div>
