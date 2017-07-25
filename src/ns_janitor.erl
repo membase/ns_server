@@ -123,9 +123,10 @@ cleanup_with_states(Bucket, Options, BucketConfig, Servers, States,
     %% unsafe node is found then we won't bring the bucket online until we
     %% we reprovision it. Reprovisioning is initiated by the orchestrator at
     %% the end of every janitor run.
-    UnsafeNodes = find_unsafe_nodes_with_vbucket_states(NewBucketConfig, States,
-                                                        proplists:get_bool(check_for_unsafe_nodes,
-                                                                           Options)),
+    UnsafeNodes = find_unsafe_nodes_with_vbucket_states(
+                    NewBucketConfig, States,
+                    should_check_for_unsafe_nodes(NewBucketConfig, Options)),
+
     case UnsafeNodes =/= [] of
         true ->
             {error, unsafe_nodes, UnsafeNodes};
@@ -152,6 +153,10 @@ cleanup_with_states(Bucket, Options, BucketConfig, Servers, States,
                     {error, marking_as_warmed_failed, BadNodes}
             end
     end.
+
+should_check_for_unsafe_nodes(BCfg, Options) ->
+    proplists:get_bool(check_for_unsafe_nodes, Options) andalso
+        ns_bucket:storage_mode(BCfg) =:= ephemeral.
 
 find_unsafe_nodes_with_vbucket_states(_BucketConfig, _States, false) ->
     [];
