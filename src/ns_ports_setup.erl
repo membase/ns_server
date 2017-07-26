@@ -467,7 +467,8 @@ build_go_env_vars(Config, RPCService) ->
 build_tls_config_env_var(Config) ->
     [{"CBAUTH_TLS_CONFIG",
       binary_to_list(ejson:encode(
-                       {[{minTLSVersion, ns_ssl_services_setup:ssl_minimum_protocol(Config)}]}))}].
+                       {[{minTLSVersion, ns_ssl_services_setup:ssl_minimum_protocol(Config)},
+                         {ciphersStrength, ns_ssl_services_setup:ciphers_strength(Config)}]}))}].
 
 build_cbauth_env_vars(Config, RPCService) ->
     true = (RPCService =/= undefined),

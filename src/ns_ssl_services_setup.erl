@@ -28,7 +28,8 @@
          ssl_minimum_protocol/0,
          ssl_minimum_protocol/1,
          client_cert_auth/0,
-         set_node_certificate_chain/4]).
+         set_node_certificate_chain/4,
+         ciphers_strength/1]).
 
 %% used by ssl proxy
 -export([dh_params_der/0, supported_versions/1, supported_ciphers/0]).
@@ -256,6 +257,9 @@ supported_ciphers() ->
         undefined ->
             ssl:cipher_suites() -- low_security_ciphers()
     end.
+
+ciphers_strength(Config) ->
+    ns_config:search(Config, ssl_ciphers_strength, [high]).
 
 ssl_auth_options() ->
     Val = list_to_atom(proplists:get_value(state, client_cert_auth())),
