@@ -18,7 +18,7 @@
 %%
 %% forked shortened version of R16 disksup. serves 2 purposes:
 %% - include bind mounts into linux disk info
-%% - fix OSX disksup that is broken in R14 (to be removed after move to R16)
+%% - fix OSX disksup to include the new Apple File System (apfs)
 
 -module(ns_disksup).
 -behaviour(gen_server).
@@ -48,6 +48,8 @@ start_link() ->
 is_my_os() ->
     case os:type() of
         {unix, linux} ->
+            true;
+        {unix, darwin} ->
             true;
         _ ->
             false
@@ -144,7 +146,10 @@ newline([], B) -> {more, B}.
 
 check_disk_space({unix, linux}, Port) ->
     Result = my_cmd("/bin/df -alk", Port),
-    check_disks_linux(skip_to_eol(Result)).
+    check_disks_linux(skip_to_eol(Result));
+check_disk_space({unix, darwin}, Port) ->
+    Result = my_cmd("/bin/df -i -k -T ufs,hfs,apfs", Port),
+    check_disks_susv3(skip_to_eol(Result)).
 
 check_disks_linux("") ->
     [];
@@ -157,6 +162,19 @@ check_disks_linux(Str) ->
              check_disks_linux(RestStr)];
         _Other ->
             check_disks_linux(skip_to_eol(Str))
+    end.
+
+check_disks_susv3("") ->
+    [];
+check_disks_susv3("\n") ->
+    [];
+check_disks_susv3(Str) ->
+    case io_lib:fread("~s~d~d~d~d%~d~d~d%~s", Str) of
+        {ok, [_FS, KB, _Used, _Avail, Cap, _IUsed, _IFree, _ICap, MntOn], RestStr} ->
+            [{MntOn, KB, Cap} |
+             check_disks_susv3(RestStr)];
+        _Other ->
+            check_disks_susv3(skip_to_eol(Str))
     end.
 
 %%--Auxiliary-----------------------------------------------------------
