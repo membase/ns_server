@@ -307,7 +307,8 @@ query_node_spec(Config) ->
             Spec = {'query', Command,
                     [DataStoreArg, HttpArg, CnfgStoreArg, EntArg] ++ HttpsArgs,
                     [via_goport, exit_status, stderr_to_stdout,
-                     {env, build_go_env_vars(Config, 'cbq-engine')},
+                     {env, build_go_env_vars(Config, 'cbq-engine') ++
+                          build_tls_config_env_var(Config)},
                      {log, ?QUERY_LOG_FILENAME}]},
 
             [Spec]
@@ -462,6 +463,11 @@ build_go_env_vars(Config, RPCService) ->
     GoTraceBack0 = ns_config:search(ns_config:latest(), gotraceback, <<"crash">>),
     GoTraceBack = binary_to_list(GoTraceBack0),
     [{"GOTRACEBACK", GoTraceBack} | build_cbauth_env_vars(Config, RPCService)].
+
+build_tls_config_env_var(Config) ->
+    [{"CBAUTH_TLS_CONFIG",
+      binary_to_list(ejson:encode(
+                       {[{minTLSVersion, ns_ssl_services_setup:ssl_minimum_protocol(Config)}]}))}].
 
 build_cbauth_env_vars(Config, RPCService) ->
     true = (RPCService =/= undefined),
@@ -639,7 +645,7 @@ fts_spec(Config) ->
                     ] ++ BindHttps,
                     [via_goport, exit_status, stderr_to_stdout,
                      {log, ?FTS_LOG_FILENAME},
-                     {env, build_go_env_vars(Config, fts)}]},
+                     {env, build_go_env_vars(Config, fts) ++ build_tls_config_env_var(Config)}]},
             [Spec]
     end.
 
