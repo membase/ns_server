@@ -1,5 +1,6 @@
 <div class="checkbox-list storage-mode">
-  <div ng-show="(mnInitial && mnInitial.storageMode === 'forestdb')">
+  <div ng-show="!mnIsEnterprise ||
+                (mnInitial && mnInitial.storageMode === 'forestdb')">
     <input
        type="radio"
        value="forestdb"
