@@ -425,8 +425,10 @@ start_link_rebalance(KeepNodes, EjectNodes,
                        ok
                end,
 
+               KVDeltaNodes = ns_cluster_membership:service_nodes(DeltaNodes,
+                                                                  kv),
                BucketConfigs = ns_bucket:get_buckets(),
-               case build_delta_recovery_buckets(KVKeep, DeltaNodes,
+               case build_delta_recovery_buckets(KVKeep, KVDeltaNodes,
                                                  BucketConfigs, DeltaRecoveryBucketNames) of
                    {ok, DeltaRecoveryBucketTuples} ->
                        proc_lib:init_ack({ok, self()}),
@@ -629,7 +631,8 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs,
           DeltaNodes, DeltaRecoveryBuckets) ->
     ok = drop_old_2i_indexes(KeepNodes),
-    ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, DeltaNodes, BucketConfigs),
+    KVDeltaNodes = ns_cluster_membership:service_nodes(DeltaNodes, kv),
+    ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, KVDeltaNodes, BucketConfigs),
     ok = maybe_clear_full_recovery_type(KeepNodes),
 
     ok = service_janitor:cleanup(),
