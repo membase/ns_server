@@ -426,6 +426,7 @@ section.error {
   border-left: .5rem solid #e07f82;
   color: #333;
 }
+
 /* list of properties in the bucket details section --------------------- */
 .cbui-table-bucketprops {
   line-height: 2.2;
@@ -1461,11 +1462,18 @@ section.dynamic_warmup {
 .service-widget.dynamic_unhealthy,
 section.dynamic_inactiveFailed,
 section.dynamic_unhealthy {
-  border-left: 8px solid #e07f82; /* red-3 */
+  border-left: 8px solid #d65558; /* red-2 */
   background-color: #fff;
+  animation: pulse_unhealthy 3s infinite;
 }
 .dynamic_selected { /* selected chart cell in statistics */
   background-color: #ecf3fa;
+}
+
+@keyframes pulse_unhealthy {
+  50% {
+    border-left-color: #f9e9ea; /* red-7 */
+  }
 }
 
 /* selecting user roles ------------------------------------------------  */
