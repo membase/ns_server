@@ -32,7 +32,8 @@
 -record(state, {child_module :: atom(),
                 child_state :: term(),
                 path :: string(),
-                name :: atom()}).
+                name :: atom(),
+                revisions :: term()}).
 
 -record(doc, {id :: term(),
               rev :: term(),
@@ -148,11 +149,25 @@ init([Name, ChildModule, InitParams, Path, Replicator, CacheSize]) ->
            child_module = ChildModule,
            child_state = ChildState}.
 
-init_after_ack(State) ->
+init_after_ack(State = #state{name = TableName}) ->
     ok = open(State),
-    State.
+    Revisions = ets:new(ok, [set, private]),
+    MatchSpec = [{#doc{id = '$1', rev = '$2', _ = '_'}, [], [{{'$1', '$2'}}]}],
+
+    Start = os:timestamp(),
+    select_from_dets_locked(TableName, MatchSpec, 100,
+                            fun (Selection) ->
+                                    ets:insert_new(Revisions, Selection)
+                            end),
+    ?log_debug("Loading ~p items, ~p words took ~pms",
+               [ets:info(Revisions, size),
+                ets:info(Revisions, memory),
+                timer:now_diff(os:timestamp(), Start) div 1000]),
+
+    State#state{revisions = Revisions}.
 
 open(#state{path = Path, name = TableName}) ->
+    ?log_debug("Opening file ~p", [Path]),
     {ok, TableName} =
         dets:open_file(TableName,
                        [{type, set},
@@ -190,8 +205,10 @@ is_deleted(#doc{deleted = Deleted}) ->
 
 save_docs(Docs, #state{name = TableName,
                        child_module = ChildModule,
-                       child_state = ChildState} = State) ->
+                       child_state = ChildState,
+                       revisions = Revisions} = State) ->
     ok = dets:insert(TableName, Docs),
+    true = ets:insert(Revisions, [{Doc#doc.id, Doc#doc.rev} || Doc <- Docs]),
     lists:foreach(fun (#doc{id = Id, deleted = true}) ->
                           _ = mru_cache:delete(TableName, Id);
                       (#doc{id = Id, deleted = false, value = Value}) ->
@@ -215,8 +232,10 @@ handle_call(suspend, {Pid, _} = From, #state{name = TableName} = State) ->
     end;
 handle_call(empty, _From, #state{name = TableName,
                                  child_module = ChildModule,
-                                 child_state = ChildState} = State) ->
+                                 child_state = ChildState,
+                                 revisions = Revisions} = State) ->
     ok = dets:delete_all_objects(TableName),
+    true = ets:delete_all_objects(Revisions),
     mru_cache:flush(TableName),
     NewChildState = ChildModule:on_empty(ChildState),
     {reply, ok, State#state{child_state = NewChildState}};
