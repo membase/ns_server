@@ -471,13 +471,11 @@ def make_curl_task(name, user, password, url,
 def make_cbstats_task(kind, memcached_pass, guts):
     port = read_guts(guts, "memcached_port")
     user = read_guts(guts, "memcached_admin")
-    def make_cmd(pwd):
-        return flatten(["cbstats", "-a", "127.0.0.1:%s" % port, kind, "-b", user, "-p", pwd])
     return AllOsTask("memcached stats %s" % kind,
-                     make_cmd(memcached_pass),
+                     flatten(["cbstats", "-a", "127.0.0.1:%s" % port, kind, "-b", user]),
                      log_file="stats.log",
                      timeout=60,
-                     command_to_print=make_cmd("*****"))
+                     addenv=[("CB_PASSWORD", memcached_pass)])
 
 def get_local_token(guts, port):
     path = read_guts(guts, "localtoken_path")
@@ -884,10 +882,10 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
 
         [AllOsTask("memcached mcstat %s" % kind,
                    flatten(["mcstat", "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
-                            "-u", read_guts(guts, "memcached_admin"),
-                            "-P", memcached_pass, kind]),
+                            "-u", read_guts(guts, "memcached_admin"), kind]),
                    log_file="stats.log",
-                   timeout=60)
+                   timeout=60,
+                   addenv=[("CB_PASSWORD", memcached_pass)])
          for kind in ["connections", "tracing"]],
 
         [AllOsTask("fts mossScope (%s)" % path,
@@ -920,11 +918,11 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
         [AllOsTask("mctimings",
                    ["mctimings",
                     "-u", read_guts(guts, "memcached_admin"),
-                    "-P", memcached_pass,
                     "-h", "127.0.0.1:%s" % read_guts(guts, "memcached_port"),
                     "-v"] + stat,
                    log_file="stats.log",
-                   timeout=60)
+                   timeout=60,
+                   addenv=[("CB_PASSWORD", memcached_pass)])
          for stat in ([], ["subdoc_execute"])],
 
         CollectFile("Users storage", read_guts(guts, "users_storage_path")),
