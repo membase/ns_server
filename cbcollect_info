@@ -118,9 +118,6 @@ class Task(object):
         self.command = command
         self.timeout = timeout
         self.__dict__.update(kwargs)
-        if not hasattr(self, 'command_to_print'):
-            self.command_to_print = self.command
-
         self._is_posix = (os.name == 'posix')
 
     def _platform_popen_flags(self):
@@ -194,7 +191,7 @@ class Task(object):
             # setting non-zero status code. It's might also
             # automatically handle things like "failed to fork due
             # to some system limit".
-            print >> fp, "Failed to execute %s: %s" % (self.command_to_print, e)
+            print >> fp, "Failed to execute %s: %s" % (self.command, e)
             return 127
         p.stdin.close()
 
@@ -232,7 +229,7 @@ class Task(object):
                 # timer is fired; that would result in a spurious timeout
                 # message
                 if timer_fired.isSet():
-                    print >> fp, "`%s` timed out after %s seconds" % (self.command_to_print, self.timeout)
+                    print >> fp, "`%s` timed out after %s seconds" % (self.command, self.timeout)
 
         return p.wait()
 
@@ -331,7 +328,7 @@ class TaskRunner(object):
     def _run(self, task):
         """Run a task with a file descriptor corresponding to its log file"""
         if task.will_run():
-            log("%s (%s) - " % (task.description, task.command_to_print), new_line=False)
+            log("%s (%s) - " % (task.description, task.command), new_line=False)
             if task.privileged and os.getuid() != 0:
                 log("skipped (needs root privs)")
                 return
@@ -341,7 +338,7 @@ class TaskRunner(object):
             filename = getattr(task, 'log_file', self.default_name)
             fp = self.get_file(filename)
             if not task.no_header:
-                self.header(fp, task.description, task.command_to_print)
+                self.header(fp, task.description, task.command)
 
             for i in xrange(task.num_samples):
                 if i > 0:
@@ -362,7 +359,7 @@ class TaskRunner(object):
             fp.flush()
 
         elif self.verbosity >= 2:
-            log('Skipping "%s" (%s): not for platform %s' % (task.description, task.command_to_print, sys.platform))
+            log('Skipping "%s" (%s): not for platform %s' % (task.description, task.command, sys.platform))
 
     def literal(self, description, value, **kwargs):
         self.run(LiteralTask(description, value, **kwargs))
@@ -438,7 +435,6 @@ class LiteralTask(AllOsTask):
     def __init__(self, description, literal, **kwargs):
         self.description = description
         self.command = ''
-        self.command_to_print = ''
         self.literal = literal
         self.__dict__.update(kwargs)
 
@@ -450,7 +446,6 @@ class CollectFile(AllOsTask):
     def __init__(self, description, file_path, **kwargs):
         self.description = description
         self.command = ''
-        self.command_to_print = ''
         self.file_path = file_path
         self.__dict__.update(kwargs)
 
