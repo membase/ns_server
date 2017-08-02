@@ -26,6 +26,7 @@
 -callback init_after_ack(term()) -> term().
 -callback get_id(term()) -> term().
 -callback find_doc(term(), term()) -> term() | false.
+-callback find_doc_rev(term(), term()) -> term() | false.
 -callback all_docs(pid()) -> term().
 -callback get_revision(term()) -> term().
 -callback set_revision(term(), term()) -> term().
@@ -201,14 +202,11 @@ should_be_written(Doc, Module, ChildState) ->
     %% this is replicated from another node in the cluster. We only accept it
     %% if it doesn't exist or the rev is higher than what we have.
     Rev = Module:get_revision(Doc),
-    case Module:find_doc(Module:get_id(Doc), ChildState) of
+    case Module:find_doc_rev(Module:get_id(Doc), ChildState) of
         false ->
             true;
-        ExistingDoc ->
-            case Module:get_revision(ExistingDoc) of
-                DiskRev when Rev > DiskRev ->
-                    true;
-                _ ->
-                    false
-            end
+        DiskRev when Rev > DiskRev ->
+            true;
+        _ ->
+            false
     end.

@@ -26,7 +26,7 @@
          select_with_update/4]).
 
 -export([init/1, init_after_ack/1, handle_call/3, handle_info/2,
-         get_id/1, get_value/1, find_doc/2, all_docs/1,
+         get_id/1, get_value/1, find_doc/2, find_doc_rev/2, all_docs/1,
          get_revision/1, set_revision/2, is_deleted/1, save_docs/2, handle_mass_update/3]).
 
 -record(state, {child_module :: atom(),
@@ -186,6 +186,14 @@ find_doc(Id, #state{name = TableName}) ->
     case dets:lookup(TableName, Id) of
         [Doc] ->
             Doc;
+        [] ->
+            false
+    end.
+
+find_doc_rev(Id, #state{revisions = Revisions}) ->
+    case ets:lookup(Revisions, Id) of
+        [{Id, Rev}] ->
+            Rev;
         [] ->
             false
     end.
