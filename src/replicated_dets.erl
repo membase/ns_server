@@ -168,13 +168,34 @@ init_after_ack(State = #state{name = TableName}) ->
 
 open(#state{path = Path, name = TableName}) ->
     ?log_debug("Opening file ~p", [Path]),
-    {ok, TableName} =
-        dets:open_file(TableName,
-                       [{type, set},
-                        {auto_save, ns_config:read_key_fast(replicated_dets_auto_save, 60000)},
-                        {keypos, #doc.id},
-                        {file, Path}]),
-    ok.
+    case do_open(Path, TableName, 3) of
+        ok ->
+            ok;
+        error ->
+            {A, B, C} = erlang:now(),
+            Backup = lists:flatten(
+                       io_lib:format(
+                         "~s.~4..0b-~6..0b-~6..0b.bak", [Path, A, B, C])),
+            ?log_error("Renaming possibly corrupted dets file ~p to ~p", [Path, Backup]),
+            ok = file:rename(Path, Backup),
+            ok = do_open(Path, TableName, 1)
+    end.
+
+do_open(_Path, _TableName, 0) ->
+    error;
+do_open(Path, TableName, Tries) ->
+    case dets:open_file(TableName,
+                        [{type, set},
+                         {auto_save, ns_config:read_key_fast(replicated_dets_auto_save, 60000)},
+                         {keypos, #doc.id},
+                         {file, Path}]) of
+        {ok, TableName} ->
+            ok;
+        Error ->
+            ?log_error("Unable to open ~p, Error: ~p", [Path, Error]),
+            timer:sleep(1000),
+            do_open(Path, TableName, Tries - 1)
+    end.
 
 get_id(#doc{id = Id}) ->
     Id.
