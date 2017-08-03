@@ -2939,7 +2939,7 @@ validate_setup_services_post(Req) ->
                         true ->
                             case ns_cluster:enforce_topology_limitation(Svcs) of
                                 ok ->
-                                    setup_services_check_quota(Svcs);
+                                    setup_services_check_quota(Svcs, Params);
                                 Error ->
                                     Error
                             end;
@@ -2951,25 +2951,45 @@ validate_setup_services_post(Req) ->
             end
     end.
 
-setup_services_check_quota(Services) ->
-    {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
-    {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
-    {ok, FTSQuota} = ns_storage_conf:get_memory_quota(fts),
+setup_services_check_quota(Services, Params) ->
+    Quotas = case proplists:get_value("setDefaultMemQuotas", Params, "false") of
+                 "false" ->
+                     {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
+                     {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
+                     {ok, FTSQuota} = ns_storage_conf:get_memory_quota(fts),
+                     [{kv, KvQuota}, {index, IndexQuota}, {fts, FTSQuota}];
+                 "true" ->
+                     do_update_with_default_quotas(ns_storage_conf:default_quotas(Services))
+             end,
 
-    Quotas = [{kv, KvQuota},
-              {index, IndexQuota},
-              {fts, FTSQuota}],
+    case Quotas of
+        {error, _Msg} = E ->
+            E;
+        _ ->
+            case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
+                ok ->
+                    {ok, Services};
+                {error, {total_quota_too_high, _, TotalQuota, MaxAllowed}} ->
+                    Msg = io_lib:format("insufficient memory to satisfy memory quota "
+                                        "for the services "
+                                        "(requested quota is ~bMB, "
+                                        "maximum allowed quota for the node is ~bMB)",
+                                        [TotalQuota, MaxAllowed]),
+                    {error, iolist_to_binary(Msg)}
+            end
+    end.
 
-    case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
+do_update_with_default_quotas(Quotas) ->
+    do_update_with_default_quotas(Quotas, 10).
+
+do_update_with_default_quotas(_, 0) ->
+    {error, <<"Could not update the config with default memory quotas">>};
+do_update_with_default_quotas(Quotas, RetriesLeft) ->
+    case ns_storage_conf:set_quotas(ns_config:get(), Quotas) of
         ok ->
-            {ok, Services};
-        {error, {total_quota_too_high, _, TotalQuota, MaxAllowed}} ->
-            Msg = io_lib:format("insufficient memory to satisfy memory quota "
-                                "for the services "
-                                "(requested quota is ~bMB, "
-                                "maximum allowed quota for the node is ~bMB)",
-                                [TotalQuota, MaxAllowed]),
-            {error, iolist_to_binary(Msg)}
+            Quotas;
+        retry_needed ->
+            do_update_with_default_quotas(Quotas, RetriesLeft - 1)
     end.
 
 handle_setup_services_post(Req) ->
