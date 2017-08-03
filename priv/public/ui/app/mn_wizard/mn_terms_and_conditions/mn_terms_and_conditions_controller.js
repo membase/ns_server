@@ -40,7 +40,7 @@
       mnClusterConfigurationService
         .postStats(vm.register, true).then(function () {
           mnServersService
-            .setupServices({services: 'kv,index,fts,n1ql'}).then(function () {
+            .setupServices({services: 'kv,index,fts,n1ql', setDefaultMemQuotas : true}).then(function () {
               var newClusterState = mnWizardService.getNewClusterState();
               mnSettingsClusterService.postIndexSettings({storageMode: vm.isEnterprise ? "plasma" : "forestdb"});
               mnSettingsClusterService
