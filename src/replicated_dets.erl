@@ -19,6 +19,7 @@
 
 -include("ns_common.hrl").
 -include("pipes.hrl").
+-include_lib("stdlib/include/ms_transform.hrl").
 
 -behaviour(replicated_storage).
 
@@ -152,7 +153,7 @@ init([Name, ChildModule, InitParams, Path, Replicator, CacheSize]) ->
 init_after_ack(State = #state{name = TableName}) ->
     ok = open(State),
     Revisions = ets:new(ok, [set, private]),
-    MatchSpec = [{#doc{id = '$1', rev = '$2', _ = '_'}, [], [{{'$1', '$2'}}]}],
+    MatchSpec = ets:fun2ms(fun (#doc{id = Id, rev = Rev}) -> {Id, Rev} end),
 
     Start = os:timestamp(),
     select_from_dets_locked(TableName, MatchSpec, 100,
