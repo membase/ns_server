@@ -107,6 +107,7 @@
       return mnBucketsDetailsService.doGetDetails(bucketDetails).then(function (bucketConf) {
         bucketConf["evictionPolicyEphemeral"] = bucketConf["evictionPolicy"];
         bucketConf.ramQuotaMB = mnBytesToMBFilter(bucketConf.quota.rawRAM);
+        bucketConf.threadsNumber = bucketConf.threadsNumber.toString();
         bucketConf.isDefault = bucketConf.name === 'default';
         bucketConf.replicaIndex = bucketConf.replicaIndex ? 1 : 0;
         bucketConf.flushEnabled = (bucketConf.controllers !== undefined && bucketConf.controllers.flush !== undefined) ? 1 : 0;
