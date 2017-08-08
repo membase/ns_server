@@ -30,6 +30,11 @@
          class="error error-form"
          ng-show="termsCtl.form.agree.$error.required">Terms and conditions need to be accepted in order to continue
       </div>
+      <div
+         class="error error-form"
+         ng-show="termsCtl.errors">
+        {{termsCtl.errors[0]}}
+      </div>
 
       <div class="row">
         <div class="formrow">
