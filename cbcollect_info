@@ -230,6 +230,7 @@ class Task(object):
                 # message
                 if timer_fired.isSet():
                     print >> fp, "`%s` timed out after %s seconds" % (self.command, self.timeout)
+                    log("[Command timed out after %s seconds] - " % (self.timeout), new_line=False)
 
         return p.wait()
 
