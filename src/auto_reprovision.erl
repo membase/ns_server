@@ -182,6 +182,15 @@ do_reprovision_bucket(Bucket, BucketConfig, UnsafeNodes, Candidates) ->
 
     NewMap = [promote_replica(Chain, Candidates) || Chain <- Map],
 
+    case [I || {I, [N|_]} <- misc:enumerate(NewMap, 0),
+               N =:= undefined orelse lists:member(N, UnsafeNodes)] of
+        [] -> ok;
+        MissingVBs ->
+            ale:info(?USER_LOGGER,
+                     "During auto-reprovision data has been lost on ~B% of vbuckets in bucket ~p.",
+                     [length(MissingVBs) * 100 div length(NewMap), Bucket])
+    end,
+
     ale:info(?USER_LOGGER,
              "Bucket ~p has been reprovisioned on following nodes: ~p. "
              "Nodes on which the data service restarted: ~p.",
