@@ -808,6 +808,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
         WindowsTask("Manifest file",
                     "type " + winquote_path(basedir()) + "\\..\\manifest.xml"),
         LinuxTask("Version file", "cat '%s/VERSION.txt'" % root),
+        LinuxTask("Variant file", "cat '%s/VARIANT.txt'" % root),
         LinuxTask("Manifest file", "cat '%s/manifest.txt'" % root),
         LinuxTask("Manifest file", "cat '%s/manifest.xml'" % root),
         LiteralTask("Couchbase config", read_guts(guts, "ns_config")),
