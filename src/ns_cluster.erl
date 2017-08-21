@@ -127,13 +127,27 @@ complete_join(NodeKVList) ->
                                       | {address_save_failed, any()}
                                       | {address_not_allowed, string()}
                                       | already_part_of_cluster
-                                      | not_renamed.
+                                      | not_renamed
+                                      | raw_ipv6_address_not_allowed.
 change_address(Address) ->
-    case misc:is_good_address(Address) of
-        ok ->
-            gen_server:call(?MODULE, {change_address, Address}, ?CHANGE_ADDRESS_TIMEOUT);
-        Error ->
-            Error
+    case is_raw_ipv6_addr(Address) of
+        true ->
+            raw_ipv6_address_not_allowed;
+        false ->
+            case misc:is_good_address(Address) of
+                ok ->
+                    gen_server:call(?MODULE, {change_address, Address}, ?CHANGE_ADDRESS_TIMEOUT);
+                Error ->
+                    Error
+            end
+    end.
+
+is_raw_ipv6_addr("[" ++ _Address) ->
+    true;
+is_raw_ipv6_addr(Address) ->
+    case inet:parse_ipv6strict_address(Address) of
+        {ok, _IP} -> true;
+        _ -> false
     end.
 
 %% @doc Returns proplist of cluster-wide counters.

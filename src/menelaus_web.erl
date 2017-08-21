@@ -3024,16 +3024,20 @@ do_parse_hostname(Hostname) ->
                             end
                     end,
 
-    {Host, StringPort} = case string:tokens(WithoutScheme, ":") of
-                             [H | [P | []]] ->
-                                 {H, P};
-                             [H | []] ->
-                                 {H, "8091"};
-                             _ ->
-                                 throw({error, [<<"The hostname is malformed.">>]})
-                         end,
-
+    {Host, StringPort} = split_host_port(WithoutScheme, "8091"),
     {Host, menelaus_util:parse_validate_port_number(StringPort)}.
+
+split_host_port("[" ++ _Rest, _DefaultPort) ->
+    throw({error, [<<"Raw IPv6 addresses are not accepted. Please use FQDN instead.">>]});
+split_host_port(HostPort, DefaultPort) ->
+    case string:tokens(HostPort, ":") of
+        [Host | [Port | []]] ->
+            {Host, Port};
+        [Host | []] ->
+            {Host, DefaultPort};
+        _ ->
+            throw({error, [<<"The hostname is malformed.">>]})
+    end.
 
 handle_add_node(Req) ->
     do_handle_add_node(Req, undefined).
@@ -3690,8 +3694,11 @@ handle_node_rename(Req) ->
                         {error, iolist_to_binary(Msg), 400};
                     already_part_of_cluster ->
                         Msg = <<"Renaming is disallowed for nodes that are already part of a cluster">>,
+                        {error, Msg, 400};
+                    raw_ipv6_address_not_allowed ->
+                        Msg = <<"Raw IPv6 addresses are not accepted. Please use FQDN instead.">>,
                         {error, Msg, 400}
-            end
+                end
         end,
 
     case Reply of
