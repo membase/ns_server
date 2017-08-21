@@ -1507,7 +1507,7 @@ do_couchbase_index_stats_descriptions(BucketId, IndexNodes) ->
                            {title, <<"data size">>},
                            {name, per_index_stat(Id, <<"data_size">>)},
                            {desc, <<"Actual data size consumed by the index">>}]},
-                 {struct, [{title, <<"total items remaining">>},
+                 {struct, [{title, <<"total mutations remaining">>},
                            {name, per_index_stat(Id, <<"num_docs_pending+queued">>)},
                            {desc, <<"Number of documents pending to be indexed">>}]},
                  {struct, [{title, <<"drain rate items/sec">>},
