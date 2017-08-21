@@ -221,12 +221,12 @@ build_auth_info(#state{cert_version = CertVersion}) ->
                         end, [], ns_node_disco:nodes_wanted(Config)),
 
     Port = misc:node_rest_port(Config, node()),
-    AuthCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth", [Port]),
-    PermissionCheckURL = io_lib:format("http://127.0.0.1:~w/_cbauth/checkPermission", [Port]),
+    AuthCheckURL = misc:local_url(Port, "/_cbauth", []),
+    PermissionCheckURL = misc:local_url(Port, "/_cbauth/checkPermission", []),
 
     [{nodes, Nodes},
-     {authCheckURL, iolist_to_binary(AuthCheckURL)},
-     {permissionCheckURL, iolist_to_binary(PermissionCheckURL)},
+     {authCheckURL, list_to_binary(AuthCheckURL)},
+     {permissionCheckURL, list_to_binary(PermissionCheckURL)},
      {permissionsVersion, menelaus_web_rbac:check_permissions_url_version(Config)},
      {authVersion, auth_version(Config)},
      {certVersion, CertVersion}].

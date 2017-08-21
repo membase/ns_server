@@ -56,7 +56,7 @@ send(MochiReq, Method, Path, Headers, Body) ->
     send_with_timeout(Method, Path, Headers, Body, Timeout).
 
 send_with_timeout(Method, Path, Headers, Body, Timeout) ->
-    URL = "http://127.0.0.1:" ++ integer_to_list(get_rest_port()) ++ Path,
+    URL = misc:local_url(get_rest_port(), Path, []),
 
     {ok, {{Code, _}, RespHeaders, RespBody}} =
         rest_utils:request(goxdcr, URL, Method, Headers, Body, Timeout),

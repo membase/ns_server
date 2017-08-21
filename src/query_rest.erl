@@ -57,7 +57,7 @@ do_get_stats() ->
 
 send(Method, Path, Timeout) ->
     Port =  get_query_port(ns_config:latest(), node()),
-    URL = "http://127.0.0.1:" ++ integer_to_list(Port) ++ Path,
+    URL = misc:local_url(Port, Path, []),
     User = ns_config_auth:get_user(special),
     Pwd = ns_config_auth:get_password(special),
     Headers = menelaus_rest:add_basic_auth([], User, Pwd),

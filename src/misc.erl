@@ -1402,6 +1402,28 @@ inaddr_any(Options) ->
             "0.0.0.0"
     end.
 
+-spec local_url(integer(),
+                [] | [no_scheme |
+                      {user_info, {string(), string()}}]) -> string().
+local_url(Port, Options) ->
+    local_url(Port, "", Options).
+
+-spec local_url(integer(), string(),
+                [] | [no_scheme |
+                      {user_info, {string(), string()}}]) -> string().
+local_url(Port, [H | _] = Path, Options) when H =/= $/ ->
+    local_url(Port, "/" ++ Path, Options);
+local_url(Port, Path, Options) ->
+    Scheme = case lists:member(no_scheme, Options) of
+                 true -> "";
+                 false -> "http://"
+             end,
+    User = case lists:keysearch(user_info, 1, Options) of
+               false -> "";
+               {value, {_, {U, P}}} -> U ++ ":" ++ P ++ "@"
+           end,
+    Scheme ++ User ++ localhost([url]) ++ ":" ++ integer_to_list(Port) ++ Path.
+
 -spec is_good_address(string()) -> ok | {cannot_resolve, inet:posix()}
                                        | {cannot_listen, inet:posix()}
                                        | {address_not_allowed, string()}.

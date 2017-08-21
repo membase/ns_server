@@ -226,12 +226,8 @@ do_per_bucket_moxi_specs(Config) ->
                   undefined ->
                       Acc;
                   Port ->
-                      LittleZ =
-                          lists:flatten(
-                            io_lib:format(
-                              "url=http://127.0.0.1:~B/pools/default/"
-                              "bucketsStreaming/~s",
-                              [RestPort, BucketName])),
+                      Path = "/pools/default/bucketsStreaming/" ++ BucketName,
+                      LittleZ = misc:local_url(RestPort, Path, []),
                       BigZ =
                           lists:flatten(
                             io_lib:format(
@@ -290,8 +286,8 @@ query_node_spec(Config) ->
         _ ->
             RestPort = misc:node_rest_port(Config, node()),
             Command = path_config:component_path(bin, "cbq-engine"),
-            DataStoreArg = "--datastore=http://127.0.0.1:" ++ integer_to_list(RestPort),
-            CnfgStoreArg = "--configstore=http://127.0.0.1:" ++ integer_to_list(RestPort),
+            DataStoreArg = "--datastore=" ++ misc:local_url(RestPort, []),
+            CnfgStoreArg = "--configstore=" ++ misc:local_url(RestPort, []),
             HttpArg = "--http=:" ++ integer_to_list(query_rest:get_query_port(Config, node())),
             EntArg = "--enterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
 
@@ -340,10 +336,10 @@ kv_node_projector_spec(Config) ->
             LocalMemcachedPort = ns_config:search_node_prop(node(), Config, memcached, port),
             MinidumpDir = path_config:minidump_dir(),
 
-            Args = ["-kvaddrs=127.0.0.1:" ++ integer_to_list(LocalMemcachedPort),
+            Args = ["-kvaddrs=" ++ misc:local_url(LocalMemcachedPort, [no_scheme]),
                     "-adminport=:" ++ integer_to_list(ProjectorPort),
                     "-diagDir=" ++ MinidumpDir,
-                    "127.0.0.1:" ++ integer_to_list(RestPort)],
+                    misc:local_url(RestPort, [no_scheme])],
 
             Spec = {'projector', ProjectorCmd, Args,
                     [via_goport, exit_status, stderr_to_stdout,
@@ -443,7 +439,7 @@ index_node_spec(Config) ->
 
             Spec = {'indexer', IndexerCmd,
                     ["-vbuckets=" ++ integer_to_list(NumVBuckets),
-                     "-cluster=127.0.0.1:" ++ integer_to_list(RestPort),
+                     "-cluster=" ++ misc:local_url(RestPort, [no_scheme]),
                      "-adminPort=" ++ integer_to_list(AdminPort),
                      "-scanPort=" ++ integer_to_list(ScanPort),
                      "-httpPort=" ++ integer_to_list(HttpPort),
@@ -476,11 +472,7 @@ build_cbauth_env_vars(Config, RPCService) ->
     RestPort = misc:node_rest_port(Config, node()),
     User = mochiweb_util:quote_plus(ns_config_auth:get_user(special)),
     Password = mochiweb_util:quote_plus(ns_config_auth:get_password(special)),
-
-    URL0 = io_lib:format("http://~s:~s@127.0.0.1:~b/~s",
-                         [User, Password, RestPort, RPCService]),
-    URL = lists:flatten(URL0),
-
+    URL = misc:local_url(RestPort, atom_to_list(RPCService), [{user_info, {User, Password}}]),
     [{"CBAUTH_REVRPC_URL", URL}].
 
 saslauthd_port_spec(Config) ->
@@ -548,8 +540,8 @@ do_moxi_spec() ->
              "downstream_conn_queue_timeout=200,"
              "downstream_timeout=5000,wait_queue_timeout=200",
              [port]},
-      "-z", {"url=http://127.0.0.1:~B/pools/default/saslBucketsStreaming?moxi=1",
-             [{misc, this_node_rest_port, []}]},
+      "-z", "url=" ++ misc:local_url(misc:this_node_rest_port(),
+                                     "/pools/default/saslBucketsStreaming?moxi=1", []),
       "-p", "0",
       "-Y", "y",
       "-O", "stderr",
@@ -605,7 +597,9 @@ fts_spec(Config) ->
             FTSIdxDir = filename:join(IdxDir, "@fts"),
             ok = misc:ensure_writable_dir(FTSIdxDir),
             {_, Host} = misc:node_name_host(node()),
-            BindHttp = io_lib:format("~s:~b,0.0.0.0:~b", [Host, FtRestPort, FtRestPort]),
+            BindHttp = io_lib:format("~s:~b,~s:~b", [Host, FtRestPort,
+                                                     misc:inaddr_any([url]),
+                                                     FtRestPort]),
             BindHttps = case ns_config:search(Config, {node, node(), fts_ssl_port}, undefined) of
                             undefined ->
                                 [];
@@ -637,7 +631,7 @@ fts_spec(Config) ->
                     [
                      "-cfg=metakv",
                      "-uuid=" ++ NodeUUID,
-                     "-server=http://127.0.0.1:" ++ integer_to_list(NsRestPort),
+                     "-server=" ++ misc:local_url(NsRestPort, []),
                      "-bindHttp=" ++ BindHttp,
                      "-dataDir=" ++ FTSIdxDir,
                      "-tags=feed,janitor,pindex,queryer,cbauth_service",
