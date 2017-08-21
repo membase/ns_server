@@ -1166,8 +1166,9 @@ connect(Tries) ->
     User = ns_config:search_node_prop(Config, memcached, admin_user),
     Pass = ns_config:search_node_prop(Config, memcached, admin_pass),
     try
-        {ok, S} = gen_tcp:connect("127.0.0.1", Port,
-                                  [binary,
+        {ok, S} = gen_tcp:connect(misc:localhost(), Port,
+                                  [misc:get_net_family(),
+                                   binary,
                                    {packet, 0},
                                    {active, false},
                                    {recbuf, ?RECBUF},

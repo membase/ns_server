@@ -1414,11 +1414,12 @@ is_good_address(Address) ->
     end.
 
 is_good_address_when_allowed(Address) ->
-    case inet:getaddr(Address, inet) of
+    NetFamily = get_net_family(),
+    case inet:getaddr(Address, NetFamily) of
         {error, Errno} ->
             {cannot_resolve, Errno};
         {ok, IpAddr} ->
-            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
+            case gen_udp:open(0, [NetFamily, {ip, IpAddr}]) of
                 {error, Errno} ->
                     {cannot_listen, Errno};
                 {ok, Socket} ->

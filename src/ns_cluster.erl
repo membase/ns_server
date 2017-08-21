@@ -393,14 +393,21 @@ alert_key(_) -> all.
 
 check_host_connectivity(OtherHost) ->
     %% connect to epmd at other side
-    ConnRV = (catch gen_tcp:connect(OtherHost, 4369, [binary, {packet, 0}, {active, false}], 5000)),
+    ConnRV = (catch gen_tcp:connect(OtherHost, 4369, [misc:get_net_family(),
+                                                      binary,
+                                                      {packet, 0},
+                                                      {active, false}], 5000)),
     case ConnRV of
         {ok, Socket} ->
             %% and determine our ip address
             {ok, {IpAddr, _}} = inet:sockname(Socket),
             inet:close(Socket),
+            Separator = case misc:get_env_default(ns_server, ipv6, false) of
+                            true -> ":";
+                            false -> "."
+                        end,
             RV = string:join(lists:map(fun erlang:integer_to_list/1,
-                                       tuple_to_list(IpAddr)), "."),
+                                       tuple_to_list(IpAddr)), Separator),
             {ok, RV};
         _ ->
             Reason =
@@ -627,7 +634,8 @@ verify_otp_connectivity(OtpNode) ->
              {connect_node, OtpNode, Port}};
         true ->
             case gen_tcp:connect(Host, Port,
-                                 [binary, {packet, 0}, {active, false}],
+                                 [misc:get_net_family(), binary,
+                                  {packet, 0}, {active, false}],
                                  5000) of
                 {ok, Socket} ->
                     inet:close(Socket),

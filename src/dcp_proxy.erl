@@ -221,7 +221,8 @@ connect(Type, ConnName, Node, Bucket, XAttr) ->
 
     {Host, Port} = ns_memcached:host_port(Node),
     {ok, Sock} = gen_tcp:connect(Host, Port,
-                                 [binary, {packet, raw}, {active, false},
+                                 [misc:get_net_family(), binary,
+                                  {packet, raw}, {active, false},
                                   {nodelay, true}, {delay_send, true},
                                   {keepalive, true},
                                   {recbuf, ?RECBUF},

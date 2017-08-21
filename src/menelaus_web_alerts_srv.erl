@@ -495,12 +495,12 @@ check_global_stat_increased(Stats, StatName, Opaque) ->
 %% @doc check that I can listen on the current host
 -spec can_listen(string()) -> true | {false, inet:posix()}.
 can_listen(Host) ->
-    case inet:getaddr(Host, inet) of
+    case inet:getaddr(Host, misc:get_net_family()) of
         {error, Err} ->
             ?log_error("Cannot listen due to ~p from inet:getaddr~n", [Err]),
             {false, Err};
         {ok, IpAddr} ->
-            case gen_udp:open(0, [inet, {ip, IpAddr}]) of
+            case gen_udp:open(0, [misc:get_net_family(), {ip, IpAddr}]) of
                 {error, ListErr} ->
                     ?log_error("gen_udp:open(~p) failed due to ~p", [IpAddr, ListErr]),
                     {false, ListErr};
