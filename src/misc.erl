@@ -1348,6 +1348,60 @@ try_with_maybe_ignorant_after(TryBody, AfterBody) ->
 letrec(Args, F) ->
     erlang:apply(F, [F | Args]).
 
+-spec get_net_family() -> inet:address_family().
+get_net_family() ->
+    case get_env_default(ns_server, ipv6, false) of
+        true ->
+            inet6;
+        false ->
+            inet
+    end.
+
+-spec get_proto_dist_type() -> string().
+get_proto_dist_type() ->
+    case get_env_default(ns_server, ipv6, false) of
+        true ->
+            "inet6_tcp";
+        false ->
+            "inet_tcp"
+    end.
+
+-spec localhost() -> string().
+localhost() ->
+    localhost([]).
+
+-spec localhost([] | [url]) -> string().
+localhost(Options) ->
+    case get_env_default(ns_server, ipv6, false) of
+        true ->
+            case Options of
+                [] ->
+                    "::1";
+                [url] ->
+                    "[::1]"
+            end;
+        false ->
+            "127.0.0.1"
+    end.
+
+-spec inaddr_any() -> string().
+inaddr_any() ->
+    inaddr_any([]).
+
+-spec inaddr_any([] | [url]) -> string().
+inaddr_any(Options) ->
+    case get_env_default(ns_server, ipv6, false) of
+        true ->
+            case Options of
+                [] ->
+                    "::";
+                [url] ->
+                    "[::]"
+            end;
+        false ->
+            "0.0.0.0"
+    end.
+
 -spec is_good_address(string()) -> ok | {cannot_resolve, inet:posix()}
                                        | {cannot_listen, inet:posix()}
                                        | {address_not_allowed, string()}.
