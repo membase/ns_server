@@ -89,6 +89,9 @@ ebin_path = None
 cluster_extra_args = None
 cluster_args_prefix = None
 
+def is_ipv6_setup():
+    return os.getenv("IPV6", "false") == "true"
+
 def prepare_start_cluster(extra_args, args_prefix):
     global cluster_args_prefix
     global cluster_extra_args
@@ -122,12 +125,14 @@ def erlang_args_for_node(i):
     babysittercookiefile = os.path.join(datadir, "couchbase-server.babysitter.cookie")
 
     args += [
-        "-name", "babysitter_of_n_{0}@127.0.0.1".format(i),
+        "-name", "babysitter_of_n_{0}@::1".format(i) if ipv6 else "babysitter_of_n_{0}@127.0.0.1".format(i),
+        "-proto_dist", "inet6_tcp" if ipv6 else "inet_tcp",
         "-hidden",
         "-kernel", "global_enable_tracing", "true",
         "-ns_babysitter", "cookiefile", quote_string_for_erl(babysittercookiefile),
         "-ns_babysitter", "nodefile", quote_string_for_erl(babysitternodefile),
         "-ns_server", "config_path", '"etc/static_config.in"',
+        "-ns_server", "ipv6", "true" if ipv6 else "false",
         "error_logger_mf_dir", quote_string_for_erl(logdir),
         "path_config_etcdir", '"priv"',
         "path_config_bindir", quote_string_for_erl(PREFIX+"/bin"),
@@ -255,6 +260,9 @@ def main():
         usage()
         sys.exit(2)
 
+    global ipv6
+    ipv6 = is_ipv6_setup()
+
     dont_rename = False
     dont_start = False
     static_cookie = False
@@ -330,7 +338,7 @@ def main():
 
     extra_args = []
     if not dont_rename:
-        primary_addr = find_primary_addr()
+        primary_addr = None if ipv6 else find_primary_addr()
         if primary_addr == None:
             print("was unable to detect 'internet' address of this machine."
                   + " node rename will be disabled")
