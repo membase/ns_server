@@ -108,6 +108,7 @@ create_ns_couchdb_spec() ->
          "-sasl", "sasl_error_logger", "false",
          "-nouser",
          "-hidden",
+         "-proto_dist", misc:get_proto_dist_type(),
          "-run", "child_erlang", "child_start", "ns_couchdb"],
 
     ns_ports_setup:create_erl_node_spec(

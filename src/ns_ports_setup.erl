@@ -163,6 +163,7 @@ create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
                   "-kernel", "error_logger", "false",
                   "-sasl", "sasl_error_logger", "false",
                   "-nouser",
+                  "-proto_dist", misc:get_proto_dist_type(),
                   "-run", "child_erlang", "child_start", "ns_ssl_proxy"],
 
     create_erl_node_spec(xdcr_proxy, Args, "NS_SSL_PROXY_ENV_ARGS", ErlangArgs).
