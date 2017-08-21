@@ -585,6 +585,8 @@ ensure_local(Req) ->
     case Req:get(peer) of
         "127.0.0.1" ->
             ok;
+        "::1" ->
+            ok;
         _ ->
             erlang:throw({web_exception, 400, <<"API is accessible from localhost only">>, []})
     end.

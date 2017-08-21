@@ -159,7 +159,7 @@ call_compute_node_base_url(Node, User, Password) ->
                                      [User, $:, Password, $@]
                              end,
                       case misc:node_name_host(RealNode) of
-                          {_, "127.0.0.1" = H} ->
+                          {_, H} when H =:= "127.0.0.1"; H =:= "::1" ->
                               U = iolist_to_binary([Schema, Auth, H, $:, integer_to_list(Port)]),
                               ets:insert(vbucket_map_mirror, {{Node, User, Password}, U, Port}),
                               U;

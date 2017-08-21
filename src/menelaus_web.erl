@@ -127,7 +127,7 @@ restart() ->
 
 webconfig(Config) ->
     Ip = case os:getenv("MOCHIWEB_IP") of
-             false -> "0.0.0.0";
+             false -> misc:inaddr_any();
              Any -> Any
          end,
     Port = case os:getenv("MOCHIWEB_PORT") of
@@ -1229,7 +1229,7 @@ handle_engage_cluster2(Req) ->
             %% 127.0.0.1 and thus join attempt in CBSE-385 would be
             %% prevented at completeJoin step which would be sent to
             %% 127.0.0.1 (joiner) and bounced.
-            {struct, Result} = build_full_node_info(node(), "127.0.0.1"),
+            {struct, Result} = build_full_node_info(node(), misc:localhost()),
             {_, _} = CompatTuple = lists:keyfind(<<"clusterCompatibility">>, 1, NodeKVList),
             ThreeXCompat = cluster_compat_mode:effective_cluster_compat_version_for(
                              cluster_compat_mode:supported_compat_version()),
@@ -1597,7 +1597,7 @@ build_auto_compaction_allowed_time_period(AllowedTimePeriod) ->
 
 
 build_nodes_info() ->
-    F = build_nodes_info_fun(true, normal, unstable, "127.0.0.1"),
+    F = build_nodes_info_fun(true, normal, unstable, misc:localhost()),
     [F(N, undefined) || N <- ns_node_disco:nodes_wanted()].
 
 %% builds health/warmup status of given node (w.r.t. given Bucket if
@@ -1729,6 +1729,7 @@ build_extra_node_info(Config, Node, InfoNode, _BucketsAll, Append) ->
 build_node_hostname(Config, Node, LocalAddr) ->
     Host = case misc:node_name_host(Node) of
                {_, "127.0.0.1"} -> LocalAddr;
+               {_, "::1"} -> LocalAddr;
                {_Name, H} -> H
            end,
     Host ++ ":" ++ integer_to_list(misc:node_rest_port(Config, Node)).

@@ -191,6 +191,7 @@ build_services(Node, Config, EnabledServices) ->
 maybe_build_ext_hostname(Node) ->
     case misc:node_name_host(Node) of
         {_, "127.0.0.1"} -> [];
+        {_, "::1"} -> [];
         {_, H} -> [{hostname, list_to_binary(H)}]
     end.
 

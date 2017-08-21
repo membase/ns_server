@@ -549,6 +549,7 @@ json_map_with_full_config(LocalAddr, BucketConfig, Config) ->
                                                           memcached, port),
                         Host = case misc:node_name_host(ENode) of
                                    {_Name, "127.0.0.1"} -> LocalAddr;
+                                   {_Name, "::1"} -> LocalAddr;
                                    {_Name, H} -> H
                                end,
                         list_to_binary(Host ++ ":" ++ integer_to_list(Port))

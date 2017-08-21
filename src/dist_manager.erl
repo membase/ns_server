@@ -161,7 +161,7 @@ init([]) ->
         case read_address_config() of
             undefined ->
                 ?log_info("ip config not found. Looks like we're brand new node"),
-                {"127.0.0.1", false};
+                {misc:localhost(), false};
             read_error ->
                 ?log_error("Could not read ip config. "
                            "Will refuse to start for safety reasons."),
@@ -360,8 +360,9 @@ rename_node_in_config(Old, New) ->
 handle_call({adjust_my_address, _, _, _}, _From,
             #state{self_started = false} = State) ->
     {reply, not_self_started, State};
-handle_call({adjust_my_address, "127.0.0.1", true = _UserSupplied, OnRename}, From, State) ->
-    handle_call({adjust_my_address, "127.0.0.1", false, OnRename}, From, State);
+handle_call({adjust_my_address, MyIP, true, OnRename}, From, State) when MyIP =:= "127.0.0.1";
+                                                                         MyIP =:= "::1" ->
+    handle_call({adjust_my_address, MyIP, false, OnRename}, From, State);
 handle_call({adjust_my_address, _MyIP, false = _UserSupplied, _}, _From,
             #state{user_supplied = true} = State) ->
     {reply, nothing, State};
