@@ -572,11 +572,14 @@ def make_os_tasks():
         LinuxTask("Distro version", "cat /etc/SuSE-release"),
         LinuxTask("Distro version", "cat /etc/issue"),
         LinuxTask("Installed software", "rpm -qa"),
+        LinuxTask("Hot fix list", "rpm -V couchbase-server"),
         # NOTE: AFAIK columns _was_ necessary, but it doesn't appear to be
         # required anymore. I.e. dpkg -l correctly detects stdout as not a
         # tty and stops playing smart on formatting. Lets keep it for few
         # years and then drop, however.
         LinuxTask("Installed software", "COLUMNS=300 dpkg -l"),
+        # NOTE: -V is supported only from dpkg v1.17.2 onwards.
+        LinuxTask("Hot fix list", "COLUMNS=300 dpkg -V couchbase-server"),
         LinuxTask("Extended iostat", "iostat -x -p ALL 1 10 || iostat -x 1 10"),
         LinuxTask("Core dump settings", "find /proc/sys/kernel -type f -name '*core*' -print -exec cat '{}' ';'"),
         UnixTask("sysctl settings", "sysctl -a"),
