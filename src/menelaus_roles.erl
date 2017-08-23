@@ -224,7 +224,7 @@ roles_spock() ->
      {data_backup, [bucket_name],
       [{name, <<"Data Backup">>},
        {desc, <<"Can backup and restore bucket data">>}],
-      [{[{bucket, bucket_name}, data], [read, write]},
+      [{[{bucket, bucket_name}, data], all},
        {[{bucket, bucket_name}, views], [read, write]},
        {[{bucket, bucket_name}, fts], [read, write, manage]},
        {[{bucket, bucket_name}, stats], [read]},
