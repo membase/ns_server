@@ -41,7 +41,9 @@
          %% rpc-ed to grab babysitter and couchdb processes
          grab_process_infos/0,
          %% rpc-ed to grab couchdb ets_tables
-         grab_all_ets_tables/0]).
+         grab_all_ets_tables/0,
+         %% rpc-ed to release big binary refc'd by rpc server
+         garbage_collect_rpc/0]).
 
 %% Read the manifest.xml file
 manifest() ->
@@ -406,10 +408,14 @@ handle_diag(Req) ->
     end,
     trace_memory("Finished handling diag.").
 
+garbage_collect_rpc() ->
+    garbage_collect(whereis(rex)).
 
 grab_per_node_diag(Nodes) ->
     {Results0, BadNodes} = rpc:multicall(Nodes,
                                          ?MODULE, do_diag_per_node_binary, [], 45000),
+    rpc:eval_everywhere(Nodes, ?MODULE, garbage_collect_rpc, []),
+
     Results1 = lists:zip(lists:subtract(Nodes, BadNodes), Results0),
     [{N, diag_failed} || N <- BadNodes] ++ Results1.
 
