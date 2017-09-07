@@ -412,12 +412,29 @@ garbage_collect_rpc() ->
     garbage_collect(whereis(rex)).
 
 grab_per_node_diag(Nodes) ->
-    {Results0, BadNodes} = rpc:multicall(Nodes,
-                                         ?MODULE, do_diag_per_node_binary, [], 45000),
-    rpc:eval_everywhere(Nodes, ?MODULE, garbage_collect_rpc, []),
+    Remotes = lists:delete(node(), Nodes),
+    false = Nodes =:= Remotes,
+    grab_per_node_diag(Remotes, 45000).
 
-    Results1 = lists:zip(lists:subtract(Nodes, BadNodes), Results0),
-    [{N, diag_failed} || N <- BadNodes] ++ Results1.
+grab_per_node_diag(Remotes, Timeout) ->
+    GrabDiag =
+        fun (self) ->
+                async:run_with_timeout(fun do_diag_per_node_binary/0, Timeout);
+            (remotes) ->
+                RV = rpc:multicall(Remotes, ?MODULE, do_diag_per_node_binary, [], Timeout),
+                rpc:eval_everywhere(Remotes, ?MODULE, garbage_collect_rpc, []),
+                RV
+        end,
+
+    {Results, BadNodes} =
+        case async:map(GrabDiag, [self, remotes]) of
+            [{ok, R}, {Res, BN}] ->
+                {[R | Res], BN};
+            [{error, timeout}, {Res, BN}] ->
+                {Res, [node() | BN]}
+        end,
+    ResultPairs = lists:zip(lists:subtract([node() | Remotes], BadNodes), Results),
+    [{N, diag_failed} || N <- BadNodes] ++ ResultPairs.
 
 handle_just_diag(Req, Extra) ->
     Resp = menelaus_util:reply_ok(Req, "text/plain; charset=utf-8", chunked, Extra),
