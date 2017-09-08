@@ -645,6 +645,7 @@ write_ets_tables(Resp, Node, Key, PerNodeDiag) ->
                     Other ->
                         [{'_', [Other]}]
                 end,
+    erlang:garbage_collect(),
 
     lists:foreach(
       fun ({{Table, Info}, Values}) ->
