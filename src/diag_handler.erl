@@ -203,13 +203,16 @@ task_status_all() ->
     local_tasks:all() ++ ns_couchdb_api:get_tasks().
 
 do_diag_per_node_binary() ->
+    do_diag_per_node_binary(remote).
+
+do_diag_per_node_binary(Remoteness) ->
     work_queue:submit_sync_work(
       diag_handler_worker,
       fun () ->
-              (catch collect_diag_per_node_binary(40000))
+              (catch collect_diag_per_node_binary(Remoteness, 40000))
       end).
 
-collect_diag_per_node_binary(Timeout) ->
+collect_diag_per_node_binary(Remoteness, Timeout) ->
     ReplyRef = make_ref(),
     Parent = self(),
     {ChildPid, ChildRef} =
@@ -233,7 +236,7 @@ collect_diag_per_node_binary(Timeout) ->
                     end),
 
                   try
-                      collect_diag_per_node_binary_body(Reply)
+                      collect_diag_per_node_binary_body(Remoteness, Reply)
                   catch
                       T:E ->
                           Reply(partial_results_reason,
@@ -278,7 +281,7 @@ collect_diag_per_node_binary_loop(ReplyRef, ChildRef, Results) ->
             Results
     end.
 
-collect_diag_per_node_binary_body(Reply) ->
+collect_diag_per_node_binary_body(Remoteness, Reply) ->
     ?log_debug("Start collecting diagnostic data"),
     ActiveBuckets = ns_memcached:active_buckets(),
     PersistentBuckets = [B || B <- ActiveBuckets, ns_bucket:is_persistent(B)],
@@ -298,7 +301,7 @@ collect_diag_per_node_binary_body(Reply) ->
     Reply(replication_docs, (catch xdc_rdoc_api:find_all_replication_docs(5000))),
     Reply(design_docs, [{Bucket, (catch capi_utils:full_live_ddocs(Bucket, 2000))} ||
                            Bucket <- PersistentBuckets]),
-    Reply(ets_tables, (catch grab_all_ets_tables())),
+    Reply(ets_tables, (catch grab_all_ets_tables(Remoteness))),
     Reply(couchdb_ets_tables, (catch grab_couchdb_ets_tables())),
     Reply(internal_settings, (catch menelaus_web_settings:build_kvs(internal))),
     Reply(logging, (catch ale:capture_logging_diagnostics())),
@@ -365,16 +368,21 @@ sanitize_remote_clusters_info(Content) ->
       end, Content).
 
 grab_all_ets_tables() ->
-    lists:flatmap(
-      fun (T) ->
-              InfoAndContent =
-                  try
-                      {ets:info(T), ets:tab2list(T)}
-                  catch
-                      _:_ -> failed
-                  end,
-              prepare_ets_table(T, InfoAndContent)
-      end, ets:all()).
+    grab_all_ets_tables(remote).
+
+grab_all_ets_tables(local) ->
+    grab_later;
+grab_all_ets_tables(remote) ->
+    lists:flatmap(fun grab_ets_table/1, ets:all()).
+
+grab_ets_table(T) ->
+    InfoAndContent =
+        try
+            {ets:info(T), ets:tab2list(T)}
+        catch
+            _:_ -> failed
+        end,
+    prepare_ets_table(T, InfoAndContent).
 
 diag_format_timestamp(EpochMilliseconds) ->
     SecondsRaw = trunc(EpochMilliseconds/1000),
@@ -419,7 +427,7 @@ grab_per_node_diag(Nodes) ->
 grab_per_node_diag(Remotes, Timeout) ->
     GrabDiag =
         fun (self) ->
-                async:run_with_timeout(fun do_diag_per_node_binary/0, Timeout);
+                async:run_with_timeout(fun () -> do_diag_per_node_binary(local) end, Timeout);
             (remotes) ->
                 RV = rpc:multicall(Remotes, ?MODULE, do_diag_per_node_binary, [], Timeout),
                 rpc:eval_everywhere(Remotes, ?MODULE, garbage_collect_rpc, []),
@@ -599,6 +607,13 @@ print_ets_table(Resp, Node, Key, Table, Info, Values) ->
               do_print_ets_table(Resp, Node, Key, Table, Info, Values)
       end).
 
+do_print_ets_table(Resp, Node, Key, Table, [], grab_later) ->
+    case grab_ets_table(Table) of
+        [] ->
+            ok;
+        [{{Table, Info}, Values}] ->
+            do_print_ets_table(Resp, Node, Key, Table, Info, Values)
+    end;
 do_print_ets_table(Resp, Node, Key, Table, Info, Values) ->
     write_chunk_format(Resp, "per_node_~p(~p, ~p) =~n",
                        [Key, Node, Table]),
@@ -622,13 +637,13 @@ do_print_ets_table(Resp, Node, Key, Table, Info, Values) ->
 
 write_ets_tables(Resp, Node, Key, PerNodeDiag) ->
     trace_memory("Starting pretty printing ets tables for ~p", [{Node, Key}]),
-    EtsTables0 = proplists:get_value(Key, PerNodeDiag, []),
-
-    EtsTables = case is_list(EtsTables0) of
-                    true ->
+    EtsTables = case proplists:get_value(Key, PerNodeDiag, []) of
+                    grab_later ->
+                        [{T, grab_later} || T <- ets:all()];
+                    EtsTables0 when is_list(EtsTables0) ->
                         EtsTables0;
-                    false ->
-                        [{'_', [EtsTables0]}]
+                    Other ->
+                        [{'_', [Other]}]
                 end,
 
     lists:foreach(
