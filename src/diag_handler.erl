@@ -391,6 +391,7 @@ diag_format_log_entry(Type, Code, Module, Node, TStamp, ShortText, Text) ->
                   [FormattedTStamp, Module, Code, Type, ShortText, Node, Text]).
 
 handle_diag(Req) ->
+    trace_memory("Starting to handle diag."),
     Params = Req:parse_qs(),
     MaybeContDisp = case proplists:get_value("mode", Params) of
                         "view" -> [];
@@ -402,7 +403,9 @@ handle_diag(Req) ->
         _ ->
             Resp = handle_just_diag(Req, MaybeContDisp),
             Resp:write_chunk(<<>>)
-    end.
+    end,
+    trace_memory("Finished handling diag.").
+
 
 grab_per_node_diag(Nodes) ->
     {Results0, BadNodes} = rpc:multicall(Nodes,
@@ -461,6 +464,7 @@ handle_per_node_just_diag(_Resp, []) ->
 handle_per_node_just_diag(Resp, [{Node, DiagBinary} | Results]) ->
     erlang:garbage_collect(),
 
+    trace_memory("Processing diag info for node ~p", [Node]),
     Diag = case is_binary(DiagBinary) of
                true ->
                    try
@@ -474,6 +478,7 @@ handle_per_node_just_diag(Resp, [{Node, DiagBinary} | Results]) ->
                false ->
                    DiagBinary
            end,
+    trace_memory("Binary is unpacked for node ~p", [Node]),
     do_handle_per_node_just_diag(Resp, Node, Diag),
     handle_per_node_just_diag(Resp, Results).
 
@@ -509,6 +514,7 @@ write_processes(Resp, Node, Key, Processes) ->
 
 do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
     erlang:garbage_collect(),
+    trace_memory("Starting pretty printing processes for ~p", [Node]),
 
     Processes = proplists:get_value(processes, PerNodeDiag),
 
@@ -524,9 +530,11 @@ do_handle_per_node_processes(Resp, Node, PerNodeDiag) ->
     write_processes(Resp, Node, babysitter_processes, BabysitterProcesses),
     write_processes(Resp, Node, couchdb_processes, CouchdbProcesses),
 
+    trace_memory("Finished pretty printing processes for ~p", [Node]),
     do_handle_per_node_stats(Resp, Node, DiagNoProcesses).
 
 do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
+    trace_memory("Starting pretty printing stats for ~p", [Node]),
     %% pre 3.0 versions return stats as part of per node diagnostics; since
     %% number of samples may be quite substantial to cause memory issues while
     %% pretty-printing all of them in a bulk, to play safe we have this code
@@ -558,9 +566,11 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
       end),
 
     DiagNoStats = lists:keydelete(stats, 1, PerNodeDiag),
+    trace_memory("Finished pretty printing stats for ~p", [Node]),
     do_handle_per_node_ets_tables(Resp, Node, DiagNoStats).
 
 print_ets_table(Resp, Node, Key, Table, Info, Values) ->
+    trace_memory("Printing ets table ~p for node ~p", [Table, Node]),
     write_chunk_format(Resp, "per_node_~p(~p, ~p) =~n",
                        [Key, Node, Table]),
     case Info of
@@ -582,6 +592,7 @@ print_ets_table(Resp, Node, Key, Table, Info, Values) ->
     Resp:write_chunk(<<"\n">>).
 
 write_ets_tables(Resp, Node, Key, PerNodeDiag) ->
+    trace_memory("Starting pretty printing ets tables for ~p", [{Node, Key}]),
     EtsTables0 = proplists:get_value(Key, PerNodeDiag, []),
 
     EtsTables = case is_list(EtsTables0) of
@@ -601,6 +612,7 @@ write_ets_tables(Resp, Node, Key, PerNodeDiag) ->
                 end, EtsTables)
       end),
 
+    trace_memory("Finished pretty printing ets tables for ~p", [{Node, Key}]),
     lists:keydelete(Key, 1, PerNodeDiag).
 
 do_handle_per_node_ets_tables(Resp, Node, PerNodeDiag) ->
@@ -950,6 +962,14 @@ handle_diag_vbuckets(Req) ->
 handle_diag_get_password(Req) ->
     menelaus_util:ensure_local(Req),
     menelaus_util:reply_text(Req, ns_config_auth:get_password(special), 200).
+
+trace_memory(Format) ->
+    trace_memory(Format, []).
+
+trace_memory(Format, Params) ->
+    {memory, PMem} = erlang:process_info(self(), memory),
+    ?log_debug(Format ++ " Process Memory: ~p, Erlang Memory: ~p",
+               Params ++ [PMem, erlang:memory()]).
 
 -ifdef(EUNIT).
 
