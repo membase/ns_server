@@ -1263,16 +1263,16 @@ do_merge_kv_pairs(RemoteKVList, LocalKVList, UUID) ->
                                      {K, increment_vclock(LV, merge_vclocks(RV, LV), UUID)}
                              end;
                          false ->
-                             merge_values(RP, LP, UUID)
+                             merge_values(RP, LP)
                      end;
                  (RP, LP) ->
-                     merge_values(RP, LP, UUID)
+                     merge_values(RP, LP)
              end,
     misc:ukeymergewith(Merger, 1, RemoteKVList1, LocalKVList1).
 
--spec merge_values(kvpair(), kvpair(), uuid()) -> kvpair().
-merge_values({_K, RV} = RP, {_, LV} = _LP, _UUID) when RV =:= LV -> RP;
-merge_values({K, RV} = RP, {_, LV} = LP, UUID) ->
+-spec merge_values(kvpair(), kvpair()) -> kvpair().
+merge_values({_K, RV} = RP, {_, LV} = _LP) when RV =:= LV -> RP;
+merge_values({K, RV} = RP, {_, LV} = LP) ->
     RClock = extract_vclock(RV),
     LClock = extract_vclock(LV),
     case {vclock:descends(RClock, LClock),
@@ -1287,10 +1287,7 @@ merge_values({K, RV} = RP, {_, LV} = LP, UUID) ->
                     LP;
                 {_, _} ->
                     touch_key(K),
-                    V = merge_values_using_timestamps(K, LV, LClock, RV, RClock),
-
-                    %% Increment the merged vclock so we don't pingpong
-                    {K, increment_vclock(V, merge_vclocks(RV, LV), UUID)}
+                    {K, merge_values_using_timestamps(K, LV, LClock, RV, RClock)}
             end;
         {true, false} -> RP;
         {false, true} -> LP
@@ -1318,7 +1315,7 @@ merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
                      sanitize_just_value(K, Winner),
                      sanitize_just_value(K, Loser)]),
 
-            Winner;
+            merge_vclocks(Winner, Loser);
         {LocalNewer, RemoteNewer} ->
             true = LocalNewer xor RemoteNewer,
 
@@ -1337,7 +1334,7 @@ merge_values_using_timestamps(K, LV, LClock, RV, RClock) ->
                      sanitize_just_value(K, Winner),
                      sanitize_just_value(K, Loser)]),
 
-            Winner
+            merge_vclocks(Winner, Loser)
     end.
 
 get_conflict_loglevel({metakv, _}) ->
@@ -1831,8 +1828,8 @@ mutate(Value, Nodes) ->
               increment_vclock(V, V, Node)
       end, Value, Mutations).
 
-merge_values_helper(RP, LP, Node) ->
-    {_, V} = merge_values({key, RP}, {key, LP}, Node),
+merge_values_helper(RP, LP) ->
+    {_, V} = merge_values({key, RP}, {key, LP}),
     V.
 
 merge_values_test_iter() ->
@@ -1841,22 +1838,16 @@ merge_values_test_iter() ->
     LocalValue = mutate(random:uniform(10), Nodes),
     RemoteValue = mutate(random:uniform(10), Nodes),
 
-    [N0, N1] = lists:sublist(misc:shuffle(Nodes), 2),
+    R0 = merge_values_helper(RemoteValue, LocalValue),
+    R1 = merge_values_helper(LocalValue, RemoteValue),
+    ?assertEqual(R0, R1),
 
-    R0 = merge_values_helper(RemoteValue, LocalValue, N0),
-    R1 = merge_values_helper(LocalValue, RemoteValue, N0),
-    ?assertEqual(strip_metadata(R0), strip_metadata(R1)),
+    R2 = merge_values_helper(RemoteValue, LocalValue),
+    R3 = merge_values_helper(LocalValue, RemoteValue),
+    ?assertEqual(R2, R3),
 
-    R2 = merge_values_helper(RemoteValue, LocalValue, N1),
-    R3 = merge_values_helper(LocalValue, RemoteValue, N1),
-    ?assertEqual(strip_metadata(R2), strip_metadata(R3)),
-
-    ?assertEqual(strip_metadata(R0), strip_metadata(R2)),
-
-    Final0 = merge_values_helper(R0, R2, N0),
-    Final1 = merge_values_helper(R2, R0, N1),
-
-    %% both sides reconcile on the same value on second step
-    ?assertEqual(Final0, Final1).
+    %% merge result is independent on the node and the time
+    %% when merge was done
+    ?assertEqual(R0, R2).
 
 -endif.

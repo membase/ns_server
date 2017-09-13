@@ -240,9 +240,9 @@ merge_kv_pairs_timestamps_test() ->
     ?assertEqual({value, [{data, 2}]}, ns_config:search([MergedRight], x)),
     ?assertEqual([x], TouchedRight),
     [{x, [{'_vclock', ClockLeft}|_]}] = MergedLeft,
-    ?assertMatch([{<<"uuid">>, {2, _}}], ClockLeft),
+    ?assertEqual([{<<"uuid">>, {1, 11}}], ClockLeft),
     [{x, [{'_vclock', ClockRight}|_]}] = MergedRight,
-    ?assertMatch([{<<"uuid">>, {2, _}}], ClockRight).
+    ?assertEqual([{<<"uuid">>, {1, 11}}], ClockRight).
 
 merge_kv_pairs_same_value_test() ->
     X0 = [{x, [{'_vclock', [{<<"a">>, {1, 10}}]}, {data, 1}]}],
