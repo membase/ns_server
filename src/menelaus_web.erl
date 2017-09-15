@@ -398,6 +398,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["ui", "index.html"] ->
                     {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_50,
                                                        Plugins]};
+                ["ui", "new-index.html"] ->
+                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_41,
+                                                       []]};
                 ["ui", "classic-index.html"] ->
                     {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_45,
                                                        Plugins]};
