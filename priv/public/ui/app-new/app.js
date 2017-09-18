@@ -60,7 +60,8 @@
       ng.core.NgModule({
         declarations: [],
         imports: [
-          ng.platformBrowser.BrowserModule
+          ng.platformBrowser.BrowserModule,
+          window['@uirouter/angular'].UIRouterModule
         ],
         bootstrap: [],
         entryComponents: [],
