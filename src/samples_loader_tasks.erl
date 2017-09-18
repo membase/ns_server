@@ -75,7 +75,19 @@ handle_info({'EXIT', Pid, Reason} = Msg, #state{tasks = Tasks,
                 normal ->
                     ale:info(?USER_LOGGER, "Completed loading sample bucket ~s", [Name]);
                 _ ->
-                    ale:error(?USER_LOGGER, "Loading sample bucket ~s failed: ~p", [Name, Reason])
+                    NodesWanted = ns_node_disco:nodes_wanted(),
+                    IndexNodes = ns_cluster_membership:service_nodes(NodesWanted, index),
+                    QueryNodes = ns_cluster_membership:service_nodes(NodesWanted, n1ql),
+                    case IndexNodes =:= [] orelse QueryNodes =:= [] of
+                        true ->
+                            ale:error(?USER_LOGGER, "Loading sample bucket ~s failed. This is "
+                                      "because either the index service or the query service "
+                                      "is not running.",
+                                      [Name]);
+                        false ->
+                            ale:error(?USER_LOGGER, "Loading sample bucket ~s failed: ~p",
+                                      [Name, Reason])
+                    end
             end,
             NewTokenPid = case Pid =:= TokenPid of
                               true ->
