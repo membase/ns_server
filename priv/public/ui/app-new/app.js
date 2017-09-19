@@ -10,6 +10,7 @@ mn.services.MnApp = (function () {
           this.stream = {};
           this.stream.httpResponse = new Rx.Subject();
           this.stream.pageNotFound = new Rx.Subject();
+          this.stream.appError = new Rx.Subject();
           this.stream.http401 =
             this.stream
             .httpResponse
@@ -141,6 +142,11 @@ mn.services.MnApp = (function () {
 
               uiRouter.urlRouter.deferIntercept();
 
+              uiRouter.stateService
+                .defaultErrorHandler(function (error) {
+                  mnAppService.stream.appError.next(error);
+                });
+
               uiRouter.urlRouter.otherwise(function () {
                 mnAppService.stream.pageNotFound.next(true);
               });
@@ -151,8 +157,11 @@ mn.services.MnApp = (function () {
         entryComponents: [],
         providers: [
           mn.services.MnPools,
-          mn.services.MnApp,
-          {
+          mn.services.MnExceptionHandler,
+          mn.services.MnApp, {
+            provide: ng.core.ErrorHandler,
+            useClass: mn.services.MnExceptionHandler
+          }, {
             provide: ng.common.http.HTTP_INTERCEPTORS,
             useClass: MnHttpInterceptor,
             multi: true
@@ -161,11 +170,21 @@ mn.services.MnApp = (function () {
       })
       .Class({
         constructor: [
+          mn.services.MnExceptionHandler,
           mn.services.MnPools,
           mn.services.MnApp,
           window['@uirouter/angular'].UIRouter,
           ng.common.http.HttpClient,
-          function AppModule(mnPoolsService, mnAppService, uiRouter, http) {
+          function AppModule(mnExceptionHandlerService,
+                             mnPoolsService, mnAppService, uiRouter, http) {
+
+            mnAppService
+              .stream
+              .appError
+              .subscribe(function (error) {
+                error && mnExceptionHandlerService.handleError(error);
+              });
+
 
             mnAppService
               .stream
