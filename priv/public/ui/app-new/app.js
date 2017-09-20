@@ -115,6 +115,7 @@ mn.services.MnApp = (function () {
           AppComponent
         ],
         imports: [
+          mn.modules.MnPipesModule,
           ng.platformBrowser.BrowserModule,
           ng.common.http.HttpClientModule,
           window['@uirouter/angular'].UIRouterModule.forRoot({
@@ -172,11 +173,15 @@ mn.services.MnApp = (function () {
         constructor: [
           mn.services.MnExceptionHandler,
           mn.services.MnPools,
+          mn.pipes.MnPrettyVersion,
+          ng.platformBrowser.Title,
           mn.services.MnApp,
           window['@uirouter/angular'].UIRouter,
           ng.common.http.HttpClient,
           function AppModule(mnExceptionHandlerService,
-                             mnPoolsService, mnAppService, uiRouter, http) {
+                             mnPoolsService,
+                             mnPrettyVersionPipe,
+                             title, mnAppService, uiRouter, http) {
 
             mnAppService
               .stream
@@ -200,6 +205,11 @@ mn.services.MnApp = (function () {
                 uiRouter.stateService.go(pools.isInitialized ?
                                          'app.admin.overview' : 'app.wizard.welcome');
               });
+
+            http.get("/versions").toPromise().then(function (versions) {
+              var version = mnPrettyVersionPipe.transform(versions.implementationVersion);
+              title.setTitle("Couchbase Console" + (version ? ' ' + version : ''));
+            });
 
             uiRouter.urlRouter.listen();
             uiRouter.urlRouter.sync();
