@@ -39,6 +39,9 @@
          is_cluster_spock/0,
          is_cluster_spock/1,
          is_version_spock/1,
+         is_cluster_vulcan/0,
+         is_cluster_vulcan/1,
+         is_version_vulcan/1,
          is_enterprise/0,
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
@@ -121,6 +124,15 @@ is_cluster_spock() ->
 
 is_cluster_spock(Config) ->
     is_enabled(Config, ?SPOCK_VERSION_NUM).
+
+is_version_vulcan(ClusterVersion) ->
+    is_enabled_at(ClusterVersion, ?VULCAN_VERSION_NUM).
+
+is_cluster_vulcan() ->
+    is_cluster_vulcan(ns_config:latest()).
+
+is_cluster_vulcan(Config) ->
+    is_enabled(Config, ?VULCAN_VERSION_NUM).
 
 is_index_aware_rebalance_on() ->
     not ns_config:read_key_fast(index_aware_rebalance_disabled, false).

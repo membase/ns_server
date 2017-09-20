@@ -222,9 +222,10 @@
 -define(VERSION_46, [4, 6]).
 
 -define(SPOCK_VERSION_NUM, [5, 0]).
+-define(VULCAN_VERSION_NUM, [5, 1]).
 
 %% Points to latest release
--define(LATEST_VERSION_NUM, ?SPOCK_VERSION_NUM).
+-define(LATEST_VERSION_NUM, ?VULCAN_VERSION_NUM).
 
 -define(DEFAULT_UI_COMPAT_VERSION, ?VERSION_45).
 
