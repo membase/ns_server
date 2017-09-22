@@ -116,6 +116,7 @@ mn.services.MnApp = (function () {
         ],
         imports: [
           mn.modules.MnPipesModule,
+          mn.modules.MnAuth,
           ng.platformBrowser.BrowserModule,
           ng.common.http.HttpClientModule,
           window['@uirouter/angular'].UIRouterModule.forRoot({
@@ -136,6 +137,9 @@ mn.services.MnApp = (function () {
                 }
               },
               abstract: true
+            }, {
+              name: "app.auth",
+              component: mn.components.MnAuth
             }],
             useHash: true,
             config: function uiRouterConfigFn(uiRouter, injector) {

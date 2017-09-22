@@ -68,7 +68,9 @@ hr {
 a img {
   vertical-align: top;
 }
-
+[hidden] {
+  display: none !important;
+}
 /* OPEN SANS (http://www.fontsquirrel.com/license/open-sans) ---------------- */
 /* Regular */
 @font-face {
