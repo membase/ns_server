@@ -219,20 +219,39 @@ update_recovery_type(Node, NewType) ->
 supported_services() ->
     supported_services_for_version(cluster_compat_mode:supported_compat_version()).
 
-supported_services_for_version(CompatVersion) ->
-    Services0 = [kv],
-    case cluster_compat_mode:is_version_40(CompatVersion) of
+maybe_example_service() ->
+    case os:getenv("ENABLE_EXAMPLE_SERVICE") =/= false of
         true ->
-            Services1 = [n1ql, index] ++ Services0,
-            case cluster_compat_mode:is_version_45(CompatVersion) of
-                true ->
-                    [fts] ++ maybe_example_service() ++ Services1;
-                false ->
-                    Services1
-            end;
+            [{?VERSION_45, example}];
         false ->
-            Services0
+            []
     end.
+
+
+services_by_version() ->
+    [{[0, 0],      kv},
+     {?VERSION_40, n1ql},
+     {?VERSION_40, index},
+     {?VERSION_45, fts}] ++
+        maybe_example_service().
+
+topology_aware_services_by_version() ->
+    [{?VERSION_45, fts},
+     {?SPOCK_VERSION_NUM, index}] ++
+        maybe_example_service().
+
+filter_services_by_version(Version, Services) ->
+    lists:filtermap(fun ({V, Service}) ->
+                            case cluster_compat_mode:is_enabled_at(Version, V) of
+                                true ->
+                                    {true, Service};
+                                false ->
+                                    false
+                            end
+                    end, Services).
+
+supported_services_for_version(ClusterVersion) ->
+    filter_services_by_version(ClusterVersion, services_by_version()).
 
 -ifdef(EUNIT).
 supported_services_for_version_test() ->
@@ -253,29 +272,21 @@ default_services() ->
     [kv].
 
 topology_aware_services_for_version(Version) ->
-    case cluster_compat_mode:is_version_45(Version) of
-        true ->
-            Services = [fts | maybe_example_service()],
-            case cluster_compat_mode:is_version_spock(Version) of
-                true ->
-                    [index | Services];
-                false ->
-                    Services
-            end;
-        false ->
-            []
-    end.
+    filter_services_by_version(Version, topology_aware_services_by_version()).
 
 topology_aware_services() ->
     topology_aware_services_for_version(cluster_compat_mode:get_compat_version()).
 
-maybe_example_service() ->
-    case os:getenv("ENABLE_EXAMPLE_SERVICE") =/= false of
-        true ->
-            [example];
-        false ->
-            []
-    end.
+-ifdef(EUNIT).
+topology_aware_services_for_version_test() ->
+    ?assertEqual([], topology_aware_services_for_version(?VERSION_25)),
+    ?assertEqual([], topology_aware_services_for_version(?VERSION_30)),
+    ?assertEqual([], topology_aware_services_for_version(?VERSION_40)),
+    ?assertEqual(lists:sort([fts]),
+                 lists:sort(topology_aware_services_for_version(?VERSION_45))),
+    ?assertEqual(lists:sort([fts,index]),
+                 lists:sort(topology_aware_services_for_version(?SPOCK_VERSION_NUM))).
+-endif.
 
 set_service_map(kv, _Nodes) ->
     %% kv is special; it's dealt with using different set of functions
