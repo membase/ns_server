@@ -1406,9 +1406,26 @@ inaddr_any(Options) ->
                                        | {cannot_listen, inet:posix()}
                                        | {address_not_allowed, string()}.
 is_good_address(Address) ->
-    case string:tokens(Address, ".") of
-        [_] ->
-            {address_not_allowed, "short names are not allowed. Couchbase Server requires at least one dot in a name"};
+    is_good_address(Address, misc:get_env_default(ns_server, ipv6, false)).
+
+is_good_address(Address, false) ->
+    check_short_name(Address, ".");
+is_good_address(Address, true) ->
+    case inet:getaddr(Address, inet) of
+        {ok, _} ->
+            Msg = io_lib:format("~s seems to be an IPv4 address or a name that resolves to "
+                                "an IPv4 address. Please use a Fully Qualified Domain Name "
+                                "mapped to an IPv6 address.", [Address]),
+            {address_not_allowed, Msg};
+        _ ->
+            check_short_name(Address, ".:")
+    end.
+
+check_short_name(Address, Separators) ->
+    case lists:subtract(Address, Separators) of
+        Address ->
+            {address_not_allowed,
+             "Short names are not allowed. Please use a Fully Qualified Domain Name."};
         _ ->
             is_good_address_when_allowed(Address)
     end.
