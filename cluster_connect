@@ -4,7 +4,7 @@ import os, sys, getopt, urllib2, urllib, json
 from urllib2 import HTTPError
 
 valid_bucket_types = ["ephemeral", "membase", "memcached"]
-valid_service_types = {"kv", "n1ql", "index", "fts", "example"}
+valid_service_types = {"kv", "n1ql", "index", "fts", "example", "eventing"}
 
 def usage():
     print "usage: \n\

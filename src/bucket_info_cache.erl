@@ -177,6 +177,9 @@ build_services(Node, Config, EnabledServices) ->
                          Port ->
                              [{ftsSSL, Port}]
                      end;
+             eventing ->
+                 [{eventingAdminPort,
+                   ns_config:search(Config, {node, Node, eventing_http_port}, undefined)}];
              example ->
                  []
          end || S <- EnabledServices],

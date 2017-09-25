@@ -277,6 +277,7 @@ do_dynamic_children(normal, Config) ->
      per_bucket_moxi_specs(Config),
      maybe_create_ssl_proxy_spec(Config),
      fts_spec(Config),
+     eventing_spec(Config),
      example_service_spec(Config)].
 
 expand_specs(Specs, Config) ->
@@ -649,6 +650,38 @@ fts_spec(Config) ->
                      {env, build_go_env_vars(Config, fts) ++ build_tls_config_env_var(Config)}]},
             [Spec]
     end.
+
+eventing_spec(Config) ->
+    Command = path_config:component_path(bin, "eventing-producer"),
+    NodeUUID = ns_config:search(Config, {node, node(), uuid}, false),
+
+    case Command =/= false andalso
+        NodeUUID =/= false andalso
+        ns_cluster_membership:should_run_service(Config, eventing, node()) of
+        true ->
+            EventingAdminPort = ns_config:search(Config, {node, node(), eventing_http_port}, 8095),
+            LocalMemcachedPort = ns_config:search_node_prop(node(), Config, memcached, port),
+            RestPort = misc:node_rest_port(Config, node()),
+
+            {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
+            EventingDir = filename:join(IdxDir, "@eventing"),
+
+            EventingAdminArg = "-adminport=" ++ integer_to_list(EventingAdminPort),
+            EventingDirArg = "-dir=" ++ EventingDir,
+            KVAddrArg = "-kvport=" ++ integer_to_list(LocalMemcachedPort),
+            RestArg = "-restport=" ++ integer_to_list(RestPort),
+            UUIDArg = "-uuid=" ++ binary_to_list(NodeUUID),
+
+            Spec = {eventing, Command,
+                    [EventingAdminArg, EventingDirArg, KVAddrArg, RestArg, UUIDArg],
+                    [via_goport, exit_status, stderr_to_stdout,
+                     {env, build_go_env_vars(Config, eventing)},
+                     {log, ?EVENTING_LOG_FILENAME}]},
+            [Spec];
+        false ->
+            []
+    end.
+
 
 example_service_spec(Config) ->
     CacheCmd = find_executable("cache-service"),

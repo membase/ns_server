@@ -35,6 +35,7 @@
 -define(AUTO_FAILOVER_INDEX_NODE_COUNT, 1).
 -define(AUTO_FAILOVER_N1QL_NODE_COUNT, 1).
 -define(AUTO_FAILOVER_FTS_NODE_COUNT, 1).
+-define(AUTO_FAILOVER_EVENTING_NODE_COUNT, 1).
 -define(AUTO_FAILOVER_EXAMPLE_NODE_COUNT, 1).
 
 -record(node_state, {
@@ -383,6 +384,8 @@ service_failover_min_node_count(n1ql) ->
     ?AUTO_FAILOVER_N1QL_NODE_COUNT;
 service_failover_min_node_count(fts) ->
     ?AUTO_FAILOVER_FTS_NODE_COUNT;
+service_failover_min_node_count(eventing) ->
+    ?AUTO_FAILOVER_EVENTING_NODE_COUNT;
 service_failover_min_node_count(example) ->
     ?AUTO_FAILOVER_EXAMPLE_NODE_COUNT.
 

@@ -83,6 +83,7 @@
 -define(METAKV_LOG_FILENAME, "metakv.log").
 -define(FTS_LOG_FILENAME, "fts.log").
 -define(JSON_RPC_LOG_FILENAME, "json_rpc.log").
+-define(EVENTING_LOG_FILENAME, "eventing.log").
 
 -define(NS_SERVER_LOGGER, ns_server).
 -define(COUCHDB_LOGGER, couchdb).
