@@ -618,7 +618,12 @@ expect_integer(PropName, Value) ->
     end.
 
 call_port_please(Name, Host) ->
-    case erl_epmd:port_please(Name, Host, 5000) of
+    %% When the 'Host' parameter is the actual hostname the epmd:port_please API
+    %% implementation uses "inet" protocol by default. This will fail if the
+    %% host is configured with IPv6. But if we pass in the IP Address instead of
+    %% hostname the API does the right thing. Hence passing the IP Address.
+    {ok, IpAddr} = inet:getaddr(Host, misc:get_net_family()),
+    case erl_epmd:port_please(Name, IpAddr, 5000) of
         {port, Port, _Version} -> Port;
         X -> X
     end.
