@@ -31,8 +31,8 @@
         password: ''
       },
       services: {
-        disabled: {kv: false, index: false, n1ql: false, fts: false},
-        model: {kv: true, index: true, n1ql: true, fts: true}
+        disabled: {kv: false, index: false, n1ql: false, fts: false, eventing: false},
+        model: {kv: true, index: true, n1ql: true, fts: true, eventing: true}
       },
       firstTimeAddedServices: undefined
     };
@@ -40,10 +40,10 @@
       maxMemorySize: undefined,
       totalMemorySize: undefined,
       memoryQuota: undefined,
-      displayedServices: {kv: true, index: true, fts: true, n1ql: true},
+      displayedServices: {kv: true, index: true, fts: true, n1ql: true, eventing: true},
       services: {
-        disabled: {kv: true, index: false, n1ql: false, fts: false},
-        model: {kv: true, index: true, n1ql: true, fts: true}
+        disabled: {kv: true, index: false, n1ql: false, fts: false, eventing: false},
+        model: {kv: true, index: true, n1ql: true, fts: true, eventing: true}
       },
       showKVMemoryQuota: true,
       showIndexMemoryQuota: true,

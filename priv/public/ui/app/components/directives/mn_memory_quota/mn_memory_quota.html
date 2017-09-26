@@ -127,6 +127,33 @@
   </div>
 </div>
 
+<div ng-if="config.displayedServices.eventing">
+  <div class="row formrow">
+    <div class="width-6">
+      <input
+         ng-if="config.services"
+         ng-model="config.services.model.eventing"
+         type="checkbox"
+         ng-disabled="config.services.disabled.eventing"
+         id="eventing_ram_quota">
+      <label
+         for="eventing_ram_quota"
+         class="checkbox">
+        Eventing Service
+      </label>
+    </div>
+    <small class="form-inline width-6 text-center">
+      - - - - - - -
+    </small>
+  </div>
+
+  <div
+     class="error"
+     ng-show="errors.eventingMemoryQuota">
+    {{errors.eventingMemoryQuota}}
+  </div>
+</div>
+
 <div
    ng-if="config.calculateTotal"
    class="text-small text-right nowrap margin-right-1">

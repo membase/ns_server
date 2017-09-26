@@ -41,7 +41,7 @@
         .postStats(vm.register, true).then(function () {
           var setupServicesPromise =
               mnServersService.setupServices({
-                services: 'kv,index,fts,n1ql',
+                services: 'kv,index,fts,n1ql,eventing',
                 setDefaultMemQuotas : true
               });
 

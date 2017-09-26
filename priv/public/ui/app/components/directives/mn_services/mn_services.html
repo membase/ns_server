@@ -45,3 +45,15 @@
     Query Service
   </label>
 </div>
+<div class="checkbox-service">
+  <input
+     type="checkbox"
+     value="eventing"
+     id="for-eventing-service"
+     ng-change="onChange(config.services.model.eventing, 'eventing')"
+     ng-model="config.services.model.eventing"
+     ng-disabled="config.services.disabled.eventing">
+  <label for="for-eventing-service">
+    Eventing Service
+  </label>
+</div>
