@@ -2440,7 +2440,7 @@ handle_settings_auto_failover_post(Req) ->
             reply_text(Req, Errors2, 400);
         {true, {error, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
-        % Validation only and no errors
+        %% Validation only and no errors
         {true, _}->
             reply_json(Req, {struct, [{errors, null}]}, 200)
     end.
