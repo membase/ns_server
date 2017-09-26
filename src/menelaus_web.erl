@@ -2484,57 +2484,46 @@ handle_settings_auto_failover_reset_count(Req) ->
     ns_audit:reset_auto_failover_count(Req),
     reply(Req, 200).
 
-maybe_handle_auto_reprovision_request(Req, Body) ->
-    case cluster_compat_mode:is_cluster_spock() of
-        true ->
-            Body();
-        false ->
-            Msg = <<"auto-reprovision is enabled in cluster versions spock and above">>,
-            reply_text(Req, Msg, 400)
-    end.
-
 %% @doc Settings to en-/disable auto-reprovision
 handle_settings_auto_reprovision(Req) ->
-    maybe_handle_auto_reprovision_request(
-      Req, fun() ->
-                   Config = build_settings_auto_reprovision(),
-                   Enabled = proplists:get_value(enabled, Config),
-                   MaxNodes = proplists:get_value(max_nodes, Config),
-                   Count = proplists:get_value(count, Config),
-                   reply_json(Req, {struct, [{enabled, Enabled},
-                                             {max_nodes, MaxNodes},
-                                             {count, Count}]})
-           end).
+    assert_is_spock(),
+
+    Config = build_settings_auto_reprovision(),
+    Enabled = proplists:get_value(enabled, Config),
+    MaxNodes = proplists:get_value(max_nodes, Config),
+    Count = proplists:get_value(count, Config),
+    reply_json(Req, {struct, [{enabled, Enabled},
+                              {max_nodes, MaxNodes},
+                              {count, Count}]}).
 
 build_settings_auto_reprovision() ->
     {value, Config} = ns_config:search(ns_config:get(), auto_reprovision_cfg),
     Config.
 
 handle_settings_auto_reprovision_post(Req) ->
-    maybe_handle_auto_reprovision_request(
-      Req, fun() ->
-                   PostArgs = Req:parse_post(),
-                   ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
-                   Enabled = proplists:get_value("enabled", PostArgs),
-                   MaxNodes = proplists:get_value("maxNodes", PostArgs),
-                   case {ValidateOnly,
-                         validate_settings_auto_reprovision(Enabled, MaxNodes)} of
-                       {false, [true, MaxNodes2]} ->
-                           auto_reprovision:enable(MaxNodes2),
-                           reply(Req, 200);
-                       {false, false} ->
-                           auto_reprovision:disable(),
-                           reply(Req, 200);
-                       {false, {error, Errors}} ->
-                           Errors2 = [<<Msg/binary, "\n">> || {_, Msg} <- Errors],
-                           reply_text(Req, Errors2, 400);
-                       {true, {error, Errors}} ->
-                           reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
-                                                % Validation only and no errors
-                       {true, _}->
-                           reply_json(Req, {struct, [{errors, null}]}, 200)
-                   end
-           end).
+    assert_is_spock(),
+
+    PostArgs = Req:parse_post(),
+    ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
+    Enabled = proplists:get_value("enabled", PostArgs),
+    MaxNodes = proplists:get_value("maxNodes", PostArgs),
+    case {ValidateOnly,
+          validate_settings_auto_reprovision(Enabled, MaxNodes)} of
+        {false, [true, MaxNodes2]} ->
+            auto_reprovision:enable(MaxNodes2),
+            reply(Req, 200);
+        {false, false} ->
+            auto_reprovision:disable(),
+            reply(Req, 200);
+        {false, {error, Errors}} ->
+            Errors2 = [<<Msg/binary, "\n">> || {_, Msg} <- Errors],
+            reply_text(Req, Errors2, 400);
+        {true, {error, Errors}} ->
+            reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
+        %% Validation only and no errors
+        {true, _}->
+            reply_json(Req, {struct, [{errors, null}]}, 200)
+    end.
 
 validate_settings_auto_reprovision(Enabled, MaxNodes) ->
     Enabled2 = case Enabled of
@@ -2559,11 +2548,10 @@ validate_settings_auto_reprovision(Enabled, MaxNodes) ->
 
 %% @doc Resets the number of nodes that were automatically reprovisioned to zero
 handle_settings_auto_reprovision_reset_count(Req) ->
-    maybe_handle_auto_reprovision_request(
-      Req, fun() ->
-                   auto_reprovision:reset_count(),
-                   reply(Req, 200)
-           end).
+    assert_is_spock(),
+
+    auto_reprovision:reset_count(),
+    reply(Req, 200).
 
 maybe_cleanup_old_buckets() ->
     case ns_config_auth:is_system_provisioned() of
