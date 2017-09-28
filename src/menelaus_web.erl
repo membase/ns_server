@@ -440,7 +440,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["index.html"] ->
                     {done, redirect_permanently("/ui/index.html", Req)};
                 ["ui", "index.html"] ->
-                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?SPOCK_VERSION_NUM,
+                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_50,
                                                        Plugins]};
                 ["ui", "classic-index.html"] ->
                     {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_45,
@@ -876,11 +876,11 @@ serve_ui_env(Req) ->
 
 handle_ui_root(AppRoot, Path, UiCompatVersion, Plugins, Req)
   when UiCompatVersion =:= ?VERSION_45;
-       UiCompatVersion =:= ?SPOCK_VERSION_NUM ->
+       UiCompatVersion =:= ?VERSION_50 ->
     Filename = case use_minified(Req) of
                    true ->
                        IndexFileName =
-                           case UiCompatVersion =:= ?SPOCK_VERSION_NUM of
+                           case UiCompatVersion =:= ?VERSION_50 of
                                true -> "index.min.html";
                                false -> "classic-index.min.html"
                            end,

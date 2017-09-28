@@ -26,7 +26,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    list_to_tuple(?SPOCK_VERSION_NUM).
+    list_to_tuple(?VERSION_50).
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -345,7 +345,7 @@ default() ->
         {audit_file, {"~s", [audit_file]}},
         {rbac_file, {"~s", [rbac_file]}},
         {dedupe_nmvb_maps, dedupe_nmvb_maps},
-        {xattr_enabled, {memcached_config_mgr, is_enabled, [?SPOCK_VERSION_NUM]}}
+        {xattr_enabled, {memcached_config_mgr, is_enabled, [?VERSION_50]}}
        ]}},
 
      {memory_quota, KvQuota},

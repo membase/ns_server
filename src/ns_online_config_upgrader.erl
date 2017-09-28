@@ -54,9 +54,9 @@ do_upgrade_config(Config, FinalVersion) ->
         {value, ?VERSION_45} ->
             [{set, cluster_compat_version, ?VERSION_46}];
         {value, ?VERSION_46} ->
-            [{set, cluster_compat_version, ?SPOCK_VERSION_NUM} |
+            [{set, cluster_compat_version, ?VERSION_50} |
              upgrade_config_from_4_6_to_spock(Config)];
-        {value, ?SPOCK_VERSION_NUM} ->
+        {value, ?VERSION_50} ->
             [{set, cluster_compat_version, ?VULCAN_VERSION_NUM}]
     end.
 

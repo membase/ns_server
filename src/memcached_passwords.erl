@@ -56,7 +56,7 @@ init() ->
            users = [AU | Users],
            admin_pass = AP}.
 
-filter_event({cluster_compat_version, ?SPOCK_VERSION_NUM}) ->
+filter_event({cluster_compat_version, ?VERSION_50}) ->
     true;
 filter_event({buckets, _V}) ->
     true;

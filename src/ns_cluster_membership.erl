@@ -238,7 +238,7 @@ services_by_version() ->
 
 topology_aware_services_by_version() ->
     [{?VERSION_45, fts},
-     {?SPOCK_VERSION_NUM, index}] ++
+     {?VERSION_50, index}] ++
         maybe_example_service().
 
 filter_services_by_version(Version, Services) ->
@@ -286,7 +286,7 @@ topology_aware_services_for_version_test() ->
     ?assertEqual(lists:sort([fts]),
                  lists:sort(topology_aware_services_for_version(?VERSION_45))),
     ?assertEqual(lists:sort([fts,index]),
-                 lists:sort(topology_aware_services_for_version(?SPOCK_VERSION_NUM))).
+                 lists:sort(topology_aware_services_for_version(?VERSION_50))).
 -endif.
 
 set_service_map(kv, _Nodes) ->
