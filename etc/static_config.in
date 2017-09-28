@@ -42,3 +42,4 @@
               {num_files, 5}]}]}.
 
 {net_kernel_verbosity, 10}.
+{ipv6, false}.

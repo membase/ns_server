@@ -36,6 +36,8 @@ export PATH
 ERL_LIBS="@PREFIX@/lib/ns_server/erlang/lib:@PREFIX@/lib/couchdb/erlang/lib:@PREFIX@/lib/couchdb/plugins"
 export ERL_LIBS
 
+CB_EBIN_PATH="@PREFIX@/lib/ns_server/erlang/lib/ns_babysitter/ebin"
+
 DEFAULT_CONFIG_DIR="@PREFIX@/etc/couchdb/default.d"
 DEFAULT_CONFIG_FILE="@PREFIX@/etc/couchdb/default.ini"
 LOCAL_CONFIG_DIR="@PREFIX@/etc/couchdb/local.d"
@@ -44,6 +46,7 @@ LOCAL_CONFIG_FILE="@PREFIX@/etc/couchdb/local.ini"
 PIDFILE="@PREFIX@/var/lib/couchbase/couchbase-server.pid"
 COOKIEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.babysitter.cookie"
 NODEFILE="@PREFIX@/var/lib/couchbase/couchbase-server.babysitter.node"
+STATIC_CONFIG_PATH="@PREFIX@/etc/couchbase/static_config"
 
 couch_start_arguments=""
 
@@ -89,6 +92,27 @@ if you've built Couchbase Server from source.
 
 EOF
         fi
+    fi
+}
+
+_check_inet_mode() {
+    OUTPUT=`erl \
+            -pa $CB_EBIN_PATH \
+            -noshell \
+            -setcookie nocookie \
+            -run ns_babysitter_bootstrap ipv6_from_static_config $STATIC_CONFIG_PATH`
+    if [ $? -ne 0 ]
+    then
+        echo $OUTPUT
+        exit 1
+    fi
+
+    if [ $OUTPUT == "true" ]; then
+        VM_NAME='babysitter_of_ns_1@::1'
+        PROTO_DIST='inet6_tcp'
+    else
+        VM_NAME='babysitter_of_ns_1@127.0.0.1'
+        PROTO_DIST='inet_tcp'
     fi
 }
 
@@ -160,7 +184,8 @@ _start() {
                 global_enable_tracing true \
         -sasl sasl_error_logger false \
         -hidden \
-        -name 'babysitter_of_ns_1@127.0.0.1' \
+        -name $VM_NAME \
+        -proto_dist $PROTO_DIST \
         -setcookie nocookie \
         $* \
         -run ns_babysitter_bootstrap -- \
@@ -168,7 +193,7 @@ _start() {
         -ns_babysitter cookiefile "\"$COOKIEFILE\"" \
         -ns_babysitter nodefile "\"$NODEFILE\"" \
         -ns_babysitter pidfile "\"$PIDFILE\"" \
-        -ns_server config_path "\"@PREFIX@/etc/couchbase/static_config\""
+        -ns_server config_path "\"$STATIC_CONFIG_PATH\""
 }
 
 _stop() {
@@ -179,6 +204,7 @@ _stop() {
 
     erl \
         -name executioner@executioner \
+        -proto_dist $PROTO_DIST \
         -noshell \
         -hidden \
         -setcookie "$cookie" \
@@ -251,4 +277,5 @@ _parse_options () {
     _start $*
 }
 
+_check_inet_mode
 _parse_options $*
