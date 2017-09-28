@@ -528,7 +528,7 @@ default_is_passwordless(Config) ->
 should_run_moxi(Config) ->
     ns_cluster_membership:should_run_service(Config, kv, node())
         andalso
-          ((not cluster_compat_mode:is_cluster_spock(Config)) orelse
+          ((not cluster_compat_mode:is_cluster_50(Config)) orelse
            default_is_passwordless(Config)).
 
 moxi_spec(Config) ->

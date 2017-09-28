@@ -56,7 +56,7 @@
          assert_is_enterprise/0,
          assert_is_40/0,
          assert_is_45/0,
-         assert_is_spock/0]).
+         assert_is_50/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -1292,8 +1292,8 @@ assert_is_40() ->
 assert_is_45() ->
     assert_cluster_version(fun cluster_compat_mode:is_cluster_45/0).
 
-assert_is_spock() ->
-    assert_cluster_version(fun cluster_compat_mode:is_cluster_spock/0).
+assert_is_50() ->
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_50/0).
 
 assert_cluster_version(Fun) ->
     case Fun() of
@@ -2453,7 +2453,7 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     end,
     case Enabled2 of
         true ->
-            MinTimeout = case cluster_compat_mode:is_cluster_spock() andalso
+            MinTimeout = case cluster_compat_mode:is_cluster_50() andalso
                              cluster_compat_mode:is_enterprise() of
                              true ->
                                  ?AUTO_FAILLOVER_MIN_TIMEOUT;
@@ -2486,7 +2486,7 @@ handle_settings_auto_failover_reset_count(Req) ->
 
 %% @doc Settings to en-/disable auto-reprovision
 handle_settings_auto_reprovision(Req) ->
-    assert_is_spock(),
+    assert_is_50(),
 
     Config = build_settings_auto_reprovision(),
     Enabled = proplists:get_value(enabled, Config),
@@ -2501,7 +2501,7 @@ build_settings_auto_reprovision() ->
     Config.
 
 handle_settings_auto_reprovision_post(Req) ->
-    assert_is_spock(),
+    assert_is_50(),
 
     PostArgs = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
@@ -2548,7 +2548,7 @@ validate_settings_auto_reprovision(Enabled, MaxNodes) ->
 
 %% @doc Resets the number of nodes that were automatically reprovisioned to zero
 handle_settings_auto_reprovision_reset_count(Req) ->
-    assert_is_spock(),
+    assert_is_50(),
 
     auto_reprovision:reset_count(),
     reply(Req, 200).

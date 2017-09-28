@@ -273,7 +273,7 @@ read_table_new(Path, Table) ->
                            ok
                    end).
 
-%% deals with pre-spock stats archive files
+%% deals with pre-5.0 stats archive files
 read_table_old(Path, Table) ->
     case file:read_file(Path) of
         {ok, <<>>} ->

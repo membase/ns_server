@@ -193,7 +193,7 @@ filter_roles_by_permission(Config, RawPermission, Roles) ->
 
 assert_api_can_be_used() ->
     menelaus_web:assert_is_45(),
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             ok;
         false ->
@@ -244,7 +244,7 @@ get_user_json({Id, Domain}, Name, Passwordless, Roles) ->
 handle_get_users(Path, Req) ->
     assert_api_can_be_used(),
 
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             handle_get_users_with_domain(Req, '_', Path);
         false ->
@@ -281,7 +281,7 @@ validate_get_users(Args, DomainAtom, HasStartFrom) ->
     menelaus_util:validate_unsupported_params(R4).
 
 handle_get_users(Path, Domain, Req) ->
-    menelaus_web:assert_is_spock(),
+    menelaus_web:assert_is_50(),
 
     case domain_to_atom(Domain) of
         unknown ->
@@ -334,7 +334,7 @@ handle_get_all_users(Req, Pattern) ->
               menelaus_util:send_chunked(Req, 200, [{"Content-Type", "application/json"}])).
 
 handle_get_user(Domain, UserId, Req) ->
-    menelaus_web:assert_is_spock(),
+    menelaus_web:assert_is_50(),
     case domain_to_atom(Domain) of
         unknown ->
             menelaus_util:reply_json(Req, <<"Unknown user domain.">>, 404);
@@ -713,7 +713,7 @@ handle_put_user(Domain, UserId, Req) ->
                     menelaus_web:assert_is_enterprise(),
                     handle_put_user_with_identity({UserId, T}, Req);
                 local = T ->
-                    menelaus_web:assert_is_spock(),
+                    menelaus_web:assert_is_50(),
                     handle_put_user_with_identity({UserId, T}, Req)
             end;
         Error ->
@@ -807,7 +807,7 @@ handle_delete_user(Domain, UserId, Req) ->
     end.
 
 reply_put_delete_users(Req) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             menelaus_util:reply_json(Req, <<>>, 200);
         false ->
@@ -831,7 +831,7 @@ validate_change_password(Args) ->
 
 handle_change_password(Req) ->
     menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_spock(),
+    menelaus_web:assert_is_50(),
 
     case menelaus_auth:get_token(Req) of
         undefined ->
@@ -1126,7 +1126,7 @@ forbidden_response(Permission) ->
     forbidden_response([Permission]).
 
 handle_get_password_policy(Req) ->
-    menelaus_web:assert_is_spock(),
+    menelaus_web:assert_is_50(),
     {MinLength, MustPresent} = get_password_policy(),
     menelaus_util:reply_json(Req,
                              {[{minLength, MinLength},

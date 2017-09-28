@@ -42,7 +42,7 @@
          get_users_version/0,
          get_auth_version/0,
          empty_storage/0,
-         upgrade_to_spock/2,
+         upgrade_to_50/2,
          config_upgrade/0,
          upgrade_status/0,
          get_passwordless/0,
@@ -243,9 +243,9 @@ store_user(Identity, Name, Password, Roles) ->
                 _ ->
                     [{name, Name}]
             end,
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
-            store_user_spock(Identity, Props, Password, Roles, ns_config:get());
+            store_user_50(Identity, Props, Password, Roles, ns_config:get());
         false ->
             store_user_45(Identity, Props, Roles)
     end.
@@ -286,35 +286,35 @@ check_limit(Identity) ->
             end
     end.
 
-store_user_spock({_UserName, Domain} = Identity, Props, Password, Roles, Config) ->
+store_user_50({_UserName, Domain} = Identity, Props, Password, Roles, Config) ->
     CurrentAuth = replicated_dets:get(storage_name(), {auth, Identity}),
     case check_limit(Identity) of
         true ->
             case Domain of
                 external ->
-                    store_user_spock_with_auth(Identity, Props, same, Roles, Config);
+                    store_user_50_with_auth(Identity, Props, same, Roles, Config);
                 local ->
                     case build_auth(CurrentAuth, Password) of
                         password_required ->
                             {abort, password_required};
                         Auth ->
-                            store_user_spock_with_auth(Identity, Props, Auth, Roles, Config)
+                            store_user_50_with_auth(Identity, Props, Auth, Roles, Config)
                     end
             end;
         false ->
             {abort, too_many}
     end.
 
-store_user_spock_with_auth(Identity, Props, Auth, Roles, Config) ->
+store_user_50_with_auth(Identity, Props, Auth, Roles, Config) ->
     case menelaus_roles:validate_roles(Roles, Config) of
         {NewRoles, []} ->
-            ok = store_user_spock_validated(Identity, [{roles, NewRoles} | Props], Auth),
+            ok = store_user_50_validated(Identity, [{roles, NewRoles} | Props], Auth),
             {commit, ok};
         {_, BadRoles} ->
             {abort, {error, roles_validation, BadRoles}}
     end.
 
-store_user_spock_validated(Identity, Props, Auth) ->
+store_user_50_validated(Identity, Props, Auth) ->
     ok = replicated_dets:set(storage_name(), {user, Identity}, Props),
     case store_auth(Identity, Auth) of
         ok ->
@@ -340,9 +340,9 @@ change_password({_UserName, local} = Identity, Password) when is_list(Password) 
 
 -spec delete_user(rbac_identity()) -> run_txn_return().
 delete_user(Identity) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
-            delete_user_spock(Identity);
+            delete_user_50(Identity);
         false ->
             delete_user_45(Identity)
     end.
@@ -364,7 +364,7 @@ delete_user_45({UserName, external}) ->
               end
       end).
 
-delete_user_spock({_, Domain} = Identity) ->
+delete_user_50({_, Domain} = Identity) ->
     case Domain of
         local ->
             _ = replicated_dets:delete(storage_name(), {auth, Identity});
@@ -388,7 +388,7 @@ has_scram_hashes(Auth) ->
 
 -spec authenticate(rbac_user_id(), rbac_password()) -> boolean().
 authenticate(Username, Password) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             Identity = {Username, local},
             case get_auth_info(Identity) of
@@ -431,7 +431,7 @@ get_user_props_45({User, external}) ->
     ns_config:search_prop(ns_config:latest(), user_roles, {User, saslauthd}, []).
 
 get_user_props(Identity) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             replicated_dets:get(storage_name(), {user, Identity}, []);
         false ->
@@ -533,7 +533,7 @@ upgrade_to_4_5_asterisk_test() ->
     [{set, user_roles, UpgradedUserRoles}] = Upgraded,
     ?assertMatch(UserRoles, lists:sort(UpgradedUserRoles)).
 
-upgrade_to_spock(Config, Nodes) ->
+upgrade_to_50(Config, Nodes) ->
     try
         Repair =
             case ns_config:search(Config, users_upgrade) of
@@ -544,7 +544,7 @@ upgrade_to_spock(Config, Nodes) ->
                     ?log_debug("Found unfinished users upgrade. Continue."),
                     true
             end,
-        do_upgrade_to_spock(Nodes, Repair),
+        do_upgrade_to_50(Nodes, Repair),
         ok
     catch T:E ->
             ale:error(?USER_LOGGER, "Unsuccessful user storage upgrade.~n~p",
@@ -552,7 +552,7 @@ upgrade_to_spock(Config, Nodes) ->
             error
     end.
 
-do_upgrade_to_spock(Nodes, Repair) ->
+do_upgrade_to_50(Nodes, Repair) ->
     %% propagate users_upgrade to nodes
     case ns_config_rep:ensure_config_seen_by_nodes(Nodes) of
         ok ->
@@ -592,8 +592,8 @@ do_upgrade_to_spock(Nodes, Repair) ->
         {ROAdmin, {Salt, Mac}} ->
             Auth = build_plain_memcached_auth_info(Salt, Mac),
             {commit, ok} =
-                store_user_spock_with_auth({ROAdmin, local}, [{name, "Read Only User"}],
-                                           Auth, [ro_admin], Config)
+                store_user_50_with_auth({ROAdmin, local}, [{name, "Read Only User"}],
+                                        Auth, [ro_admin], Config)
     end,
 
     lists:foreach(
@@ -604,7 +604,7 @@ do_upgrade_to_spock(Nodes, Repair) ->
               Password = proplists:get_value(sasl_password, BucketConfig, ""),
               UUID = proplists:get_value(uuid, BucketConfig),
               Name = "Generated user for bucket " ++ BucketName,
-              ok = store_user_spock_validated(
+              ok = store_user_50_validated(
                      {BucketName, local},
                      [{name, Name}, {roles, [{bucket_full_access, [{BucketName, UUID}]}]}],
                      build_memcached_auth(Password))
@@ -616,7 +616,7 @@ do_upgrade_to_spock(Nodes, Repair) ->
               Roles = proplists:get_value(roles, Props),
               {ValidatedRoles, _} = menelaus_roles:validate_roles(Roles, Config),
               NewProps = lists:keystore(roles, 1, Props, {roles, ValidatedRoles}),
-              ok = store_user_spock_validated({LdapUser, external}, NewProps, same)
+              ok = store_user_50_validated({LdapUser, external}, NewProps, same)
       end, LdapUsers).
 
 config_upgrade() ->

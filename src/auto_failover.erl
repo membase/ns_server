@@ -373,7 +373,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%
 get_tick_period() ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             ?TICK_PERIOD;
         false ->
@@ -382,7 +382,7 @@ get_tick_period() ->
 %% Returns list of nodes that are down/unhealthy along with the reason
 %% why the node is considered unhealthy.
 get_down_nodes(NodeStatuses, NonPendingNodes, Config) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             %% Find down nodes using the new failure detector.
             fastfo_down_nodes(NonPendingNodes);

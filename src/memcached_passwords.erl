@@ -84,7 +84,7 @@ handle_event({rest_creds, Creds}, State) ->
     {changed, State#state{rest_creds = Creds}}.
 
 producer(State) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             make_producer(State);
         false ->
@@ -109,7 +109,7 @@ make_producer(#state{buckets = Buckets,
                                                {strict, false}])]).
 
 get_admin_auth_json({User, {password, {Salt, Mac}}}) ->
-    %% this happens after upgrade to Spock, before the first password change
+    %% this happens after upgrade to 5.0, before the first password change
     {User, menelaus_users:build_plain_memcached_auth_info(Salt, Mac)};
 get_admin_auth_json({User, {auth, Auth}}) ->
     {User, Auth};
