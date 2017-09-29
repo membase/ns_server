@@ -589,7 +589,7 @@ def make_os_tasks():
         LinuxTask("LVM info", "vgdisplay"),
         LinuxTask("LVM info", "pvdisplay"),
         LinuxTask("Block device queue settings",
-                  "find /sys/block/*/queue/ -type d -exec grep -vH -R xxxx '{}' ';' | sort"),
+                  "find /sys/block/*/queue -type f | xargs grep -vH xxxx | sort"),
         MacOSXTask("Process list snapshot", "top -l 1"),
         MacOSXTask("Disk activity", "iostat 1 10"),
         MacOSXTask("Process list",
