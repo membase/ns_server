@@ -35,7 +35,7 @@
 %% can restart children that care.
 node_name_changed() ->
     {ok, _} = restartable:restart(?MODULE, ns_doctor_sup),
-    {ok, _} = restartable:restart(?MODULE, mb_master),
+    {ok, _} = restartable:restart(?MODULE, leader_services_sup),
     ok.
 
 
@@ -270,8 +270,8 @@ child_specs() ->
      %% Starts mb_master_sup, which has all processes that start on the master
      %% node.
      restartable:spec(
-       {mb_master, {mb_master, start_link, []},
-        permanent, infinity, supervisor, [mb_master]}),
+       {leader_services_sup, {leader_services_sup, start_link, []},
+        permanent, infinity, supervisor, []}),
 
      {master_activity_events_ingress, {gen_event, start_link, [{local, master_activity_events_ingress}]},
       permanent, brutal_kill, worker, dynamic},
