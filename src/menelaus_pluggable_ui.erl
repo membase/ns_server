@@ -230,7 +230,10 @@ port_for(n1ql, Node) ->
     lookup_port(query_port, Node);
 
 port_for(views, Node) ->
-    lookup_port(capi_port, Node).
+    lookup_port(capi_port, Node);
+
+port_for(eventing, Node) ->
+    lookup_port(eventing_http_port, Node).
 
 lookup_port(Name, Node) ->
     {value, Port} = ns_config:search(ns_config:latest(),
