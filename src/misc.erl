@@ -518,15 +518,7 @@ poll_for_condition_test() ->
 %% Remove matching messages from the inbox.
 %% Returns a count of messages removed.
 
-flush(Msg) -> flush(Msg, 0).
-
-flush(Msg, N) ->
-    receive
-        Msg ->
-            flush(Msg, N+1)
-    after 0 ->
-            N
-    end.
+flush(Msg) -> ?flush(Msg).
 
 
 %% You know, like in Python

@@ -236,4 +236,16 @@
 
 -define(DEFAULT_UI_COMPAT_VERSION, ?VERSION_45).
 
+-define(flush(Pattern),
+        misc:letrec([0],
+                    fun (Rec, I) ->
+                            receive
+                                Pattern ->
+                                    Rec(Rec, I+1)
+                            after
+                                0 ->
+                                    I
+                            end
+                    end)).
+
 -endif.
