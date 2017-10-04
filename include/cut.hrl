@@ -14,3 +14,5 @@
 %% limitations under the License.
 %%
 -compile({parse_transform, cut}).
+
+-define(cut(Expr), cut:f(Expr)).

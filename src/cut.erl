@@ -3,7 +3,8 @@
 %% Notation for Specializing Parameters without Currying
 %% (http://srfi.schemers.org/srfi-26/srfi-26.html).
 
-%% All modifications are (C) 2011-2013 VMware, Inc.
+%% All modifications are (C) 2011-2013 VMware, Inc.,
+%%                                2017 Couchbase, Inc.
 
 %%
 %% ``The contents of this file are subject to the Erlang Public License,
@@ -23,6 +24,8 @@
 %%
 
 -module(cut).
+
+-include("generic.hrl").
 
 -export([parse_transform/2]).
 
@@ -357,6 +360,12 @@ expr({'fun', Line, Body}) ->
 expr({named_fun, Line, Name, Cs0}) ->
     Cs1 = fun_clauses(Cs0),
     {named_fun, Line, Name, Cs1};
+expr({call, Line, {remote, _,
+                   {atom, _, cut},
+                   {atom, _, f}},
+      [Expr]}) ->
+    {Pattern, NewExpr} = find_cut_vars_deep(Line, Expr),
+    {'fun', Line, {clauses, [{clause, Line, Pattern, [], [NewExpr]}]}};
 expr({call, Line, F0, As0}) ->
     %% N.B. If F an atom then call to local function or BIF, if F a
     %% remote structure (see below) then call to other module,
@@ -628,3 +637,27 @@ make_var_name() ->
     VarCount = get(var_count),
     put(var_count, VarCount+1),
     list_to_atom("__cut_" ++ integer_to_list(VarCount)).
+
+find_cut_vars_deep(CutLine, Expr) ->
+    Vars = generic:query(fun lists:append/2,
+                         ?query(Var, fun is_placeholder/1, [Var], []), Expr),
+    NewVars = [{var, Line, make_var_name()} || {var, Line, _} <- Vars],
+
+    {NewExpr, _} = generic:transformb(fun (T, Vs) ->
+                                              case is_placeholder(T) of
+                                                  true ->
+                                                      [V | RestVs] = Vs,
+                                                      {V, RestVs};
+                                                  false ->
+                                                      {T, Vs}
+                                              end
+                                      end, NewVars, Expr),
+
+    Pattern = [{var, CutLine, Name} || {var, _Line, Name} <- NewVars],
+
+    {Pattern, NewExpr}.
+
+is_placeholder({var, _Line, '_'}) ->
+    true;
+is_placeholder(_) ->
+    false.

@@ -1,6 +1,10 @@
 {lib_dirs, ["deps"]}.
 {erl_first_files, ["src/supervisor2.erl", "src/memcached_cfg.erl",
                    "src/replicated_storage.erl", "src/json_settings_manager.erl",
+
+                   %% functools and generic modules are used by cut, so they
+                   %% also need to be compiled early
+                   "src/functools.erl", "src/generic.erl",
                    "src/cut.erl"]}.
 {erl_opts, [{src_dirs, ["src", "test"]},
             {i, "@COUCHDB_SRC_DIR@/src/couchdb"},
