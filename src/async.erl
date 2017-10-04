@@ -15,6 +15,8 @@
 
 -module(async).
 
+-include("ns_common.hrl").
+
 -export([start/1, start_many/2,
          abort/1, abort_many/1,
          send/2,
@@ -172,11 +174,7 @@ async_loop_wait_result(ParentMRef, Child, Reply, ChildAsyncs) ->
             Result = async_loop_handle_result(Result0),
 
             unlink(Child),
-            receive
-                {'EXIT', Child, _} -> ok
-            after
-                0 -> ok
-            end,
+            ?flush({'EXIT', Child, _}),
 
             async_loop_with_result(ParentMRef, Result);
         {'$async_msg', Msg} ->
@@ -228,13 +226,7 @@ call_any(Pids, Req) ->
 drop_extra_resps(PidMRefs) ->
     lists:foreach(
       fun ({_, MRef}) ->
-              receive
-                  {MRef, _} ->
-                      ok
-              after
-                  0 ->
-                      ok
-              end
+              ?flush({MRef, _})
       end, PidMRefs).
 
 reply({Pid, Tag}, Reply) ->
