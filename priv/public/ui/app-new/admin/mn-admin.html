@@ -20,46 +20,46 @@
           {{(tasksToDisplay| async)?.length}}
         </span>
       </a>
-      <!-- <div -->
-      <!--    class="relative inline" -->
-      <!--    *ngIf="(tasksReadPermission | async)"> -->
-      <!--   <div -->
-      <!--      mn-drag-and-drop -->
-      <!--      base-corner-right="true" -->
-      <!--      class="tasks-progress dialog-small enable-ng-animation" -->
-      <!--      *ngIf="(isProgressBarClosed | async)"> -->
-      <!--     <div class="close-tasks"> -->
-      <!--       <span ng-click="toggleProgressBar()">X</span> -->
-      <!--     </div> -->
-      <!--     <div class="panel-content"> -->
-      <!--       <div -->
-      <!--          class="text-small margin-bottom-1" -->
-      <!--          [hidden]="(tasksToDisplay | async)?.length"> -->
-      <!--         No active processes to display -->
-      <!--       </div> -->
-      <!--       <div ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)"> -->
-      <!--         <div class="text-small text-left"> -->
-      <!--           {{task | formatProgressMessage}} -->
-      <!--           <span ng-if="task.progress != undefined">{{(task.progress | number:1) + '%'}}</span> -->
-      <!--         </div> -->
-      <!--         <div -->
-      <!--            class="bar-wrapper" -->
-      <!--            ng-show="task.type !== 'loadingSampleBucket' && task.type !== 'orphanBucket'"> -->
-      <!--           <div -->
-      <!--              class="bar positive" -->
-      <!--              ng-style="{'width': task.progress + '%'}"> -->
-      <!--             <div></div> -->
-      <!--           </div> -->
-      <!--           <div -->
-      <!--              class="bar negative" -->
-      <!--              ng-style="{'width': (100 - task.progress) + '%'}"> -->
-      <!--             <div></div> -->
-      <!--           </div> -->
-      <!--         </div> -->
-      <!--       </div> -->
-      <!--     </div> -->
-      <!--   </div> -->
-      <!-- </div> -->
+      <div
+         class="relative inline"
+         *ngIf="(tasksReadPermission | async)">
+        <div
+           class="tasks-progress dialog-small enable-ng-animation"
+           *ngIf="!(isProgressBarClosed | async)">
+          <!-- mn-drag-and-drop -->
+          <!-- base-corner-right="true" -->
+          <div class="close-tasks">
+            <span (click)="toggleProgressBar()">X</span>
+          </div>
+          <div class="panel-content">
+            <div
+               class="text-small margin-bottom-1"
+               [hidden]="(tasksToDisplay | async)?.length">
+              No active processes to display
+            </div>
+            <div *ngFor="let task of tasksToDisplay | async">
+              <div class="text-small text-left">
+                {{task | mnFormatProgressMessage}}
+                <span [hidden]="!task.progress">{{(task.progress | number: '1.0-1') + '%'}}</span>
+              </div>
+              <div
+                 class="bar-wrapper"
+                 [hidden]="task.type === 'loadingSampleBucket' || task.type === 'orphanBucket'">
+                <div
+                   class="bar positive"
+                   [ngStyle]="{'width': task.progress + '%'}">
+                  <div></div>
+                </div>
+                <div
+                   class="bar negative"
+                   [ngStyle]="{'width': (100 - task.progress) + '%'}">
+                  <div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <a
          (click)="runInternalSettingsDialog();"
          [hidden]="!(enableInternalSettings | async)">

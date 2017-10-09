@@ -69,6 +69,51 @@ mn.pipes.MnPrettyVersion =
     return MnPrettyVersion;
   })();
 
+
+var mn = mn || {};
+mn.pipes = mn.pipes || {};
+mn.pipes.MnFormatProgressMessage =
+  (function () {
+    "use strict";
+
+    function addNodeCount(perNode) {
+      var serversCount = (_.keys(perNode) || []).length;
+      return serversCount + " " + (serversCount === 1 ? 'node' : 'nodes');
+    }
+
+    var MnFormatProgressMessage =
+        ng.core.Pipe({
+          name: "mnFormatProgressMessage"
+        }).Class({
+          constructor: function MnFormatProgressMessage() {},
+          transform: function (task) {
+            switch (task.type) {
+            case "indexer":
+              return "building view index " + task.bucket + "/" + task.designDocument;
+            case "global_indexes":
+              return "building index " + task.index  + " on bucket " + task.bucket;
+            case "view_compaction":
+              return "compacting view index " + task.bucket + "/" + task.designDocument;
+            case "bucket_compaction":
+              return "compacting bucket " + task.bucket;
+            case "loadingSampleBucket":
+              return "loading sample: " + task.bucket;
+            case "orphanBucket":
+              return "orphan bucket: " + task.bucket;
+            case "clusterLogsCollection":
+              return "collecting logs from " + addNodeCount(task.perNode);
+            case "rebalance":
+              var serversCount = (_.keys(task.perNode) || []).length;
+              return (task.subtype == 'gracefulFailover') ?
+                "failing over 1 node" :
+                ("rebalancing " + addNodeCount(task.perNode));
+            }
+          }
+        });
+
+    return MnFormatProgressMessage;
+  })();
+
 var mn = mn || {};
 mn.modules = mn.modules || {};
 mn.modules.MnPipesModule =
@@ -79,7 +124,8 @@ mn.modules.MnPipesModule =
         ng.core.NgModule({
           declarations: [
             mn.pipes.MnParseVersion,
-            mn.pipes.MnPrettyVersion
+            mn.pipes.MnPrettyVersion,
+            mn.pipes.MnFormatProgressMessage
           ],
           exports: [
             mn.pipes.MnParseVersion,

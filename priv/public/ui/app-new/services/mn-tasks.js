@@ -12,6 +12,7 @@ mn.services.MnTasks = (function () {
           function MnTasksService(http, mnAdminService) {
             this.http = http;
             this.stream = {};
+            this.stream.interval = new Rx.Subject();
 
             var tasksTypesToDisplay = {
               indexer: true,
@@ -24,7 +25,15 @@ mn.services.MnTasks = (function () {
               clusterLogsCollection: true
             };
 
-            this.stream.url =
+            var setupInterval =
+                this.stream
+                .interval
+                .startWith(0)
+                .switchMap(function (interval) {
+                  return Rx.Observable.timer(interval);
+                });
+
+            var getUrl =
               mnAdminService
               .stream
               .getPoolsDefault
@@ -32,11 +41,22 @@ mn.services.MnTasks = (function () {
               .distinctUntilChanged();
 
             this.stream.getSuccess =
-              this.stream
-              .url
+              getUrl
+              .combineLatest(setupInterval)
               .switchMap(this.get.bind(this))
               .publishReplay(1)
               .refCount();
+
+            this.stream.extractNextInterval =
+              this.stream
+              .getSuccess
+              .map(function (tasks) {
+                return (_.chain(tasks)
+                        .pluck('recommendedRefreshPeriod')
+                        .compact()
+                        .min()
+                        .value() * 1000) >> 0 || 10000;
+              });
 
             this.stream.running =
               this.stream
@@ -59,7 +79,7 @@ mn.services.MnTasks = (function () {
   return MnTasks;
 
   function get(url) {
-    return this.http.get(url);
+    return this.http.get(url[0]);
   }
 
 })();

@@ -30,7 +30,8 @@ mn.components.MnAdmin =
                 mnPermissionsService
                 .stream
                 .getSuccess
-                .pluck("cluster.tasks!read");
+                .pluck("cluster.tasks!read")
+                .distinctUntilChanged();
 
               this.enableInternalSettings =
                 mnAdminService
@@ -42,11 +43,23 @@ mn.components.MnAdmin =
                                .pluck("cluster.admin.settings!write"))
                 .map(_.curry(_.every)(_, Boolean));
 
-              this.mnAdminService.stream
+              this.tasksReadPermission
+                .switchMap(function (canRead) {
+                  return canRead ?
+                    mnTasksService.stream.extractNextInterval :
+                    Rx.Observable.never();
+                })
+                .takeUntil(this.destroy)
+                .subscribe(function (interval) {
+                  mnTasksService.stream.interval.next(interval);
+                });
+
+              this.mnAdminService
+                .stream
                 .getPoolsDefault
                 .takeUntil(this.destroy)
-                .subscribe(function (val) {
-                  mnAdminService.stream.etag.next(val.etag);
+                .subscribe(function (rv) {
+                  mnAdminService.stream.etag.next(rv.etag);
                 });
             }],
           ngOnDestroy: function () {
@@ -63,6 +76,33 @@ mn.components.MnAdmin =
           toggleProgressBar: function () {
             this.isProgressBarClosed.next(!this.isProgressBarClosed.getValue());
           }
+        });
+
+    return MnAdmin;
+  })();
+
+
+var mn = mn || {};
+mn.modules = mn.modules || {};
+mn.modules.MnAdmin =
+  (function () {
+    "use strict";
+
+    var MnAdmin =
+        ng.core.NgModule({
+          declarations: [
+            mn.components.MnAdmin,
+          ],
+          imports: [
+            mn.modules.MnPipesModule,
+            ng.platformBrowser.BrowserModule,
+          ],
+          providers: [
+            mn.services.MnAdmin
+          ]
+        })
+        .Class({
+          constructor: function MnAdminModule() {}
         });
 
     return MnAdmin;
