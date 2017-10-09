@@ -1,0 +1,99 @@
+<div class="page-wrap">
+  <!-- <div -->
+  <!--    ng-if="rbac.cluster.settings.read" -->
+  <!--    mn-launchpad -->
+  <!--    launchpad-source="adminCtl.launchpadSource" -->
+  <!--    launchpad-id="adminCtl.launchpadId"></div> -->
+  <!-- <div -->
+  <!--    ui-view="lostConnection"> -->
+  <!-- </div> -->
+
+  <div class="row">
+    <nav class="nav-header">
+      <a (click)="toggleProgressBar()"
+         class="activities"
+         *ngIf="(tasksReadPermission | async)">
+        Activity
+        <span
+           [hidden]="!(tasksToDisplay| async)?.length > 0"
+           class="label badge">
+          {{(tasksToDisplay| async)?.length}}
+        </span>
+      </a>
+      <!-- <div -->
+      <!--    class="relative inline" -->
+      <!--    *ngIf="(tasksReadPermission | async)"> -->
+      <!--   <div -->
+      <!--      mn-drag-and-drop -->
+      <!--      base-corner-right="true" -->
+      <!--      class="tasks-progress dialog-small enable-ng-animation" -->
+      <!--      *ngIf="(isProgressBarClosed | async)"> -->
+      <!--     <div class="close-tasks"> -->
+      <!--       <span ng-click="toggleProgressBar()">X</span> -->
+      <!--     </div> -->
+      <!--     <div class="panel-content"> -->
+      <!--       <div -->
+      <!--          class="text-small margin-bottom-1" -->
+      <!--          [hidden]="(tasksToDisplay | async)?.length"> -->
+      <!--         No active processes to display -->
+      <!--       </div> -->
+      <!--       <div ng-repeat="task in adminCtl.filterTasks(adminCtl.tasks.running)"> -->
+      <!--         <div class="text-small text-left"> -->
+      <!--           {{task | formatProgressMessage}} -->
+      <!--           <span ng-if="task.progress != undefined">{{(task.progress | number:1) + '%'}}</span> -->
+      <!--         </div> -->
+      <!--         <div -->
+      <!--            class="bar-wrapper" -->
+      <!--            ng-show="task.type !== 'loadingSampleBucket' && task.type !== 'orphanBucket'"> -->
+      <!--           <div -->
+      <!--              class="bar positive" -->
+      <!--              ng-style="{'width': task.progress + '%'}"> -->
+      <!--             <div></div> -->
+      <!--           </div> -->
+      <!--           <div -->
+      <!--              class="bar negative" -->
+      <!--              ng-style="{'width': (100 - task.progress) + '%'}"> -->
+      <!--             <div></div> -->
+      <!--           </div> -->
+      <!--         </div> -->
+      <!--       </div> -->
+      <!--     </div> -->
+      <!--   </div> -->
+      <!-- </div> -->
+      <a
+         (click)="runInternalSettingsDialog();"
+         [hidden]="!(enableInternalSettings | async)">
+        Edit internal settings
+      </a>
+      <a href="https://developer.couchbase.com/documentation/server/{{majorMinorVersion | async}}/introduction/whats-new.html" target="_blank">
+        Documentation
+      </a>
+      <a href="{{(getPoolsSuccess | async)?.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
+        Support
+      </a>
+      <a
+         (click)="onLogout()"
+         class="ellipsis max-width-4">
+        Sign out
+      </a>
+      <!-- <span uib-dropdown> -->
+      <!--   <a uib-dropdown-toggle class="nowrap ellipsis max-width-3"> -->
+      <!--     {{adminCtl.user.id}} -->
+      <!--     <span class="has-menu">&nbsp;</span> -->
+      <!--   </a> -->
+      <!--   <div uib-dropdown-menu class="dropdown-menu-select-like"> -->
+      <!--     <a -->
+      <!--        ng-show="pools.isEnterprise && poolDefault.compat.atLeast50 && (adminCtl.user.domain === 'local' || adminCtl.user.domain === 'admin')" -->
+      <!--        ng-click="adminCtl.showResetPasswordDialog()"> -->
+      <!--       Reset password -->
+      <!--     </a> -->
+      <!--     <a -->
+      <!--        ng-click="adminCtl.logout()" -->
+      <!--        class="ellipsis max-width-4"> -->
+      <!--       Sign out {{adminCtl.user.id}} -->
+      <!--     </a> -->
+      <!--   </div> -->
+      <!-- </span> -->
+    </nav>
+  </div>
+</div>

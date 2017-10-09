@@ -10,9 +10,23 @@ mn.services.MnPools = (function () {
       .Class({
         constructor: [
           ng.common.http.HttpClient,
-          function MnPoolsService(http) {
+          mn.pipes.MnParseVersion,
+          function MnPoolsService(http, mnParseVersionPipe) {
             this.http = http;
-            this.get$ = this.get();
+            this.stream = {};
+            this.stream.getSuccess =
+              this.get()
+              .filter(function (rv) {
+                return !(rv instanceof ng.common.http.HttpErrorResponse);
+              }).share();
+
+            this.stream.majorMinorVersion =
+              this.stream.getSuccess
+              .pluck("implementationVersion")
+              .map(mnParseVersionPipe.transform.bind(mnParseVersionPipe))
+              .map(function (rv) {
+                return rv[0].split('.').splice(0,2).join('.');
+              });
           }],
         get: get,
       });

@@ -106,7 +106,8 @@ mn.services.MnApp = (function () {
         // + '<div ng-show="mnGlobalSpinnerFlag" class="global-spinner"></div>'
       })
       .Class({
-        constructor: function AppComponent() {}
+        constructor: function AppComponent() {
+        }
       });
 
   var AppModule =
@@ -117,6 +118,7 @@ mn.services.MnApp = (function () {
         imports: [
           mn.modules.MnPipesModule,
           mn.modules.MnAuth,
+          mn.modules.MnAdmin,
           ng.platformBrowser.BrowserModule,
           ng.common.http.HttpClientModule,
           window['@uirouter/angular'].UIRouterModule.forRoot({
@@ -140,6 +142,10 @@ mn.services.MnApp = (function () {
             }, {
               name: "app.auth",
               component: mn.components.MnAuth
+            }, {
+              name: "app.admin",
+              url: "admin",
+              component: mn.components.MnAdmin
             }],
             useHash: true,
             config: function uiRouterConfigFn(uiRouter, injector) {
@@ -161,8 +167,11 @@ mn.services.MnApp = (function () {
         bootstrap: [window["@uirouter/angular"].UIView],
         entryComponents: [],
         providers: [
+          mn.services.MnTasks,
           mn.services.MnPools,
           mn.services.MnExceptionHandler,
+          mn.services.MnPermissions,
+          mn.services.MnBuckets,
           mn.services.MnApp, {
             provide: ng.core.ErrorHandler,
             useClass: mn.services.MnExceptionHandler
@@ -180,12 +189,13 @@ mn.services.MnApp = (function () {
           mn.pipes.MnPrettyVersion,
           ng.platformBrowser.Title,
           mn.services.MnApp,
+          mn.services.MnAuth,
           window['@uirouter/angular'].UIRouter,
           ng.common.http.HttpClient,
           function AppModule(mnExceptionHandlerService,
                              mnPoolsService,
                              mnPrettyVersionPipe,
-                             title, mnAppService, uiRouter, http) {
+                             title, mnAppService, mnAuthService, uiRouter, http) {
 
             mnAppService
               .stream
@@ -194,10 +204,12 @@ mn.services.MnApp = (function () {
                 error && mnExceptionHandlerService.handleError(error);
               });
 
-
             mnAppService
               .stream
               .http401
+              .merge(mnAuthService
+                     .stream
+                     .logoutResult)
               .subscribe(function () {
                 uiRouter.stateService.go('app.auth', null, {location: false});
               });
@@ -206,8 +218,7 @@ mn.services.MnApp = (function () {
               .stream
               .pageNotFound
               .subscribe(function (pools) {
-                uiRouter.stateService.go(pools.isInitialized ?
-                                         'app.admin.overview' : 'app.wizard.welcome');
+                uiRouter.stateService.go('app.admin');
               });
 
             http.get("/versions").toPromise().then(function (versions) {

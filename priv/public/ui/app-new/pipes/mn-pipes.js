@@ -81,6 +81,11 @@ mn.modules.MnPipesModule =
             mn.pipes.MnParseVersion,
             mn.pipes.MnPrettyVersion
           ],
+          exports: [
+            mn.pipes.MnParseVersion,
+            mn.pipes.MnPrettyVersion,
+            mn.pipes.MnFormatProgressMessage
+          ],
           imports: [],
           providers: [
             mn.pipes.MnParseVersion,
