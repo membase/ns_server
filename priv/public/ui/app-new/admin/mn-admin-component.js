@@ -91,7 +91,8 @@ mn.modules.MnAdmin =
     var MnAdmin =
         ng.core.NgModule({
           declarations: [
-            mn.components.MnAdmin,
+            mn.directives.MnDraggable,
+            mn.components.MnAdmin
           ],
           imports: [
             mn.modules.MnPipesModule,

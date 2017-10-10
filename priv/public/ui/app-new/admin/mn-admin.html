@@ -25,9 +25,9 @@
          *ngIf="(tasksReadPermission | async)">
         <div
            class="tasks-progress dialog-small enable-ng-animation"
+           mnDraggable
+           [baseCornerRight]="true"
            *ngIf="!(isProgressBarClosed | async)">
-          <!-- mn-drag-and-drop -->
-          <!-- base-corner-right="true" -->
           <div class="close-tasks">
             <span (click)="toggleProgressBar()">X</span>
           </div>
