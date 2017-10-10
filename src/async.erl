@@ -195,6 +195,17 @@ async_loop_with_result(ParentMRef, Result) ->
             exit(Reason);
         {'$async_req', From, get_result} ->
             reply(From, Result);
+        {'$async_req', From, {register_child_async, _Pid}} ->
+            %% We don't expect register requests at this point, but it's
+            %% possible to write a correct async that has such behavior. If we
+            %% don't reply, the requesting process will have to wait till we
+            %% die, which is unnecessary. So we just respond with nack to kill
+            %% it quickly.
+            reply(From, nack);
+        {'$async_req', From, _} ->
+            %% Similar logic applies to all the other requests (that actually
+            %% don't exist at the moment).
+            reply(From, nack);
         _ ->
             async_loop_with_result(ParentMRef, Result)
     end.
