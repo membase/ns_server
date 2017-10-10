@@ -156,36 +156,45 @@ register_with_parent_async(Pid) ->
 async_loop_wait_result(ParentMRef, Child, Reply, ChildAsyncs) ->
     receive
         {'DOWN', ParentMRef, _, _, Reason} ->
-            misc:terminate_and_wait(Reason, [Child | ChildAsyncs]),
-            exit(Reason);
+            terminate_now(Reason, [Child | ChildAsyncs]);
         {'EXIT', Child, Reason} ->
-            exit({child_died, Reason});
+            terminate_on_query(ParentMRef, {child_died, Reason}, ChildAsyncs);
         %% note, we don't assume that this comes from the parent, because we
         %% can be terminated by parent async, for example, which is not the
         %% actual parent of our process
         {'EXIT', _, Reason} ->
-            misc:terminate_and_wait(Reason, [Child | ChildAsyncs]),
-            exit(Reason);
+            terminate_now(Reason, [Child | ChildAsyncs]);
         {'$async_req', From, {register_child_async, Pid}} ->
             reply(From, ok),
             async_loop_wait_result(ParentMRef, Child,
                                    Reply, [Pid | ChildAsyncs]);
-        {Reply, Result0} ->
-            Result = async_loop_handle_result(Result0),
-
-            unlink(Child),
-            ?flush({'EXIT', Child, _}),
-
-            async_loop_with_result(ParentMRef, Result);
+        {Reply, Result} ->
+            async_loop_handle_result(ParentMRef, Child, ChildAsyncs, Result);
         {'$async_msg', Msg} ->
             Child ! Msg,
             async_loop_wait_result(ParentMRef, Child, Reply, ChildAsyncs)
     end.
 
-async_loop_handle_result({ok, Result}) ->
-    Result;
-async_loop_handle_result({raised, {_T, _E, _Stack}} = Raised) ->
-    exit(Raised).
+terminate_now(Reason, Children) ->
+    misc:terminate_and_wait(Reason, Children),
+    exit(Reason).
+
+terminate_on_query(ParentMRef, Reason, Children) ->
+    misc:terminate_and_wait(Reason, Children),
+    async_loop_with_result(ParentMRef, {die, Reason}).
+
+async_loop_handle_result(ParentMRef, Child, ChildAsyncs, Result) ->
+    unlink(Child),
+    ?flush({'EXIT', Child, _}),
+
+    misc:terminate_and_wait(shutdown, ChildAsyncs),
+
+    case Result of
+        {ok, Success} ->
+            async_loop_with_result(ParentMRef, {reply, Success});
+        {raised, _} = Raised ->
+            async_loop_with_result(ParentMRef, {die, Raised})
+    end.
 
 async_loop_with_result(ParentMRef, Result) ->
     receive
@@ -194,7 +203,7 @@ async_loop_with_result(ParentMRef, Result) ->
         {'EXIT', _, Reason} ->
             exit(Reason);
         {'$async_req', From, get_result} ->
-            reply(From, Result);
+            handle_get_result(From, Result);
         {'$async_req', From, {register_child_async, _Pid}} ->
             %% We don't expect register requests at this point, but it's
             %% possible to write a correct async that has such behavior. If we
@@ -209,6 +218,11 @@ async_loop_with_result(ParentMRef, Result) ->
         _ ->
             async_loop_with_result(ParentMRef, Result)
     end.
+
+handle_get_result(From, {reply, Result}) ->
+    reply(From, Result);
+handle_get_result(_From, {die, Reason}) ->
+    exit(Reason).
 
 call(Pid, Req) ->
     [{Pid, R}] = call_many([Pid], Req),
