@@ -17,7 +17,7 @@
 
 -include("ns_common.hrl").
 
--export([start/1, start_many/2,
+-export([start/1, start/2, start_many/2,
          abort/1, abort_many/1,
          send/2,
          with/2, with_many/3,
@@ -26,10 +26,21 @@
          run_with_timeout/2]).
 
 start(Fun) ->
+    start(Fun, []).
+
+start(Fun, Opts) ->
     Parent = self(),
     PDict = erlang:get(),
 
-    spawn(
+    SpawnFun =
+        case proplists:get_value(monitor, Opts, false) of
+            true ->
+                fun spawn_monitor/1;
+            false ->
+                fun spawn/1
+        end,
+
+    SpawnFun(
       fun () ->
               async_init(Parent, PDict, Fun)
       end).
