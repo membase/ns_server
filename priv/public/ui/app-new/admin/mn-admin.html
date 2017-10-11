@@ -25,8 +25,9 @@
          class="relative inline"
          *ngIf="(tasksReadPermission | async)">
         <div
-           class="tasks-progress dialog-small enable-ng-animation"
+           class="tasks-progress dialog-small"
            mnDraggable
+           [@mnMinimize]
            [baseCornerRight]="true"
            *ngIf="!(isProgressBarClosed | async)">
           <div class="close-tasks">

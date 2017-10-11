@@ -7,6 +7,24 @@ mn.components.MnAdmin =
     var MnAdmin =
         ng.core.Component({
           templateUrl: "app-new/admin/mn-admin.html",
+          animations: [
+            ng.animations.trigger(
+              'mnMinimize', [
+                ng.animations.state(
+                  ':enter',
+                  ng.animations.style({opacity: '0', height: '0'}),
+                  // ng.animations.animation('500ms',
+                  //                         ng.animations.style({opacity: '1', height: '2rem'}))
+                ),
+                ng.animations.state(
+                  ':leave',
+                  ng.animations.style({opacity: '1', height: '2rem'}),
+                  ng.animations.animation('500ms',
+                                          ng.animations.style({opacity: '0', height: '0'}))
+                )
+              ]
+            )
+          ]
         })
         .Class({
           constructor: [
@@ -170,7 +188,8 @@ mn.modules.MnAdmin =
             mn.modules.MnElementModule,
             mn.modules.MnPipesModule,
             ng.platformBrowser.BrowserModule,
-            ngb.NgbModule
+            ngb.NgbModule,
+            ng.platformBrowser.animations.BrowserAnimationsModule
           ],
           providers: [
             mn.services.MnAdmin
