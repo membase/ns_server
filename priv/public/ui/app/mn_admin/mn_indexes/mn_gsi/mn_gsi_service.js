@@ -17,6 +17,8 @@
         url: '/indexStatus',
         mnHttp: mnHttpParams
       }).then(function (resp) {
+        resp.data.groups = _.groupBy(resp.data.indexes, 'bucket');
+        resp.data.nodes = _.groupBy(resp.data.indexes, 'hosts');
         return resp.data;
       });
     }

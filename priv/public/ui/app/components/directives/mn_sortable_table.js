@@ -40,6 +40,7 @@
          + '"dynamic-inverted": mnSortableTable.isOrderBy("'+ $scope.mnSortableTitle +'") && mnSortableTable.sortableTableProperties.invert}'
         );
         cloned.removeAttr('mn-sortable-title');
+
         $element.after($compile(cloned)($scope));
       });
     }
@@ -95,7 +96,9 @@
     }
 
     function link($scope, $element, $attrs, ctl, $transclude) {
-      $element.after($transclude());
+      $transclude(function (cloned) {
+        $element.after(cloned);
+      });
     }
   }
 })();

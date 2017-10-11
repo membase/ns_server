@@ -8,12 +8,14 @@
     'mnPoll',
     'mnSpinner',
     'mnFilters',
+    'mnSearch',
     'mnElementCrane'
   ]).controller('mnGsiController', mnGsiController);
 
   function mnGsiController($scope, mnGsiService, mnHelper, mnPoller) {
     var vm = this;
     vm.generateIndexId = generateIndexId;
+    vm.focusindexFilter = false;
 
     activate();
 
