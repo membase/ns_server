@@ -561,6 +561,12 @@ do_handle_per_node_stats(Resp, Node, PerNodeDiag)->
     do_handle_per_node_ets_tables(Resp, Node, DiagNoStats).
 
 print_ets_table(Resp, Node, Key, Table, Info, Values) ->
+    misc:executing_on_new_process(
+      fun () ->
+              do_print_ets_table(Resp, Node, Key, Table, Info, Values)
+      end).
+
+do_print_ets_table(Resp, Node, Key, Table, Info, Values) ->
     write_chunk_format(Resp, "per_node_~p(~p, ~p) =~n",
                        [Key, Node, Table]),
     case Info of
@@ -591,15 +597,12 @@ write_ets_tables(Resp, Node, Key, PerNodeDiag) ->
                         [{'_', [EtsTables0]}]
                 end,
 
-    misc:executing_on_new_process(
-      fun () ->
-              lists:foreach(
-                fun ({{Table, Info}, Values}) ->
-                        print_ets_table(Resp, Node, Key, Table, Info, Values);
-                    ({Table, Values}) ->
-                        print_ets_table(Resp, Node, Key, Table, [], Values)
-                end, EtsTables)
-      end),
+    lists:foreach(
+      fun ({{Table, Info}, Values}) ->
+              print_ets_table(Resp, Node, Key, Table, Info, Values);
+          ({Table, Values}) ->
+              print_ets_table(Resp, Node, Key, Table, [], Values)
+      end, EtsTables),
 
     lists:keydelete(Key, 1, PerNodeDiag).
 

@@ -260,9 +260,9 @@ start_collection_per_node(TimestampS, Parent, Options) ->
     proc_lib:init_ack(Parent, {ok, self(), Filename}),
     MaybeSingleNode = case proplists:get_bool(no_single_node_diag, Options) of
                           false ->
-                              ["--single-node-diag"];
+                              [];
                           _ ->
-                              []
+                              ["--multi-node-diag"]
                       end,
     Args0 = ["--watch-stdin"] ++ MaybeSingleNode
         ++ ["--initargs=" ++ InitargsFilename, Filename],
