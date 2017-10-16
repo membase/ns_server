@@ -238,7 +238,8 @@ services_by_version() ->
 
 topology_aware_services_by_version() ->
     [{?VERSION_45, fts},
-     {?VERSION_50, index}] ++
+     {?VERSION_50, index},
+     {?VULCAN_VERSION_NUM, eventing}] ++
         maybe_example_service().
 
 filter_services_by_version(Version, Services) ->
