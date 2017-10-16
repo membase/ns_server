@@ -539,20 +539,8 @@ do_parse_hostname(Hostname) ->
                             end
                     end,
 
-    {Host, StringPort} = split_host_port(WithoutScheme, "8091"),
+    {Host, StringPort} = misc:split_host_port(WithoutScheme, "8091"),
     {Host, parse_validate_port_number(StringPort)}.
-
-split_host_port("[" ++ _Rest, _DefaultPort) ->
-    throw({error, [<<"Raw IPv6 addresses are not accepted. Please use FQDN instead.">>]});
-split_host_port(HostPort, DefaultPort) ->
-    case string:tokens(HostPort, ":") of
-        [Host | [Port | []]] ->
-            {Host, Port};
-        [Host | []] ->
-            {Host, DefaultPort};
-        _ ->
-            throw({error, [<<"The hostname is malformed.">>]})
-    end.
 
 handle_add_node(Req) ->
     do_handle_add_node(Req, undefined).
@@ -864,7 +852,7 @@ hostname_parsing_test() ->
                        {"host", 8091},
                        {"127.0.0.1", 6000},
                        {error, [<<"Port must be a number.">>]},
-                       {error, [<<"The hostname is malformed.">>]},
+                       {error, [<<"The hostname is malformed. If using an IPv6 address, please enclose the address within '[' and ']'">>]},
                        {"host", 8091},
                        {error, [<<"Hostname is required.">>]}],
 

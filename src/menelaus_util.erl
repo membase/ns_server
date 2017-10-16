@@ -394,12 +394,12 @@ local_addr(Req) ->
                       {ok, {AV, _Port}} = inet:sockname(Socket),
                       AV
               end,
-    string:join(lists:map(fun integer_to_list/1, tuple_to_list(Address)), ".").
+    misc:maybe_add_brackets(inet:ntoa(Address)).
 
 remote_addr_and_port(Req) ->
     case inet:peername(Req:get(socket)) of
         {ok, {Address, Port}} ->
-            string:join(lists:map(fun integer_to_list/1, tuple_to_list(Address)), ".") ++ ":" ++ integer_to_list(Port);
+            misc:maybe_add_brackets(inet:ntoa(Address)) ++ ":" ++ integer_to_list(Port);
         Error ->
             ?log_error("remote_addr failed: ~p", Error),
             "unknown"

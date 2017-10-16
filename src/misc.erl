@@ -2009,8 +2009,58 @@ fact(0) ->
 fact(N) ->
     N * fact(N-1).
 
+-spec item_count(list(), term()) -> non_neg_integer().
+item_count(List, Item) ->
+    lists:foldl(
+      fun(Ele, Acc) ->
+              if Ele =:= Item -> Acc + 1;
+                 true -> Acc
+              end
+      end, 0, List).
+
 compress(Term) ->
     zlib:compress(term_to_binary(Term)).
 
 decompress(Blob) ->
     binary_to_term(zlib:uncompress(Blob)).
+
+-spec split_host_port(list(), list()) -> tuple().
+split_host_port(HostPort, DefaultPort) ->
+    split_host_port(HostPort, DefaultPort, misc:get_env_default(ns_server, ipv6, false)).
+
+-spec split_host_port(list(), list(), boolean()) -> tuple().
+split_host_port("[" ++ Rest, DefaultPort, true) ->
+    case string:tokens(Rest, "]") of
+        [Host] ->
+            {Host, DefaultPort};
+        [Host, ":" ++ Port] when Port =/= [] ->
+            {Host, Port};
+        _ ->
+            throw({error, [<<"The hostname is malformed.">>]})
+    end;
+split_host_port("[" ++ _Rest, _DefaultPort, false) ->
+    throw({error, [<<"The hostname is malformed.">>]});
+split_host_port(HostPort, DefaultPort, _) ->
+    case item_count(HostPort, $:) > 1 of
+        true ->
+            throw({error, [<<"The hostname is malformed. If using an IPv6 address, "
+                             "please enclose the address within '[' and ']'">>]});
+        false ->
+            case string:tokens(HostPort, ":") of
+                [Host] ->
+                    {Host, DefaultPort};
+                [Host, Port] ->
+                    {Host, Port};
+                _ ->
+                    throw({error, [<<"The hostname is malformed.">>]})
+            end
+    end.
+
+-spec maybe_add_brackets(list()) -> list().
+maybe_add_brackets("[" ++ _Rest = Address) ->
+    Address;
+maybe_add_brackets(Address) ->
+    case lists:member($:, Address) of
+        true -> "[" ++ Address ++ "]";
+        false -> Address
+    end.

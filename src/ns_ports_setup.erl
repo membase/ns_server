@@ -599,7 +599,7 @@ fts_spec(Config) ->
             FTSIdxDir = filename:join(IdxDir, "@fts"),
             ok = misc:ensure_writable_dir(FTSIdxDir),
             {_, Host} = misc:node_name_host(node()),
-            BindHttp = io_lib:format("~s:~b,~s:~b", [Host, FtRestPort,
+            BindHttp = io_lib:format("~s:~b,~s:~b", [misc:maybe_add_brackets(Host), FtRestPort,
                                                      misc:inaddr_any([url]),
                                                      FtRestPort]),
             BindHttps = case ns_config:search(Config, {node, node(), fts_ssl_port}, undefined) of

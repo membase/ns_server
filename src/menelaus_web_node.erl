@@ -247,7 +247,7 @@ build_node_hostname(Config, Node, LocalAddr) ->
                {_, "::1"} -> LocalAddr;
                {_Name, H} -> H
            end,
-    Host ++ ":" ++ integer_to_list(misc:node_rest_port(Config, Node)).
+    misc:maybe_add_brackets(Host) ++ ":" ++ integer_to_list(misc:node_rest_port(Config, Node)).
 
 build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 
@@ -424,9 +424,6 @@ handle_node_rename(Req) ->
                         {error, iolist_to_binary(Msg), 400};
                     already_part_of_cluster ->
                         Msg = <<"Renaming is disallowed for nodes that are already part of a cluster">>,
-                        {error, Msg, 400};
-                    raw_ipv6_address_not_allowed ->
-                        Msg = <<"Raw IPv6 addresses are not accepted. Please use FQDN instead.">>,
                         {error, Msg, 400}
                 end
         end,

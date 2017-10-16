@@ -127,27 +127,13 @@ complete_join(NodeKVList) ->
                                       | {address_save_failed, any()}
                                       | {address_not_allowed, string()}
                                       | already_part_of_cluster
-                                      | not_renamed
-                                      | raw_ipv6_address_not_allowed.
+                                      | not_renamed.
 change_address(Address) ->
-    case is_raw_ipv6_addr(Address) of
-        true ->
-            raw_ipv6_address_not_allowed;
-        false ->
-            case misc:is_good_address(Address) of
-                ok ->
-                    gen_server:call(?MODULE, {change_address, Address}, ?CHANGE_ADDRESS_TIMEOUT);
-                Error ->
-                    Error
-            end
-    end.
-
-is_raw_ipv6_addr("[" ++ _Address) ->
-    true;
-is_raw_ipv6_addr(Address) ->
-    case inet:parse_ipv6strict_address(Address) of
-        {ok, _IP} -> true;
-        _ -> false
+    case misc:is_good_address(Address) of
+        ok ->
+            gen_server:call(?MODULE, {change_address, Address}, ?CHANGE_ADDRESS_TIMEOUT);
+        Error ->
+            Error
     end.
 
 %% @doc Returns proplist of cluster-wide counters.
@@ -562,8 +548,8 @@ do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID, Services) -
     ?cluster_debug("Posting node info to engage_cluster on ~p:~n~p",
                    [{RemoteAddr, RestPort}, {sanitize_node_info(Props1)}]),
     RV = menelaus_rest:json_request_hilevel(post,
-                                            {RemoteAddr, RestPort, "/engageCluster2",
-                                             "application/json",
+                                            {misc:maybe_add_brackets(RemoteAddr), RestPort,
+                                             "/engageCluster2", "application/json",
                                              mochijson2:encode({Props1})},
                                             Auth),
     ?cluster_debug("Reply from engage_cluster on ~p:~n~p",
@@ -703,11 +689,7 @@ check_can_add_node(NodeKVList) ->
 
 do_add_node_engaged_inner(NodeKVList, OtpNode, Auth, Services) ->
     HostnameRaw = expect_json_property_list(<<"hostname">>, NodeKVList),
-    [Hostname, Port] = case string:tokens(HostnameRaw, ":") of
-                           [_, _] = Pair -> Pair;
-                           [H] -> [H, "8091"];
-                           _ -> erlang:exit({unexpected_json, malformed_hostname, HostnameRaw})
-                       end,
+    {Hostname0, Port} = misc:split_host_port(HostnameRaw, "8091"),
 
     {struct, MyNodeKVList} = menelaus_web_node:build_full_node_info(node(),
                                                                     misc:localhost()),
@@ -717,6 +699,7 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth, Services) ->
 
     ?cluster_debug("Posting the following to complete_join on ~p:~n~p",
                    [HostnameRaw, sanitize_node_info(Struct)]),
+    Hostname = misc:maybe_add_brackets(Hostname0),
     RV = menelaus_rest:json_request_hilevel(post,
                                             {Hostname, Port, "/completeJoin",
                                              "application/json",

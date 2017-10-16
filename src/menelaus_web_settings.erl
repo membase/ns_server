@@ -470,12 +470,8 @@ do_handle_settings_web_post(Port, U, P, Req) ->
             %% No need to restart right here, as our ns_config
             %% event watcher will do it later if necessary.
     end,
-    Host = Req:get_header_value("host"),
-    PureHostName = case string:tokens(Host, ":") of
-                       [Host] -> Host;
-                       [HostName, _] -> HostName
-                   end,
-    NewHost = PureHostName ++ ":" ++ integer_to_list(PortInt),
+    {PureHostName, _} = misc:split_host_port(Req:get_header_value("host"), ""),
+    NewHost = misc:maybe_add_brackets(PureHostName) ++ ":" ++ integer_to_list(PortInt),
     %% TODO: detect and support https when time will come
     reply_json(Req, {struct, [{newBaseUri, list_to_binary("http://" ++ NewHost ++ "/")}]}).
 

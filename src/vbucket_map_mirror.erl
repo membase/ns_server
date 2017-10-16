@@ -158,16 +158,16 @@ call_compute_node_base_url(Node, User, Password) ->
                                  {_, _} ->
                                      [User, $:, Password, $@]
                              end,
-                      case misc:node_name_host(RealNode) of
-                          {_, H} when H =:= "127.0.0.1"; H =:= "::1" ->
-                              U = iolist_to_binary([Schema, Auth, H, $:, integer_to_list(Port)]),
-                              ets:insert(vbucket_map_mirror, {{Node, User, Password}, U, Port}),
-                              U;
-                          {_Name, H} ->
-                              U = iolist_to_binary([Schema, Auth, H, $:, integer_to_list(Port)]),
-                              ets:insert(vbucket_map_mirror, {{Node, User, Password}, U, false}),
-                              U
-                      end
+
+                      {_, H} = misc:node_name_host(RealNode),
+                      StorePort = case H =:= "127.0.0.1" orelse H =:= "::1" of
+                                      true -> Port;
+                                      false -> false
+                                  end,
+                      Host = misc:maybe_add_brackets(H),
+                      Url = iolist_to_binary([Schema, Auth, Host, $:, integer_to_list(Port)]),
+                      ets:insert(vbucket_map_mirror, {{Node, User, Password}, Url, StorePort}),
+                      Url
               end
       end).
 
