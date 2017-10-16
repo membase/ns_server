@@ -121,6 +121,7 @@ mn.services.MnApp = (function () {
           mn.modules.MnAdmin,
           ng.platformBrowser.BrowserModule,
           ng.common.http.HttpClientModule,
+          ngb.NgbModule.forRoot(),
           window['@uirouter/angular'].UIRouterModule.forRoot({
             states: [{
               name: 'app',

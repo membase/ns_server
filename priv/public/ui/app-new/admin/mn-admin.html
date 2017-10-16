@@ -68,32 +68,33 @@
       <a href="https://developer.couchbase.com/documentation/server/{{majorMinorVersion | async}}/introduction/whats-new.html" target="_blank">
         Documentation
       </a>
-      <a href="{{(getPoolsSuccess | async)?.isEnterprise  ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
+      <a href="{{(isEnterprise | async) ? 'http://support.couchbase.com' : 'http://www.couchbase.com/communities/'}}" target="cbforums">
         Support
       </a>
-      <a
-         (click)="onLogout()"
-         class="ellipsis max-width-4">
-        Sign out
-      </a>
-      <!-- <span uib-dropdown> -->
-      <!--   <a uib-dropdown-toggle class="nowrap ellipsis max-width-3"> -->
-      <!--     {{adminCtl.user.id}} -->
-      <!--     <span class="has-menu">&nbsp;</span> -->
-      <!--   </a> -->
-      <!--   <div uib-dropdown-menu class="dropdown-menu-select-like"> -->
-      <!--     <a -->
-      <!--        ng-show="pools.isEnterprise && poolDefault.compat.atLeast50 && (adminCtl.user.domain === 'local' || adminCtl.user.domain === 'admin')" -->
-      <!--        ng-click="adminCtl.showResetPasswordDialog()"> -->
-      <!--       Reset password -->
-      <!--     </a> -->
-      <!--     <a -->
-      <!--        ng-click="adminCtl.logout()" -->
-      <!--        class="ellipsis max-width-4"> -->
-      <!--       Sign out {{adminCtl.user.id}} -->
-      <!--     </a> -->
-      <!--   </div> -->
-      <!-- </span> -->
+      <span
+         ngbDropdown
+         placement="bottom-right"
+         class="dropdown">
+        <a ngbDropdownToggle class="nowrap ellipsis max-width-3">
+          {{whomiId | async}}
+          <span class="has-menu">&nbsp;</span>
+        </a>
+        <div
+           ngbDropdownMenu
+           class="dropdown-menu-select-like"
+           [style.right]="'auto'">
+          <a
+             [hidden]="!(enableResetButton | async)"
+             (click)="showResetPasswordDialog()">
+            Reset password
+          </a>
+          <a
+             (click)="onLogout()"
+             class="ellipsis max-width-4">
+            Sign out {{whomiId | async}}
+          </a>
+        </div>
+      </span>
     </nav>
   </div>
 </div>

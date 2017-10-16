@@ -18,7 +18,14 @@ mn.services.MnPools = (function () {
               this.get()
               .filter(function (rv) {
                 return !(rv instanceof ng.common.http.HttpErrorResponse);
-              }).share();
+              })
+              .publishReplay(1)
+              .refCount();
+
+            this.stream.isEnterprise =
+              this.stream
+              .getSuccess
+              .pluck("isEnterprise");
 
             this.stream.majorMinorVersion =
               this.stream.getSuccess

@@ -22,9 +22,11 @@ mn.components.MnAdmin =
               this.mnAdminService = mnAdminService;
 
               this.majorMinorVersion = mnPoolsService.stream.majorMinorVersion;
-              this.getPoolsSuccess = mnPoolsService.stream.getSuccess;
               this.getPoolsDefaultSuccess = mnAdminService.stream.getPoolsDefaultSuccess;
               this.tasksToDisplay = mnTasksService.stream.tasksToDisplay;
+              this.isEnterprise = mnPoolsService.stream.isEnterprise;
+              this.whomiId = mnAdminService.stream.whomi.pluck("id");
+
 
               this.tasksReadPermission =
                 mnPermissionsService
@@ -32,6 +34,16 @@ mn.components.MnAdmin =
                 .getSuccess
                 .pluck("cluster.tasks!read")
                 .distinctUntilChanged();
+
+              this.enableResetButton =
+                Rx.Observable.combineLatest(
+                  mnPoolsService.stream.isEnterprise,
+                  mnAdminService.stream.compatVersion.pluck("atLeast50"),
+                  mnAdminService.stream.whomi.map(function (my) {
+                    return my.domain === 'local' || my.domain === 'admin';
+                  })
+                )
+                .map(_.curry(_.every)(_, Boolean));
 
               this.enableInternalSettings =
                 mnAdminService
@@ -73,6 +85,9 @@ mn.components.MnAdmin =
           runInternalSettingsDialog: function () {
 
           },
+          showResetPasswordDialog: function () {
+
+          },
           toggleProgressBar: function () {
             this.isProgressBarClosed.next(!this.isProgressBarClosed.getValue());
           }
@@ -97,6 +112,7 @@ mn.modules.MnAdmin =
           imports: [
             mn.modules.MnPipesModule,
             ng.platformBrowser.BrowserModule,
+            ngb.NgbModule
           ],
           providers: [
             mn.services.MnAdmin
