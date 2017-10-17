@@ -444,7 +444,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                                       ["couchBase",
                                        drop_prefix(Req:get(raw_path)),
                                        Plugins]};
-                ["sampleBuckets"] -> {{[samples], read}, fun handle_sample_buckets/1};
+                ["sampleBuckets"] -> {{[samples], read}, fun menelaus_web_samples:handle_get/1};
                 ["_metakv" | _] ->
                     {{[admin, internal], all}, fun menelaus_metakv:handle_get/2, [Path]};
                 ["_goxdcr", "controller", "bucketSettings", _Bucket] ->
@@ -475,7 +475,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["uilogout"] ->
                     {done, handle_uilogout(Req)};
                 ["sampleBuckets", "install"] ->
-                    {{[buckets], create}, fun handle_post_sample_buckets/1};
+                    {{[buckets], create}, fun menelaus_web_samples:handle_post/1};
                 ["engageCluster2"] ->
                     {{[admin, setup], write}, fun handle_engage_cluster2/1};
                 ["completeJoin"] ->
@@ -983,149 +983,6 @@ check_bucket_uuid(Bucket, F, Args, Req) ->
                       erlang:apply(F, Args ++ [Req])
               end)
     end.
-
-%% Internal API
--define(SAMPLES_LOADING_TIMEOUT, 120000).
--define(SAMPLE_BUCKET_QUOTA_MB, 100).
--define(SAMPLE_BUCKET_QUOTA, 1024 * 1024 * ?SAMPLE_BUCKET_QUOTA_MB).
-
-handle_sample_buckets(Req) ->
-
-    Buckets = [Bucket || {Bucket, _} <- ns_bucket:get_buckets(ns_config:get())],
-
-    Map = [ begin
-                Name = filename:basename(Path, ".zip"),
-                Installed = lists:member(Name, Buckets),
-                {struct, [{name, list_to_binary(Name)},
-                          {installed, Installed},
-                          {quotaNeeded, ?SAMPLE_BUCKET_QUOTA}]}
-            end || Path <- list_sample_files() ],
-
-    reply_json(Req, Map).
-
-handle_post_sample_buckets(Req) ->
-    menelaus_web_rbac:assert_no_users_upgrade(),
-    Samples = mochijson2:decode(Req:recv_body()),
-
-    Errors = case validate_post_sample_buckets(Samples) of
-                 ok ->
-                     start_loading_samples(Req, Samples);
-                 X1 ->
-                     X1
-             end,
-
-
-    case Errors of
-        ok ->
-            reply_json(Req, [], 202);
-        X2 ->
-            reply_json(Req, [Msg || {error, Msg} <- X2], 400)
-    end.
-
-start_loading_samples(Req, Samples) ->
-    Errors = [start_loading_sample(Req, binary_to_list(Sample))
-              || Sample <- Samples],
-    case [X || X <- Errors, X =/= ok] of
-        [] ->
-            ok;
-        X ->
-            lists:flatten(X)
-    end.
-
-start_loading_sample(Req, Name) ->
-    Params = [{"threadsNumber", "3"},
-              {"replicaIndex", "0"},
-              {"replicaNumber", "1"},
-              {"saslPassword", ""},
-              {"authType", "sasl"},
-              {"ramQuotaMB", integer_to_list(?SAMPLE_BUCKET_QUOTA_MB) },
-              {"bucketType", "membase"},
-              {"name", Name}],
-    case menelaus_web_buckets:create_bucket(Req, Name, Params) of
-        ok ->
-            start_loading_sample_task(Req, Name);
-        {_, Code} when Code < 300 ->
-            start_loading_sample_task(Req, Name);
-        {{struct, [{errors, {struct, Errors}}, _]}, _} ->
-            ?log_debug("Failed to create sample bucket: ~p", [Errors]),
-            [{error, <<"Failed to create bucket!">>} | [{error, Msg} || {_, Msg} <- Errors]];
-        {{struct, [{'_', Error}]}, _} ->
-            ?log_debug("Failed to create sample bucket: ~p", [Error]),
-            [{error, Error}];
-        X ->
-            ?log_debug("Failed to create sample bucket: ~p", [X]),
-            X
-    end.
-
-start_loading_sample_task(Req, Name) ->
-    case samples_loader_tasks:start_loading_sample(Name, ?SAMPLE_BUCKET_QUOTA_MB) of
-        ok ->
-            ns_audit:start_loading_sample(Req, Name);
-        already_started ->
-            ok
-    end,
-    ok.
-
-list_sample_files() ->
-    BinDir = path_config:component_path(bin),
-    filelib:wildcard(filename:join([BinDir, "..", "samples", "*.zip"])).
-
-
-sample_exists(Name) ->
-    BinDir = path_config:component_path(bin),
-    filelib:is_file(filename:join([BinDir, "..", "samples", binary_to_list(Name) ++ ".zip"])).
-
-validate_post_sample_buckets(Samples) ->
-    case check_valid_samples(Samples) of
-        ok ->
-            check_quota(Samples);
-        X ->
-            X
-    end.
-
-check_quota(Samples) ->
-    NodesCount = length(ns_cluster_membership:service_active_nodes(kv)),
-    StorageInfo = ns_storage_conf:cluster_storage_info(),
-    RamQuotas = proplists:get_value(ram, StorageInfo),
-    QuotaUsed = proplists:get_value(quotaUsed, RamQuotas),
-    QuotaTotal = proplists:get_value(quotaTotal, RamQuotas),
-    Required = ?SAMPLE_BUCKET_QUOTA * erlang:length(Samples),
-
-    case (QuotaTotal - QuotaUsed) <  (Required * NodesCount) of
-        true ->
-            Err = ["Not enough Quota, you need to allocate ", format_MB(Required),
-                   " to install sample buckets"],
-            [{error, list_to_binary(Err)}];
-        false ->
-            ok
-    end.
-
-
-check_valid_samples(Samples) ->
-    Errors = [begin
-                  case ns_bucket:name_conflict(binary_to_list(Name)) of
-                      true ->
-                          Err1 = ["Sample bucket ", Name, " is already loaded."],
-                          {error, list_to_binary(Err1)};
-                      _ ->
-                          case sample_exists(Name) of
-                              false ->
-                                  Err2 = ["Sample ", Name, " is not a valid sample."],
-                                  {error, list_to_binary(Err2)};
-                              _ -> ok
-                          end
-                  end
-              end || Name <- Samples],
-    case [X || X <- Errors, X =/= ok] of
-        [] ->
-            ok;
-        X ->
-            X
-    end.
-
-
-format_MB(X) ->
-    integer_to_list(misc:ceiling(X / 1024 / 1024)) ++ "MB".
 
 handle_engage_cluster2(Req) ->
     Body = Req:recv_body(),
