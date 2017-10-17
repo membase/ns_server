@@ -201,7 +201,7 @@ build_auto_compaction_info(BucketConfig, couchstore) ->
             [{autoCompactionSettings, false}];
         _ ->
             [{autoCompactionSettings,
-              menelaus_web:build_bucket_auto_compaction_settings(ACSettings)}]
+              menelaus_web_autocompaction:build_bucket_settings(ACSettings)}]
     end;
 build_auto_compaction_info(_BucketConfig, ephemeral) ->
     [];
@@ -1076,7 +1076,7 @@ parse_validate_bucket_purge_interval(Params, "membase", _IsNew) ->
         [] -> [];
         [{error, _F, _V}] = Error -> Error;
         [{ok, _, false}] -> [{ok, purge_interval, undefined}];
-        [{ok, _, true}] -> menelaus_web:parse_validate_purge_interval(Params)
+        [{ok, _, true}] -> menelaus_web_autocompaction:parse_validate_purge_interval(Params)
     end;
 parse_validate_bucket_purge_interval(Params, "ephemeral", IsNew) ->
     case proplists:is_defined("autoCompactionDefined", Params) of
@@ -1084,7 +1084,7 @@ parse_validate_bucket_purge_interval(Params, "ephemeral", IsNew) ->
             [{error, autoCompactionDefined,
               <<"autoCompactionDefined must not be set for ephemeral buckets">>}];
         false ->
-            Val = menelaus_web:parse_validate_purge_interval(Params),
+            Val = menelaus_web_autocompaction:parse_validate_purge_interval(Params),
             case Val =:= [] andalso IsNew =:= true of
                 true ->
                     [{ok, purge_interval, ?DEFAULT_EPHEMERAL_PURGE_INTERVAL_DAYS}];
@@ -1111,7 +1111,7 @@ parse_validate_bucket_auto_compaction_settings(Params) ->
         [{error, F, V}] -> {errors, [{F, V}]};
         [{ok, _, false}] -> false;
         [{ok, _, true}] ->
-            case menelaus_web:parse_validate_auto_compaction_settings(Params, false) of
+            case menelaus_web_autocompaction:parse_validate_settings(Params, false) of
                 {ok, AllFields, _} ->
                     {ok, AllFields};
                 Error ->
