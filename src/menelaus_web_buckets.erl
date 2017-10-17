@@ -122,7 +122,7 @@ handle_bucket_info(_PoolId, Id, Req) ->
 build_bucket_node_infos(BucketName, BucketConfig, InfoLevel0, LocalAddr) ->
     {InfoLevel, Stability} = convert_info_level(InfoLevel0),
     %% Only list nodes this bucket is mapped to
-    F = menelaus_web:build_nodes_info_fun(false, InfoLevel, Stability, LocalAddr),
+    F = menelaus_web_node:build_nodes_info_fun(false, InfoLevel, Stability, LocalAddr),
     Nodes = proplists:get_value(servers, BucketConfig, []),
     %% NOTE: there's potential inconsistency here between BucketConfig
     %% and (potentially more up-to-date) vbuckets dict. Given that
@@ -441,7 +441,9 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                       fun ({Name, BucketInfo}) ->
                               BucketNodes =
                                   [begin
-                                       Hostname = list_to_binary(menelaus_web:build_node_hostname(Config, N, LocalAddr)),
+                                       Hostname =
+                                           list_to_binary(
+                                             menelaus_web_node:build_node_hostname(Config, N, LocalAddr)),
                                        DirectPort = ns_config:search_node_prop(N, Config, memcached, port),
                                        ProxyPort = ns_config:search_node_prop(N, Config, moxi, port),
                                        {struct, [{hostname, Hostname},

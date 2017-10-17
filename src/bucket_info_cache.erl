@@ -227,8 +227,8 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
 
     NIs = lists:foldr(
             fun(Node, Acc) ->
-                    HostName = menelaus_web:build_node_hostname(Config, Node,
-                                                                ?LOCALHOST_MARKER_STRING),
+                    HostName = menelaus_web_node:build_node_hostname(Config, Node,
+                                                                     ?LOCALHOST_MARKER_STRING),
                     Info0 = [{hostname, list_to_binary(HostName)},
                              {ports, {build_ports(Node, Config)}}],
                     Info = case ns_bucket:bucket_type(BucketConfig) of

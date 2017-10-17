@@ -551,8 +551,8 @@ do_add_node_allowed(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
     end.
 
 do_add_node_with_connectivity(RemoteAddr, RestPort, Auth, GroupUUID, Services) ->
-    {struct, NodeInfo} = menelaus_web:build_full_node_info(node(),
-                                                           misc:localhost()),
+    {struct, NodeInfo} = menelaus_web_node:build_full_node_info(node(),
+                                                                misc:localhost()),
     Props = [{<<"requestedTargetNodeHostname">>, list_to_binary(RemoteAddr)},
              {<<"requestedServices">>, Services}]
         ++ NodeInfo,
@@ -715,8 +715,8 @@ do_add_node_engaged_inner(NodeKVList, OtpNode, Auth, Services) ->
                            _ -> erlang:exit({unexpected_json, malformed_hostname, HostnameRaw})
                        end,
 
-    {struct, MyNodeKVList} = menelaus_web:build_full_node_info(node(),
-                                                               misc:localhost()),
+    {struct, MyNodeKVList} = menelaus_web_node:build_full_node_info(node(),
+                                                                    misc:localhost()),
     Struct = {struct, [{<<"targetNode">>, OtpNode},
                        {<<"requestedServices">>, Services}
                        | MyNodeKVList]},

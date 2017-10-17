@@ -38,7 +38,7 @@ handle_server_groups(Req) ->
     {value, Groups} = ns_config:search(server_groups),
     LocalAddr = menelaus_util:local_addr(Req),
     CanIncludeOtpCookie = menelaus_auth:has_permission({[admin, internal], all}, Req),
-    Fun = menelaus_web:build_nodes_info_fun(CanIncludeOtpCookie, normal, unstable, LocalAddr),
+    Fun = menelaus_web_node:build_nodes_info_fun(CanIncludeOtpCookie, normal, unstable, LocalAddr),
     J = [begin
              UUIDBin = proplists:get_value(uuid, G),
              L = [{name, proplists:get_value(name, G)},

@@ -136,7 +136,7 @@ handle_reload_node_certificate(Req) ->
 handle_get_node_certificate(NodeId, Req) ->
     menelaus_web:assert_is_enterprise(),
 
-    case menelaus_web:find_node_hostname(NodeId, Req) of
+    case menelaus_web_node:find_node_hostname(NodeId, Req) of
         {ok, Node} ->
             case ns_server_cert:get_node_cert_info(Node) of
                 [] ->
