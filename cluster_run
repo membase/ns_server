@@ -235,10 +235,16 @@ def usage():
              "[ns_server args]".format(sys.argv[0]))
 
 def find_primary_addr():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    Family = socket.AF_INET6 if ipv6 else socket.AF_INET
+    DnsAddr = "2001:4860:4860::8844" if ipv6 else "8.8.8.8"
+    s = socket.socket(Family, socket.SOCK_DGRAM)
     try:
-        s.connect(("8.8.8.8", 56))
-        addr, port = s.getsockname()
+        s.connect((DnsAddr, 53))
+        if ipv6:
+            addr, port, _, _ = s.getsockname()
+        else:
+            addr, port = s.getsockname()
+
         return addr
     except socket.error:
         return None
@@ -338,7 +344,7 @@ def main():
 
     extra_args = []
     if not dont_rename:
-        primary_addr = None if ipv6 else find_primary_addr()
+        primary_addr = find_primary_addr()
         if primary_addr == None:
             print("was unable to detect 'internet' address of this machine."
                   + " node rename will be disabled")
