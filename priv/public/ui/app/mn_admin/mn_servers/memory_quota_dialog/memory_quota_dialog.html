@@ -18,7 +18,9 @@
          rbac="rbac"
          errors="serversMemoryQuotaDialogCtl.errors">
       </div>
-      <label>Index Storage Setting</label>
+      <label
+         ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index"
+         >Index Storage Setting</label>
       <mn-storage-mode
          ng-if="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index"
          mn-is-enterprise="serversMemoryQuotaDialogCtl.isEnterprise"
