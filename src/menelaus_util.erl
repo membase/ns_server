@@ -79,10 +79,14 @@
          reply_global_error/2,
          reply_error/3,
          require_auth/1,
-         send_chunked/3]).
+         send_chunked/3,
+         handle_streaming/2]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
+
+%% for hibernate
+-export([handle_streaming_wakeup/4]).
 
 %% External API
 
@@ -630,6 +634,57 @@ send_chunked(Req, StatusCode, ExtraHeaders) ->
                          end),
            Resp:write_chunk(<<>>)
        end).
+
+handle_streaming(F, Req) ->
+    HTTPRes = reply_ok(Req, "application/json; charset=utf-8", chunked),
+    %% Register to get config state change messages.
+    menelaus_event:register_watcher(self()),
+    Sock = Req:get(socket),
+    mochiweb_socket:setopts(Sock, [{active, true}]),
+    handle_streaming(F, Req, HTTPRes, undefined).
+
+streaming_inner(F, HTTPRes, LastRes) ->
+    Res = F(normal, stable),
+    case Res =:= LastRes of
+        true ->
+            ok;
+        false ->
+            ResNormal = case Res of
+                            {just_write, Stuff} ->
+                                Stuff;
+                            _ ->
+                                F(normal, unstable)
+                        end,
+            Encoded = case ResNormal of
+                          {write, Bin} -> Bin;
+                          _ -> encode_json(ResNormal)
+                      end,
+            HTTPRes:write_chunk(Encoded),
+            HTTPRes:write_chunk("\n\n\n\n")
+    end,
+    Res.
+
+handle_streaming(F, Req, HTTPRes, LastRes) ->
+    Res =
+        try streaming_inner(F, HTTPRes, LastRes)
+        catch exit:normal ->
+                HTTPRes:write_chunk(""),
+                exit(normal)
+        end,
+    request_throttler:hibernate(?MODULE, handle_streaming_wakeup, [F, Req, HTTPRes, Res]).
+
+handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
+    receive
+        notify_watcher ->
+            timer:sleep(50),
+            misc:flush(notify_watcher),
+            ok;
+        _ ->
+            exit(normal)
+    after 25000 ->
+            ok
+    end,
+    handle_streaming(F, Req, HTTPRes, Res).
 
 -ifdef(EUNIT).
 

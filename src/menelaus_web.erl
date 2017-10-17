@@ -41,7 +41,6 @@
          webconfig/0,
          webconfig/1,
          restart/0,
-         handle_streaming/3,
          maybe_cleanup_old_buckets/0,
          assert_is_enterprise/0,
          assert_is_40/0,
@@ -50,8 +49,7 @@
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
--export([handle_streaming_wakeup/4,
-         handle_pool_info_wait_wake/4]).
+-export([handle_pool_info_wait_wake/4]).
 
 -import(menelaus_util,
         [redirect_permanently/2,
@@ -80,6 +78,7 @@
          validate_has_params/1,
          validate_any_value/2,
          validate_by_fun/3,
+         handle_streaming/2,
          execute_if_validated/3]).
 
 -define(PLUGGABLE_UI, "_p").
@@ -1511,58 +1510,7 @@ handle_pool_info_streaming(Id, Req) ->
     F = fun(InfoLevel, Stability) ->
                 build_pool_info(Id, Req, InfoLevel, Stability, LocalAddr)
         end,
-    handle_streaming(F, Req, undefined).
-
-handle_streaming(F, Req, LastRes) ->
-    HTTPRes = reply_ok(Req, "application/json; charset=utf-8", chunked),
-    %% Register to get config state change messages.
-    menelaus_event:register_watcher(self()),
-    Sock = Req:get(socket),
-    mochiweb_socket:setopts(Sock, [{active, true}]),
-    handle_streaming(F, Req, HTTPRes, LastRes).
-
-streaming_inner(F, HTTPRes, LastRes) ->
-    Res = F(normal, stable),
-    case Res =:= LastRes of
-        true ->
-            ok;
-        false ->
-            ResNormal = case Res of
-                            {just_write, Stuff} ->
-                                Stuff;
-                            _ ->
-                                F(normal, unstable)
-                        end,
-            Encoded = case ResNormal of
-                          {write, Bin} -> Bin;
-                          _ -> menelaus_util:encode_json(ResNormal)
-                      end,
-            HTTPRes:write_chunk(Encoded),
-            HTTPRes:write_chunk("\n\n\n\n")
-    end,
-    Res.
-
-handle_streaming(F, Req, HTTPRes, LastRes) ->
-    Res =
-        try streaming_inner(F, HTTPRes, LastRes)
-        catch exit:normal ->
-                HTTPRes:write_chunk(""),
-                exit(normal)
-        end,
-    request_throttler:hibernate(?MODULE, handle_streaming_wakeup, [F, Req, HTTPRes, Res]).
-
-handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
-    receive
-        notify_watcher ->
-            timer:sleep(50),
-            misc:flush(notify_watcher),
-            ok;
-        _ ->
-            exit(normal)
-    after 25000 ->
-            ok
-    end,
-    handle_streaming(F, Req, HTTPRes, Res).
+    handle_streaming(F, Req).
 
 handle_join(Req) ->
     %% paths:
@@ -2781,7 +2729,7 @@ serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
       fun (_, _) ->
               V = build_terse_bucket_info(BucketName),
               {just_write, {write, V}}
-      end, Req, undefined).
+      end, Req).
 
 serve_node_services(Req) ->
     reply_ok(Req, "application/json", bucket_info_cache:build_node_services()).
@@ -2791,7 +2739,7 @@ serve_node_services_streaming(Req) ->
       fun (_, _) ->
               V = bucket_info_cache:build_node_services(),
               {just_write, {write, V}}
-      end, Req, undefined).
+      end, Req).
 
 decode_recovery_type("delta") ->
     delta;

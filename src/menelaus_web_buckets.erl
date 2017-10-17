@@ -61,7 +61,8 @@
          reply_json/3,
          concat_url_path/1,
          bin_concat_path/1,
-         bin_concat_path/2]).
+         bin_concat_path/2,
+         handle_streaming/2]).
 
 -define(MAX_BUCKET_NAME_LEN, 100).
 
@@ -467,7 +468,7 @@ handle_sasl_buckets_streaming(_PoolId, Req) ->
                       end, SASLBuckets),
                 {just_write, {struct, [{buckets, List}]}}
         end,
-    menelaus_web:handle_streaming(F, Req, undefined).
+    handle_streaming(F, Req).
 
 handle_bucket_info_streaming(_PoolId, Id, Req) ->
     LocalAddr = menelaus_util:local_addr(Req),
@@ -488,7 +489,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
                         exit(normal)
                 end
         end,
-    menelaus_web:handle_streaming(F, Req, undefined).
+    handle_streaming(F, Req).
 
 handle_bucket_delete(_PoolId, BucketId, Req) ->
     menelaus_web_rbac:assert_no_users_upgrade(),
