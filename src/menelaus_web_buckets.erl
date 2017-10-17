@@ -1072,7 +1072,7 @@ validate_bucket_purge_interval(Params, BucketConfig, false = IsNew) ->
 parse_validate_bucket_purge_interval(Params, "couchbase", IsNew) ->
     parse_validate_bucket_purge_interval(Params, "membase", IsNew);
 parse_validate_bucket_purge_interval(Params, "membase", _IsNew) ->
-    case menelaus_web:parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
+    case menelaus_util:parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
         [] -> [];
         [{error, _F, _V}] = Error -> Error;
         [{ok, _, false}] -> [{ok, purge_interval, undefined}];
@@ -1106,7 +1106,7 @@ validate_bucket_auto_compaction_settings(Params) ->
     end.
 
 parse_validate_bucket_auto_compaction_settings(Params) ->
-    case menelaus_web:parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
+    case menelaus_util:parse_validate_boolean_field("autoCompactionDefined", '_', Params) of
         [] -> nothing;
         [{error, F, V}] -> {errors, [{F, V}]};
         [{ok, _, false}] -> false;

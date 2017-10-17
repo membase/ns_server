@@ -51,7 +51,6 @@
          build_bucket_auto_compaction_settings/1,
          parse_validate_purge_interval/1,
          parse_validate_auto_compaction_settings/2,
-         parse_validate_boolean_field/3,
          is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
          assert_is_40/0,
@@ -3407,14 +3406,6 @@ mk_number_field_validator(Min, Max, Params, ParseFn) ->
             end
     end.
 
-parse_validate_boolean_field(JSONName, CfgName, Params) ->
-    case proplists:get_value(JSONName, Params) of
-        undefined -> [];
-        "true" -> [{ok, CfgName, true}];
-        "false" -> [{ok, CfgName, false}];
-        _ -> [{error, JSONName, iolist_to_binary(io_lib:format("~s is invalid", [JSONName]))}]
-    end.
-
 mk_string_field_validator(AV, Params) ->
     fun ({JSONName, CfgName, HumanName}) ->
             case proplists:get_value(JSONName, Params) of
@@ -3449,7 +3440,7 @@ parse_and_validate_time_interval(JSONName, Params) ->
 
     Res0 = lists:flatmap(mk_number_field_validator(0, 23, Params), Hours)
         ++ lists:flatmap(mk_number_field_validator(0, 59, Params), Mins)
-        ++ parse_validate_boolean_field(Abort, abort_outside, Params),
+        ++ menelaus_util:parse_validate_boolean_field(Abort, abort_outside, Params),
 
     Err = lists:filter(fun ({error, _, _}) -> true; (_) -> false end, Res0),
     %% If validation failed for any field then return error.
@@ -3528,10 +3519,14 @@ parse_validate_auto_compaction_settings(Params, ExpectIndex) ->
                 []
         end,
 
-    ParallelResult = case parse_validate_boolean_field("parallelDBAndViewCompaction", parallel_db_and_view_compaction, Params) of
-                         [] -> [{error, "parallelDBAndViewCompaction", <<"parallelDBAndViewCompaction is missing">>}];
-                         X -> X
-                     end,
+    ParallelResult =
+        case menelaus_util:parse_validate_boolean_field(
+               "parallelDBAndViewCompaction", parallel_db_and_view_compaction, Params) of
+            [] ->
+                [{error, "parallelDBAndViewCompaction", <<"parallelDBAndViewCompaction is missing">>}];
+            X ->
+                X
+        end,
     PeriodTimeResults = parse_and_validate_time_interval("allowedTimePeriod",
                                                         Params),
 

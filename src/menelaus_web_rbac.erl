@@ -78,7 +78,7 @@ extract_user_list(String) ->
           B =/= <<>>].
 
 parse_validate_saslauthd_settings(Params) ->
-    EnabledR = case menelaus_web:parse_validate_boolean_field("enabled", enabled, Params) of
+    EnabledR = case menelaus_util:parse_validate_boolean_field("enabled", enabled, Params) of
                    [] ->
                        [{error, enabled, <<"is missing">>}];
                    EnabledX -> EnabledX

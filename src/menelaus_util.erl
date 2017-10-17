@@ -48,6 +48,7 @@
          concat_url_path/2,
          bin_concat_path/1,
          bin_concat_path/2,
+         parse_validate_boolean_field/3,
          parse_validate_number/3,
          parse_validate_number/4,
          parse_validate_port_number/1,
@@ -318,6 +319,14 @@ bin_concat_path(Segments) ->
     bin_concat_path(Segments, []).
 bin_concat_path(Segments, Props) ->
     iolist_to_binary(url_path_iolist(Segments, Props)).
+
+parse_validate_boolean_field(JSONName, CfgName, Params) ->
+    case proplists:get_value(JSONName, Params) of
+        undefined -> [];
+        "true" -> [{ok, CfgName, true}];
+        "false" -> [{ok, CfgName, false}];
+        _ -> [{error, JSONName, iolist_to_binary(io_lib:format("~s is invalid", [JSONName]))}]
+    end.
 
 -spec parse_validate_number(string(), (integer() | undefined), (integer() | undefined)) ->
                                    invalid | too_small | too_large | {ok, integer()}.
