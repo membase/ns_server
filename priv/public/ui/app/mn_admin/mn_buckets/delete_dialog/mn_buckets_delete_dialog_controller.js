@@ -8,6 +8,7 @@
   function mnBucketsDeleteDialogController($scope, $uibModalInstance, bucket, mnHelper, mnPromiseHelper, mnBucketsDetailsService, mnAlertsService) {
     var vm = this;
     vm.doDelete = doDelete;
+    vm.bucketName = bucket.name;
 
     function doDelete() {
       var promise = mnBucketsDetailsService.deleteBucket(bucket);
