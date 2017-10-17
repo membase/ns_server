@@ -28,7 +28,8 @@
          handle_remote_clusters_post/1,
          handle_remote_cluster_update/2,
          handle_remote_cluster_delete/2,
-         build_remote_cluster_info/2]).
+         build_remote_cluster_info/2,
+         is_xdcr_over_ssl_allowed/0]).
 
 get_remote_clusters() ->
     case ns_config:search(remote_clusters) of
@@ -132,6 +133,9 @@ check_nonempty(String, Name, HumanName) ->
         _ -> undefined
     end.
 
+is_xdcr_over_ssl_allowed() ->
+    cluster_compat_mode:is_enterprise().
+
 validate_remote_cluster_params(Params, ExistingClusters) ->
     Name = proplists:get_value("name", Params),
     Hostname = proplists:get_value("hostname", Params),
@@ -161,7 +165,7 @@ validate_remote_cluster_params(Params, ExistingClusters) ->
                     end,
     UsernameError = check_nonempty(Username, <<"username">>, <<"username">>),
     PasswordError = check_nonempty(Password, <<"password">>, <<"password">>),
-    EncryptionAllowed = menelaus_web:is_xdcr_over_ssl_allowed(),
+    EncryptionAllowed = is_xdcr_over_ssl_allowed(),
     EncryptionError = case {DemandEncryption, Cert} of
                           {"0", ""} ->
                               undefined;

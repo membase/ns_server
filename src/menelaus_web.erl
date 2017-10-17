@@ -48,7 +48,6 @@
          handle_streaming/3,
          maybe_cleanup_old_buckets/0,
          find_node_hostname/2,
-         is_xdcr_over_ssl_allowed/0,
          assert_is_enterprise/0,
          assert_is_40/0,
          assert_is_45/0,
@@ -1267,9 +1266,6 @@ get_uuid() ->
 handle_versions(Req) ->
     reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
 
-is_xdcr_over_ssl_allowed() ->
-    cluster_compat_mode:is_enterprise().
-
 assert_is_enterprise() ->
     case cluster_compat_mode:is_enterprise() of
         true ->
@@ -1671,7 +1667,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     %% this is used by xdcr over ssl since 2.5.0
     PortKeys = [{ssl_capi_port, httpsCAPI},
                 {ssl_rest_port, httpsMgmt}]
-        ++ case is_xdcr_over_ssl_allowed() of
+        ++ case menelaus_web_remote_clusters:is_xdcr_over_ssl_allowed() of
                true ->
                    [{ssl_proxy_downstream_port, sslProxy}];
                _ -> []
@@ -2671,7 +2667,7 @@ location_prop_to_json({state, ok}) -> {state, ok};
 location_prop_to_json(KV) -> KV.
 
 handle_node_self_xdcr_ssl_ports(Req) ->
-    case is_xdcr_over_ssl_allowed() of
+    case menelaus_web_remote_clusters:is_xdcr_over_ssl_allowed() of
         false ->
             reply_json(Req, [], 403);
         true ->
