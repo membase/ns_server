@@ -51,7 +51,8 @@
          handle_set_ddoc_update_min_changes/4,
          handle_local_random_key/3,
          build_bucket_capabilities/1,
-         external_bucket_type/1]).
+         external_bucket_type/1,
+         maybe_cleanup_old_buckets/0]).
 
 -import(menelaus_util,
         [reply/2,
@@ -623,6 +624,15 @@ handle_bucket_update_inner(BucketId, Req, Params, Limit) ->
                        end)
     end.
 
+maybe_cleanup_old_buckets() ->
+    case ns_config_auth:is_system_provisioned() of
+        true ->
+            ok;
+        false ->
+            true = ns_node_disco:nodes_wanted() =:= [node()],
+            ns_storage_conf:delete_unused_buckets_db_files()
+    end.
+
 create_bucket(Req, Name, Params) ->
     Ctx = init_bucket_validation_context(true, Name, false, false),
     do_bucket_create(Req, Name, Params, Ctx).
@@ -631,7 +641,7 @@ do_bucket_create(Req, Name, ParsedProps) ->
     BucketType = proplists:get_value(bucketType, ParsedProps),
     StorageMode = proplists:get_value(storage_mode, ParsedProps, undefined),
     BucketProps = extract_bucket_props(Name, ParsedProps),
-    menelaus_web:maybe_cleanup_old_buckets(),
+    maybe_cleanup_old_buckets(),
     case ns_orchestrator:create_bucket(BucketType, Name, BucketProps) of
         ok ->
             ns_audit:create_bucket(Req, Name, BucketType, BucketProps),
