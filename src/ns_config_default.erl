@@ -672,8 +672,8 @@ encrypt(Config) ->
                                 {stop, {cookie, encrypt_config_val(Cookie)}};
                             ({pass, Pass}) ->
                                 {stop, {pass, encrypt_config_val(Pass)}};
-                            (T) ->
-                                {continue, T}
+                            (_) ->
+                                continue
                         end, Config).
 
 encrypt_and_save(Config) ->
@@ -693,8 +693,8 @@ decrypt(Config) ->
     misc:rewrite_tuples(fun ({encrypted, Val}) when is_binary(Val) ->
                                 {ok, Decrypted} = encryption_service:decrypt(Val),
                                 {stop, binary_to_term(Decrypted)};
-                            (T) ->
-                                {continue, T}
+                            (_) ->
+                                continue
                         end, Config).
 
 upgrade_3_0_to_3_0_2_test() ->

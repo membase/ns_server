@@ -600,15 +600,7 @@ rewrite_tuples(Fun, Struct) ->
       fun (Term) ->
               case is_tuple(Term) of
                   true ->
-                      case Fun(Term) of
-                          {continue, NewTerm} ->
-                              NewTerm1 =
-                                  list_to_tuple(
-                                    rewrite_tuples(Fun, tuple_to_list(NewTerm))),
-                              {stop, NewTerm1};
-                          {stop, NewTerm} ->
-                              {stop, NewTerm}
-                      end;
+                      Fun(Term);
                   false ->
                       continue
               end
@@ -655,7 +647,7 @@ rewrite_key_value_tuple_test() ->
                                     {a, _} ->
                                         {stop, {a, xxx}};
                                     _ ->
-                                        {continue, T}
+                                        continue
                                 end
                         end, Orig),
 

@@ -88,8 +88,8 @@ sanitize(Struct) ->
               {stop, {"MOXI_SASL_PLAIN_PWD", sanitize_value(V)}};
           ({"CBAUTH_REVRPC_URL", V}) ->
               {stop, {"CBAUTH_REVRPC_URL", sanitize_value(V)}};
-          (Other) ->
-              {continue, Other}
+          (_Other) ->
+              continue
       end, Struct).
 
 launch_port(Id, NCAO) ->

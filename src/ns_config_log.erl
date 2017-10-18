@@ -97,8 +97,12 @@ compute_buckets_diff(NewBuckets, OldBuckets) ->
 rewrite_tuples_with_vclock(Fun, Config) ->
     misc:rewrite_tuples(
       fun ({Key, [{'_vclock', _} = VClock|Value]}) ->
-              {Action, {Key, NewValue}} = Fun({Key, Value}),
-              {Action, {Key, [VClock|NewValue]}};
+              case Fun({Key, Value}) of
+                  continue ->
+                      continue;
+                  {stop, {Key, NewValue}} ->
+                      {stop, {Key, [VClock|NewValue]}}
+              end;
           (Other) ->
               Fun(Other)
       end, Config).
@@ -121,8 +125,8 @@ sanitize(Config) ->
               {stop, {{metakv, K}, {?METAKV_SENSITIVE, <<"*****">>}}};
           ({cookie, Cookie}) ->
               {stop, {cookie, ns_cookie_manager:sanitize_cookie(Cookie)}};
-          (Other) ->
-              {continue, Other}
+          (_Other) ->
+              continue
       end, Config).
 
 log_kv({buckets, RawBuckets0}, #state{buckets=OldBuckets} = State) ->

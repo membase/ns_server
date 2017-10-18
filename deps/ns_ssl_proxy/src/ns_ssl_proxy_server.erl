@@ -37,8 +37,8 @@ start_link(Socket, upstream) ->
 sanitize_payload(Payload) ->
     misc:rewrite_tuples(fun ({<<"password">>, _}) ->
                                 {stop, {password, <<"*****">>}};
-                            (T) ->
-                                {continue, T}
+                            (_) ->
+                                continue
                         end, Payload).
 
 

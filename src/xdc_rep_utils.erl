@@ -160,7 +160,7 @@ sanitize_state(State) ->
                                     {url, Url} ->
                                         {stop, {url, misc:sanitize_url(Url)}};
                                     _ ->
-                                        {continue, T}
+                                        continue
                                 end
                         end, State).
 

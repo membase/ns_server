@@ -363,8 +363,8 @@ sanitize_remote_clusters_info(Content) ->
                                     end, CapiVbucketMap)
                       }
               };
-          (T) ->
-              {continue, T}
+          (_) ->
+              continue
       end, Content).
 
 grab_all_ets_tables() ->

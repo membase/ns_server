@@ -166,8 +166,8 @@ sanitize_node_info(NodeKVList) ->
               {stop, {<<"otpCookie">>, ns_cookie_manager:sanitize_cookie(Cookie)}};
           ({otpCookie, Cookie}) ->
               {stop, {otpCookie, ns_cookie_manager:sanitize_cookie(Cookie)}};
-          (Other) ->
-              {continue, Other}
+          (_Other) ->
+              continue
       end, NodeKVList).
 
 handle_call({add_node_to_group, RemoteAddr, RestPort, Auth, GroupUUID, Services}, _From, State) ->
