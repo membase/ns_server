@@ -201,7 +201,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["ui"] ->
                     {done, redirect_permanently("/ui/index.html", Req)};
                 ["versions"] ->
-                    {done, handle_versions(Req)};
+                    {done, menelaus_web_misc:handle_versions(Req)};
                 ["whoami"] ->
                     {no_check, fun menelaus_web_rbac:handle_whoami/1};
                 ["pools"] ->
@@ -416,7 +416,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["pools", "default", "rebalanceProgress"] ->
                     {{[tasks], read}, fun menelaus_web_cluster:handle_rebalance_progress/2, ["default"]};
                 ["pools", "default", "tasks"] ->
-                    {{[tasks], read}, fun handle_tasks/2, ["default"]};
+                    {{[tasks], read}, fun menelaus_web_misc:handle_tasks/2, ["default"]};
                 ["index.html"] ->
                     {done, redirect_permanently("/ui/index.html", Req)};
                 ["ui", "index.html"] ->
@@ -426,9 +426,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_45,
                                                        Plugins]};
                 ["dot", Bucket] ->
-                    {{[{bucket, Bucket}, settings], read}, fun handle_dot/2, [Bucket]};
+                    {{[{bucket, Bucket}, settings], read}, fun menelaus_web_misc:handle_dot/2, [Bucket]};
                 ["dotsvg", Bucket] ->
-                    {{[{bucket, Bucket}, settings], read}, fun handle_dotsvg/2, [Bucket]};
+                    {{[{bucket, Bucket}, settings], read}, fun menelaus_web_misc:handle_dotsvg/2, [Bucket]};
                 ["sasl_logs"] ->
                     {{[admin, logs], read}, fun diag_handler:handle_sasl_logs/1, []};
                 ["sasl_logs", LogName] ->
@@ -467,9 +467,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
         'POST' ->
             case PathTokens of
                 ["uilogin"] ->
-                    {ui, IsSSL, fun handle_uilogin/1};
+                    {ui, IsSSL, fun menelaus_web_misc:handle_uilogin/1};
                 ["uilogout"] ->
-                    {done, handle_uilogout(Req)};
+                    {done, menelaus_web_misc:handle_uilogout(Req)};
                 ["sampleBuckets", "install"] ->
                     {{[buckets], create}, fun menelaus_web_samples:handle_post/1};
                 ["engageCluster2"] ->
@@ -690,7 +690,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["_cbauth"] ->
                     {no_check, fun menelaus_cbauth:handle_cbauth_post/1};
                 ["_log"] ->
-                    {{[admin, internal], all}, fun handle_log_post/1};
+                    {{[admin, internal], all}, fun menelaus_web_misc:handle_log_post/1};
                 ["_goxdcr", "regexpValidation"] ->
                     goxdcr_rest:spec(
                       no_check,
@@ -935,21 +935,6 @@ perform_action(Req, {Permission, Fun, Args}) ->
             menelaus_util:reply_json(Req, menelaus_web_rbac:forbidden_response(Permission), 403)
     end.
 
-handle_uilogin(Req) ->
-    Params = Req:parse_post(),
-    User = proplists:get_value("user", Params),
-    Password = proplists:get_value("password", Params),
-    menelaus_auth:uilogin(Req, User, Password).
-
-handle_uilogout(Req) ->
-    case menelaus_auth:extract_ui_auth_token(Req) of
-        undefined ->
-            ok;
-        Token ->
-            menelaus_ui_auth:logout(Token)
-    end,
-    menelaus_auth:complete_uilogout(Req).
-
 check_uuid(F, Args, Req) ->
     ReqUUID0 = proplists:get_value("uuid", Req:parse_qs()),
     case ReqUUID0 =/= undefined of
@@ -994,9 +979,6 @@ get_uuid() ->
         {value, Uuid2} ->
             Uuid2
     end.
-
-handle_versions(Req) ->
-    reply_json(Req, {struct, menelaus_web_cache:versions_response()}).
 
 assert_is_enterprise() ->
     case cluster_compat_mode:is_enterprise() of
@@ -1059,78 +1041,6 @@ alert_key(?BUCKET_CREATED)  -> bucket_created;
 alert_key(?BUCKET_DELETED)  -> bucket_deleted;
 alert_key(_) -> all.
 
-handle_dot(Bucket, Req) ->
-    reply_ok(Req, "text/plain; charset=utf-8", ns_janitor_vis:graphviz(Bucket)).
-
-handle_dotsvg(Bucket, Req) ->
-    Dot = ns_janitor_vis:graphviz(Bucket),
-    DoRefresh = case proplists:get_value("refresh", Req:parse_qs(), "") of
-                    "ok" -> true;
-                    "yes" -> true;
-                    "1" -> true;
-                    _ -> false
-                end,
-    MaybeRefresh = if DoRefresh ->
-                           [{"refresh", 1}];
-                      true -> []
-                   end,
-    reply_ok(Req, "image/svg+xml",
-             menelaus_util:insecure_pipe_through_command("dot -Tsvg", Dot),
-             MaybeRefresh).
-
-handle_tasks(PoolId, Req) ->
-    RebTimeoutS = proplists:get_value("rebalanceStatusTimeout", Req:parse_qs(), "2000"),
-    case menelaus_util:parse_validate_number(RebTimeoutS, 1000, 120000) of
-        {ok, RebTimeout} ->
-            do_handle_tasks(PoolId, Req, RebTimeout);
-        _ ->
-            reply_json(Req, {struct, [{rebalanceStatusTimeout, <<"invalid">>}]}, 400)
-    end.
-
-do_handle_tasks(PoolId, Req, RebTimeout) ->
-    JSON = ns_doctor:build_tasks_list(PoolId, RebTimeout),
-    reply_json(Req, JSON, 200).
-
-
-handle_log_post(Req) ->
-    Params = Req:parse_post(),
-    Msg = proplists:get_value("message", Params),
-    LogLevel = proplists:get_value("logLevel", Params),
-    Component = proplists:get_value("component", Params),
-
-    Errors =
-        lists:flatten([case Msg of
-                           undefined ->
-                               {<<"message">>, <<"missing value">>};
-                           _ ->
-                               []
-                       end,
-                       case LogLevel of
-                           "info" ->
-                               [];
-                           "warn" ->
-                               [];
-                           "error" ->
-                               [];
-                           _ ->
-                               {<<"logLevel">>, <<"invalid or missing value">>}
-                       end,
-                       case Component of
-                           undefined ->
-                               {<<"component">>, <<"missing value">>};
-                           _ ->
-                               []
-                       end]),
-
-    case Errors of
-        [] ->
-            Fun = list_to_existing_atom([$x | LogLevel]),
-            ale:Fun(?USER_LOGGER,
-                    {list_to_atom(Component), unknown, -1}, undefined, Msg, []),
-            reply_json(Req, []);
-        _ ->
-            reply_json(Req, {struct, Errors}, 400)
-    end.
 
 nth_path_tail(Path, N) when N > 0 ->
     nth_path_tail(path_tail(Path), N-1);
