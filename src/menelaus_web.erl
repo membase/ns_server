@@ -47,33 +47,13 @@
 
 -import(menelaus_util,
         [redirect_permanently/2,
-         bin_concat_path/1,
-         bin_concat_path/2,
          reply/2,
-         reply/3,
          reply_text/3,
          reply_text/4,
          reply_ok/3,
-         reply_ok/4,
-         reply_json/2,
          reply_json/3,
-         reply_json/4,
          reply_not_found/1,
-         get_option/2,
-         parse_validate_number/3,
-         is_valid_positive_integer/1,
-         is_valid_positive_integer_in_range/3,
-         validate_boolean/2,
-         validate_dir/2,
-         validate_integer/2,
-         validate_range/4,
-         validate_range/5,
-         validate_unsupported_params/1,
-         validate_has_params/1,
-         validate_any_value/2,
-         validate_by_fun/3,
-         handle_streaming/2,
-         execute_if_validated/3]).
+         get_option/2]).
 
 -define(PLUGGABLE_UI, "_p").
 
