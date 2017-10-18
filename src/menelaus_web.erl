@@ -276,12 +276,10 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[pools], read}, fun menelaus_web_cluster:serve_node_services_streaming/1, []};
                 ["pools", "default", "b", BucketName] ->
                     {{[{bucket, BucketName}, settings], read},
-                     fun serve_short_bucket_info/3,
-                     ["default", BucketName]};
+                     fun menelaus_web_buckets:serve_short_bucket_info/2, [BucketName]};
                 ["pools", "default", "bs", BucketName] ->
                     {{[{bucket, BucketName}, settings], read},
-                     fun serve_streaming_short_bucket_info/3,
-                     ["default", BucketName]};
+                     fun menelaus_web_buckets:serve_streaming_short_bucket_info/2, [BucketName]};
                 ["pools", "default", "buckets", Id, "nodes"] ->
                     {{[{bucket, Id}, settings], read},
                      fun menelaus_web_node:handle_bucket_node_list/2, [Id]};
@@ -1094,25 +1092,6 @@ do_handle_tasks(PoolId, Req, RebTimeout) ->
     reply_json(Req, JSON, 200).
 
 
-build_terse_bucket_info(BucketName) ->
-    case bucket_info_cache:terse_bucket_info(BucketName) of
-        {ok, V} -> V;
-        %% NOTE: {auth_bucket for this route handles 404 for us albeit
-        %% harmlessly racefully
-        {T, E, Stack} ->
-            erlang:raise(T, E, Stack)
-    end.
-
-serve_short_bucket_info(_PoolId, BucketName, Req) ->
-    V = build_terse_bucket_info(BucketName),
-    reply_ok(Req, "application/json", V).
-
-serve_streaming_short_bucket_info(_PoolId, BucketName, Req) ->
-    handle_streaming(
-      fun (_, _) ->
-              V = build_terse_bucket_info(BucketName),
-              {just_write, {write, V}}
-      end, Req).
 handle_log_post(Req) ->
     Params = Req:parse_post(),
     Msg = proplists:get_value("message", Params),

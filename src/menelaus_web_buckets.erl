@@ -52,7 +52,9 @@
          handle_local_random_key/3,
          build_bucket_capabilities/1,
          external_bucket_type/1,
-         maybe_cleanup_old_buckets/0]).
+         maybe_cleanup_old_buckets/0,
+         serve_short_bucket_info/2,
+         serve_streaming_short_bucket_info/2]).
 
 -import(menelaus_util,
         [reply/2,
@@ -1799,6 +1801,26 @@ convert_info_level(streaming) ->
     {normal, stable};
 convert_info_level(InfoLevel) ->
     {InfoLevel, unstable}.
+
+build_terse_bucket_info(BucketName) ->
+    case bucket_info_cache:terse_bucket_info(BucketName) of
+        {ok, V} -> V;
+        %% NOTE: {auth_bucket for this route handles 404 for us albeit
+        %% harmlessly racefully
+        {T, E, Stack} ->
+            erlang:raise(T, E, Stack)
+    end.
+
+serve_short_bucket_info(BucketName, Req) ->
+    V = build_terse_bucket_info(BucketName),
+    menelaus_util:reply_ok(Req, "application/json", V).
+
+serve_streaming_short_bucket_info(BucketName, Req) ->
+    handle_streaming(
+      fun (_, _) ->
+              V = build_terse_bucket_info(BucketName),
+              {just_write, {write, V}}
+      end, Req).
 
 -ifdef(EUNIT).
 
