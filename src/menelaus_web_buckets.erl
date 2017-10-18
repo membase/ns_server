@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
-%% @doc Web server for menelaus.
+%% @doc handlers for bucket related REST API's
 
 -module(menelaus_web_buckets).
 
