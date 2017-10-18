@@ -321,7 +321,7 @@ validate_settings_stats(SendStats) ->
 
 %% @doc Settings to en-/disable auto-reprovision
 handle_settings_auto_reprovision(Req) ->
-    menelaus_web:assert_is_50(),
+    menelaus_util:assert_is_50(),
 
     Config = build_settings_auto_reprovision(),
     Enabled = proplists:get_value(enabled, Config),
@@ -336,7 +336,7 @@ build_settings_auto_reprovision() ->
     Config.
 
 handle_settings_auto_reprovision_post(Req) ->
-    menelaus_web:assert_is_50(),
+    menelaus_util:assert_is_50(),
 
     PostArgs = Req:parse_post(),
     ValidateOnly = proplists:get_value("just_validate", Req:parse_qs()) =:= "1",
@@ -383,7 +383,7 @@ validate_settings_auto_reprovision(Enabled, MaxNodes) ->
 
 %% @doc Resets the number of nodes that were automatically reprovisioned to zero
 handle_settings_auto_reprovision_reset_count(Req) ->
-    menelaus_web:assert_is_50(),
+    menelaus_util:assert_is_50(),
 
     auto_reprovision:reset_count(),
     reply(Req, 200).
@@ -531,8 +531,8 @@ handle_reset_alerts(Req) ->
     reply_json(Req, menelaus_web_alerts_srv:consume_alerts(Token)).
 
 handle_settings_audit(Req) ->
-    menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_40(),
+    menelaus_util:assert_is_enterprise(),
+    menelaus_util:assert_is_40(),
 
     Props = ns_audit_cfg:get_global(),
     Json = lists:map(fun ({K, V}) when is_list(V) ->
@@ -567,8 +567,8 @@ validate_settings_audit(Args) ->
     validate_unsupported_params(R6).
 
 handle_settings_audit_post(Req) ->
-    menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_40(),
+    menelaus_util:assert_is_enterprise(),
+    menelaus_util:assert_is_40(),
 
     Args = Req:parse_post(),
     execute_if_validated(fun (Values) ->

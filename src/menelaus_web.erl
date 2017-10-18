@@ -37,10 +37,6 @@
          webconfig/0,
          webconfig/1,
          restart/0,
-         assert_is_enterprise/0,
-         assert_is_40/0,
-         assert_is_45/0,
-         assert_is_50/0,
          get_uuid/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
@@ -959,38 +955,6 @@ get_uuid() ->
         {value, Uuid2} ->
             Uuid2
     end.
-
-assert_is_enterprise() ->
-    case cluster_compat_mode:is_enterprise() of
-        true ->
-            ok;
-        _ ->
-            erlang:throw({web_exception,
-                          400,
-                          "This http API endpoint requires enterprise edition",
-                          [{"X-enterprise-edition-needed", 1}]})
-    end.
-
-assert_is_40() ->
-    assert_cluster_version(fun cluster_compat_mode:is_cluster_40/0).
-
-assert_is_45() ->
-    assert_cluster_version(fun cluster_compat_mode:is_cluster_45/0).
-
-assert_is_50() ->
-    assert_cluster_version(fun cluster_compat_mode:is_cluster_50/0).
-
-assert_cluster_version(Fun) ->
-    case Fun() of
-        true ->
-            ok;
-        false ->
-            erlang:throw({web_exception,
-                          400,
-                          "This http API endpoint isn't supported in mixed version clusters",
-                          []})
-    end.
-
 
 %% log categorizing, every logging line should be unique, and most
 %% should be categorized

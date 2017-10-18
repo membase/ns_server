@@ -80,7 +80,11 @@
          reply_error/3,
          require_auth/1,
          send_chunked/3,
-         handle_streaming/2]).
+         handle_streaming/2,
+         assert_is_enterprise/0,
+         assert_is_40/0,
+         assert_is_45/0,
+         assert_is_50/0]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -685,6 +689,37 @@ handle_streaming_wakeup(F, Req, HTTPRes, Res) ->
             ok
     end,
     handle_streaming(F, Req, HTTPRes, Res).
+
+assert_is_enterprise() ->
+    case cluster_compat_mode:is_enterprise() of
+        true ->
+            ok;
+        _ ->
+            erlang:throw({web_exception,
+                          400,
+                          "This http API endpoint requires enterprise edition",
+                          [{"X-enterprise-edition-needed", 1}]})
+    end.
+
+assert_is_40() ->
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_40/0).
+
+assert_is_45() ->
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_45/0).
+
+assert_is_50() ->
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_50/0).
+
+assert_cluster_version(Fun) ->
+    case Fun() of
+        true ->
+            ok;
+        false ->
+            erlang:throw({web_exception,
+                          400,
+                          "This http API endpoint isn't supported in mixed version clusters",
+                          []})
+    end.
 
 -ifdef(EUNIT).
 

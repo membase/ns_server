@@ -28,7 +28,7 @@
          handle_client_cert_auth_settings_post/1]).
 
 handle_cluster_certificate(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
 
     case proplists:get_value("extended", Req:parse_qs()) of
         "true" ->
@@ -86,7 +86,7 @@ handle_cluster_certificate_extended(Req) ->
                                     {warnings, WarningsJson}]}).
 
 handle_regenerate_certificate(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
 
     ns_server_cert:generate_and_set_cert_and_pkey(),
     ns_ssl_services_setup:sync_local_cert_and_pkey_change(),
@@ -99,8 +99,8 @@ reply_error(Req, Error) ->
       Req, {[{error, ns_error_messages:cert_validation_error_message(Error)}]}, 400).
 
 handle_upload_cluster_ca(Req) ->
-    menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_45(),
+    menelaus_util:assert_is_enterprise(),
+    menelaus_util:assert_is_45(),
 
     case Req:recv_body() of
         undefined ->
@@ -118,8 +118,8 @@ handle_upload_cluster_ca(Req) ->
     end.
 
 handle_reload_node_certificate(Req) ->
-    menelaus_web:assert_is_enterprise(),
-    menelaus_web:assert_is_45(),
+    menelaus_util:assert_is_enterprise(),
+    menelaus_util:assert_is_45(),
 
     case ns_server_cert:apply_certificate_chain_from_inbox() of
         {ok, Props} ->
@@ -134,7 +134,7 @@ handle_reload_node_certificate(Req) ->
     end.
 
 handle_get_node_certificate(NodeId, Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
 
     case menelaus_web_node:find_node_hostname(NodeId, Req) of
         {ok, Node} ->
@@ -163,7 +163,7 @@ handle_client_cert_auth_settings(Req) ->
     menelaus_util:reply_json(Req, {[{K, list_to_binary(V)} || {K,V} <- Val]}).
 
 handle_client_cert_auth_settings_post(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
     Params = Req:parse_post(),
     OldVal = ns_ssl_services_setup:client_cert_auth(),
     AccumulateChanges =

@@ -24,7 +24,7 @@
          handle_rotate_data_key/1]).
 
 handle_change_master_password(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
     menelaus_util:execute_if_validated(
       fun (Values) ->
               NewPassword = proplists:get_value(newPassword, Values),
@@ -45,7 +45,7 @@ validate_change_master_password(Args) ->
     menelaus_util:validate_unsupported_params(R2).
 
 handle_rotate_data_key(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
 
     RV = encryption_service:rotate_data_key(),
     %% the reason that resave is called regardless of the return value of

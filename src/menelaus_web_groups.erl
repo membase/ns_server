@@ -53,7 +53,7 @@ handle_server_groups(Req) ->
                               {uri, <<"/pools/default/serverGroups?rev=",V/binary>>}]}).
 
 handle_server_groups_put(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
     Rev = proplists:get_value("rev", Req:parse_qs()),
     JSON = menelaus_util:parse_json(Req),
     Config = ns_config:get(),
@@ -237,7 +237,7 @@ parse_single_group(_NodesSet, _NonStructG) ->
     erlang:throw(group_parse_error).
 
 handle_server_groups_post(Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
     case parse_groups_post(Req:parse_post()) of
         {ok, Name} ->
             case do_handle_server_groups_post(Name, Req) of
@@ -318,7 +318,7 @@ parse_groups_post(Params) ->
     end.
 
 handle_server_group_update(GroupUUID, Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
     case parse_groups_post(Req:parse_post()) of
         {ok, Name} ->
             case do_group_update(list_to_binary(GroupUUID), Name, Req) of
@@ -364,7 +364,7 @@ do_group_update(GroupUUID, Name, Req) ->
     end.
 
 handle_server_group_delete(GroupUUID, Req) ->
-    menelaus_web:assert_is_enterprise(),
+    menelaus_util:assert_is_enterprise(),
     case do_group_delete(list_to_binary(GroupUUID), Req) of
         ok ->
             reply_json(Req, []);
