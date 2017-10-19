@@ -321,6 +321,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "autoReprovision"] ->
                     {{[settings], read},
                      fun menelaus_web_settings:handle_settings_auto_reprovision/1};
+                ["settings", "querySettings"] ->
+                    {{[settings], read}, fun menelaus_web_queries:handle_settings_get/1};
                 ["settings", "maxParallelIndexers"] ->
                     {{[indexes], read},
                      fun menelaus_web_settings:handle_settings_max_parallel_indexers/1};
@@ -491,6 +493,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["settings", "autoReprovision"] ->
                     {{[settings], write},
                      fun menelaus_web_settings:handle_settings_auto_reprovision_post/1};
+                ["settings", "querySettings"] ->
+                    {{[settings], write}, fun menelaus_web_queries:handle_settings_post/1};
                 ["settings", "autoReprovision", "resetCount"] ->
                     {{[settings], write},
                      fun menelaus_web_settings:handle_settings_auto_reprovision_reset_count/1};

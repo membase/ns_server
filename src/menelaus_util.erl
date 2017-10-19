@@ -84,7 +84,8 @@
          assert_is_enterprise/0,
          assert_is_40/0,
          assert_is_45/0,
-         assert_is_50/0]).
+         assert_is_50/0,
+         assert_is_vulcan/0]).
 
 %% used by parse_validate_number
 -export([list_to_integer/1, list_to_float/1]).
@@ -709,6 +710,9 @@ assert_is_45() ->
 
 assert_is_50() ->
     assert_cluster_version(fun cluster_compat_mode:is_cluster_50/0).
+
+assert_is_vulcan() ->
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_vulcan/0).
 
 assert_cluster_version(Fun) ->
     case Fun() of

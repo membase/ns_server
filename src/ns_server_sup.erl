@@ -140,6 +140,9 @@ child_specs() ->
      {index_settings_manager, {index_settings_manager, start_link, []},
       permanent, 1000, worker, [index_settings_manager]},
 
+     {query_settings_manager, {query_settings_manager, start_link, []},
+      permanent, 1000, worker, [query_settings_manager]},
+
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
       [menelaus_sup]},
