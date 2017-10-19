@@ -416,13 +416,7 @@ check_host_connectivity(OtherHost) ->
             %% and determine our ip address
             {ok, {IpAddr, _}} = inet:sockname(Socket),
             inet:close(Socket),
-            Separator = case misc:get_env_default(ns_server, ipv6, false) of
-                            true -> ":";
-                            false -> "."
-                        end,
-            RV = string:join(lists:map(fun erlang:integer_to_list/1,
-                                       tuple_to_list(IpAddr)), Separator),
-            {ok, RV};
+            {ok, inet:ntoa(IpAddr)};
         _ ->
             Reason =
                 case ConnRV of
