@@ -2489,7 +2489,7 @@ handle_settings_audit(Req) ->
 validate_settings_audit(Args) ->
     R = validate_has_params({Args, [], []}),
     R0 = validate_boolean(auditdEnabled, R),
-    R1 = validate_dir(logPath, R0),
+    R1 = validate_dir(logPath, validate_any_value(logPath, R0)),
     R2 = validate_integer(rotateInterval, R1),
     R3 = validate_range(
            rotateInterval, 15*60, 60*60*24*7,

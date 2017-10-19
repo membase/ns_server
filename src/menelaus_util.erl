@@ -489,8 +489,8 @@ validate_boolean(Name, {OutList, _, _} = State) ->
             return_error(Name, "The value must be true or false", State)
     end.
 
-validate_dir(Name, {OutList, _, _} = State) ->
-    Value = proplists:get_value(atom_to_list(Name), OutList),
+validate_dir(Name, {_, InList, _} = State) ->
+    Value = proplists:get_value(Name, InList),
     case Value of
         undefined ->
             State;
