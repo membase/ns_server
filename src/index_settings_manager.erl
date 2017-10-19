@@ -18,76 +18,55 @@
 -include("ns_common.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
-
 -export([start_link/0,
-         get/1, get/2,
+         get/1,
          get_from_config/3,
-         update/1, update/2,
+         update/2,
          update_txn/1,
          config_upgrade_to_40/0,
          config_upgrade_to_45/1,
          is_memory_optimized/1]).
 
+-export([cfg_key/0,
+         required_compat_mode/0,
+         known_settings/0]).
+
+-import(json_settings_manager,
+        [id_lens/1]).
+
+-define(INDEX_CONFIG_KEY, {metakv, <<"/indexing/settings/config">>}).
+
 start_link() ->
-    work_queue:start_link(?MODULE, fun init/0).
+    json_settings_manager:start_link(?MODULE).
 
 get(Key) ->
-    index_settings_manager:get(Key, undefined).
-
-get(Key, Default) when is_atom(Key) ->
-    case ets:lookup(?MODULE, Key) of
-        [{Key, Value}] ->
-            Value;
-        [] ->
-            Default
-    end.
+    json_settings_manager:get(?MODULE, Key, undefined).
 
 get_from_config(Config, Key, Default) ->
-    case Config =:= ns_config:latest() of
-        true ->
-            index_settings_manager:get(Key, Default);
-        false ->
-            case ns_config:search(Config, ?INDEX_CONFIG_KEY) of
-                {value, JSON} ->
-                    do_get_from_json(Key, JSON);
-                false ->
-                    Default
-            end
-    end.
+    json_settings_manager:get_from_config(?MODULE, Config, Key, Default).
 
-do_get_from_json(Key, JSON) ->
-    {_, Lens} = lists:keyfind(Key, 1, known_settings()),
-    Settings = decode_settings_json(JSON),
-    lens_get(Lens, Settings).
+cfg_key() ->
+    ?INDEX_CONFIG_KEY.
 
-update(Props) ->
-    work_queue:submit_sync_work(
-      ?MODULE,
-      fun () ->
-              do_update(Props)
-      end).
+required_compat_mode() ->
+    cluster_compat_mode:is_cluster_40().
 
 update(Key, Value) ->
-    update([{Key, Value}]).
+    json_settings_manager:update(?MODULE, [{Key, Value}]).
 
 update_txn(Props) ->
-    fun (Config, SetFn) ->
-            JSON = fetch_settings_json(Config),
-            Current = decode_settings_json(JSON),
-
-            New = build_settings_json(Props, Current),
-            {commit, SetFn(?INDEX_CONFIG_KEY, New, Config), New}
-    end.
+    json_settings_manager:update_txn(Props, ?INDEX_CONFIG_KEY, known_settings()).
 
 config_upgrade_to_40() ->
-    [{set, ?INDEX_CONFIG_KEY, build_settings_json(default_settings_for_40())}].
+    [{set, ?INDEX_CONFIG_KEY,
+      json_settings_manager:build_settings_json(default_settings_for_40(),
+                                                dict:new(), known_settings())}].
 
 config_upgrade_to_45(Config) ->
-    JSON = fetch_settings_json(Config),
-    Current = decode_settings_json(JSON),
-    New = build_settings_json(extra_default_settings_for_45(Config), Current,
-                              extra_known_settings_for_45()),
+    JSON = json_settings_manager:fetch_settings_json(Config, ?INDEX_CONFIG_KEY),
+    Current = json_settings_manager:decode_settings_json(JSON),
+    New = json_settings_manager:build_settings_json(extra_default_settings_for_45(Config),
+                                                    Current, extra_known_settings_for_45()),
     [{set, ?INDEX_CONFIG_KEY, New}].
 
 -spec is_memory_optimized(any()) -> boolean().
@@ -95,97 +74,6 @@ is_memory_optimized(?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED) ->
     true;
 is_memory_optimized(_) ->
     false.
-
-%% internal
-init() ->
-    ets:new(?MODULE, [named_table, set, protected]),
-    ns_pubsub:subscribe_link(ns_config_events,
-                             fun ({?INDEX_CONFIG_KEY, JSON}, Pid) ->
-                                     submit_config_update(Pid, JSON),
-                                     Pid;
-                                 ({cluster_compat_version, _}, Pid) ->
-                                     submit_full_refresh(Pid),
-                                     Pid;
-                                 (_, Pid) ->
-                                     Pid
-                             end, self()),
-    populate_ets_table().
-
-submit_full_refresh(Pid) ->
-    work_queue:submit_work(
-      Pid,
-      fun () ->
-              populate_ets_table()
-      end).
-
-submit_config_update(Pid, JSON) ->
-    work_queue:submit_work(
-      Pid,
-      fun () ->
-              populate_ets_table(JSON)
-      end).
-
-do_update(Props) ->
-    RV = ns_config:run_txn(update_txn(Props)),
-    case RV of
-        {commit, _, NewJSON} ->
-            populate_ets_table(NewJSON),
-            {ok, ets:tab2list(?MODULE)};
-        _ ->
-            RV
-    end.
-
-fetch_settings_json() ->
-    fetch_settings_json(ns_config:latest()).
-
-fetch_settings_json(Config) ->
-    ns_config:search(Config, ?INDEX_CONFIG_KEY, <<"{}">>).
-
-build_settings_json(Props) ->
-    build_settings_json(Props, dict:new()).
-
-build_settings_json(Props, Dict) ->
-    build_settings_json(Props, Dict, known_settings()).
-
-build_settings_json(Props, Dict, KnownSettings) ->
-    NewDict = lens_set_many(KnownSettings, Props, Dict),
-    ejson:encode({dict:to_list(NewDict)}).
-
-decode_settings_json(JSON) ->
-    {Props} = ejson:decode(JSON),
-    dict:from_list(Props).
-
-populate_ets_table() ->
-    JSON = fetch_settings_json(),
-    populate_ets_table(JSON).
-
-populate_ets_table(JSON) ->
-    case not cluster_compat_mode:is_cluster_40()
-        orelse erlang:get(prev_json) =:= JSON of
-        true ->
-            ok;
-        false ->
-            do_populate_ets_table(JSON)
-    end.
-
-do_populate_ets_table(JSON) ->
-    Dict = decode_settings_json(JSON),
-    NotFound = make_ref(),
-
-    lists:foreach(
-      fun ({Key, NewValue}) ->
-              OldValue = index_settings_manager:get(Key, NotFound),
-              case OldValue =:= NewValue of
-                  true ->
-                      ok;
-                  false ->
-                      ets:insert(?MODULE, {Key, NewValue}),
-                      gen_event:notify(index_events,
-                                       {index_settings_change, Key, NewValue})
-              end
-      end, lens_get_many(known_settings(), Dict)),
-
-    erlang:put(prev_json, JSON).
 
 known_settings() ->
     known_settings(cluster_compat_mode:is_cluster_45()).
@@ -238,15 +126,6 @@ extra_default_settings_for_45(Config) ->
     [{storageMode, SM}, {compactionMode, CM},
      {circularCompaction, CircDefaults}].
 
-id_lens(Key) ->
-    Get = fun (Dict) ->
-                  dict:fetch(Key, Dict)
-          end,
-    Set = fun (Value, Dict) ->
-                  dict:store(Key, Value, Dict)
-          end,
-    {Get, Set}.
-
 memory_quota_lens() ->
     Key = <<"indexer.settings.memory_quota">>,
 
@@ -283,10 +162,10 @@ general_settings_defaults() ->
      {logLevel, <<"info">>}].
 
 general_settings_lens_get(Dict) ->
-    lens_get_many(general_settings_lens_props(), Dict).
+    json_settings_manager:lens_get_many(general_settings_lens_props(), Dict).
 
 general_settings_lens_set(Values, Dict) ->
-    lens_set_many(general_settings_lens_props(), Values, Dict).
+    json_settings_manager:lens_set_many(general_settings_lens_props(), Values, Dict).
 
 general_settings_lens() ->
     {fun general_settings_lens_get/1, fun general_settings_lens_set/2}.
@@ -339,10 +218,10 @@ circular_compaction_lens_props() ->
      {interval, compaction_interval_lens()}].
 
 circular_compaction_lens_get(Dict) ->
-    lens_get_many(circular_compaction_lens_props(), Dict).
+    json_settings_manager:lens_get_many(circular_compaction_lens_props(), Dict).
 
 circular_compaction_lens_set(Values, Dict) ->
-    lens_set_many(circular_compaction_lens_props(), Values, Dict).
+    json_settings_manager:lens_set_many(circular_compaction_lens_props(), Values, Dict).
 
 circular_compaction_lens() ->
     {fun circular_compaction_lens_get/1, fun circular_compaction_lens_set/2}.
@@ -356,29 +235,13 @@ compaction_defaults() ->
      {interval, compaction_interval_default()}].
 
 compaction_lens_get(Dict) ->
-    lens_get_many(compaction_lens_props(), Dict).
+    json_settings_manager:lens_get_many(compaction_lens_props(), Dict).
 
 compaction_lens_set(Values, Dict) ->
-    lens_set_many(compaction_lens_props(), Values, Dict).
+    json_settings_manager:lens_set_many(compaction_lens_props(), Values, Dict).
 
 compaction_lens() ->
     {fun compaction_lens_get/1, fun compaction_lens_set/2}.
-
-lens_get({Get, _}, Dict) ->
-    Get(Dict).
-
-lens_get_many(Lenses, Dict) ->
-    [{Key, lens_get(L, Dict)} || {Key, L} <- Lenses].
-
-lens_set(Value, {_, Set}, Dict) ->
-    Set(Value, Dict).
-
-lens_set_many(Lenses, Values, Dict) ->
-    lists:foldl(
-      fun ({Key, Value}, Acc) ->
-              {Key, L} = lists:keyfind(Key, 1, Lenses),
-              lens_set(Value, L, Acc)
-      end, Dict, Values).
 
 -ifdef(EUNIT).
 
