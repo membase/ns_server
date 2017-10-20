@@ -93,7 +93,8 @@ get_string(SV) ->
 
 conf(security) ->
     [{disable_ui_over_http, disableUIOverHttp, false, fun get_bool/1},
-     {disable_ui_over_https, disableUIOverHttps, false, fun get_bool/1}];
+     {disable_ui_over_https, disableUIOverHttps, false, fun get_bool/1},
+     {ui_session_timeout, uiSessionTimeout, undefined, get_number(60, 1000000, undefined)}];
 conf(internal) ->
     [{index_aware_rebalance_disabled, indexAwareRebalanceDisabled, false, fun get_bool/1},
      {rebalance_index_waiting_disabled, rebalanceIndexWaitingDisabled, false, fun get_bool/1},

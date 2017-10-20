@@ -257,7 +257,8 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
             for_ui ->
                 [{failoverWarnings, ns_bucket:failover_warnings()},
                  {goxdcrEnabled, cluster_compat_mode:is_goxdcr_enabled(Config)},
-                 {ldapEnabled, cluster_compat_mode:is_ldap_enabled()}
+                 {ldapEnabled, cluster_compat_mode:is_ldap_enabled()},
+                 {uiSessionTimeout, ns_config:read_key_fast(ui_session_timeout, undefined)}
                  | PropList1];
             _ ->
                 PropList1
