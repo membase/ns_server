@@ -181,11 +181,9 @@
          ui-sref-active="currentnav"
          ui-sref="app.admin.replications"
          class="margin-bottom-1">XDCR</a>
-
       <a
          mn-tab="security"
          ng-class="{currentnav: ('app.admin.security' | includedByState)}"
-         ng-show="rbac.cluster.admin.security.read"
          ui-sref="app.admin.security">
         Security
       </a>

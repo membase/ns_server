@@ -33,7 +33,8 @@
     'ngAnimate',
     'mnDragAndDrop',
     'mnResetPasswordDialog',
-    'mnResetPasswordDialogService'
+    'mnResetPasswordDialogService',
+    'mnSessionService'
   ]).config(mnAdminConfig);
 
   function mnAdminConfig($stateProvider, $urlRouterProvider, $urlMatcherFactoryProvider, mnHelperProvider) {

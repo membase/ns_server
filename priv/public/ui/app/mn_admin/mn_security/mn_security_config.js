@@ -19,22 +19,31 @@
           }
         },
         data: {
-          permissions: "cluster.admin.security.read",
           title: "Security"
         },
         redirectTo: function (trans) {
           var mnPoolDefault = trans.injector().get("mnPoolDefault");
+          var mnPermissions = trans.injector().get("mnPermissions");
           var isEnterprise = trans.injector().get("mnPools").export.isEnterprise;
           var ldapEnabled = mnPoolDefault.export.ldapEnabled;
           var atLeast50 = mnPoolDefault.export.compat.atLeast50;
           var atLeast45 = mnPoolDefault.export.compat.atLeast45;
-          if (atLeast50) {
-            return {state: "app.admin.security.userRoles"};
-          } else {
-            if (isEnterprise && ldapEnabled && atLeast45) {
-              return {state: "app.admin.security.externalRoles"};
+          var securityRead = mnPermissions.export.cluster.admin.security.read;
+          if (securityRead) {
+            if (atLeast50) {
+              return {state: "app.admin.security.userRoles"};
             } else {
-              return {state: "app.admin.security.internalRoles"};
+              if (isEnterprise && ldapEnabled && atLeast45) {
+                return {state: "app.admin.security.externalRoles"};
+              } else {
+                return {state: "app.admin.security.internalRoles"};
+              }
+            }
+          } else {
+            if (isEnterprise) {
+              return {state: "app.admin.security.rootCertificate"};
+            } else {
+              return {state: "app.admin.security.session"}
             }
           }
         }
@@ -86,6 +95,11 @@
           permissions: "cluster.admin.security.read",
           compat: "!atLeast50",
         }
+      })
+      .state('app.admin.security.session', {
+        url: '/session',
+        controller: 'mnSessionController as sessionCtl',
+        templateUrl: 'app/mn_admin/mn_security/mn_session/mn_session.html'
       })
       .state('app.admin.security.rootCertificate', {
         url: '/rootCertificate',

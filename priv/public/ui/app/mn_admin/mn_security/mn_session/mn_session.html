@@ -1,0 +1,37 @@
+<div mn-spinner="sessionCtl.viewLoading || !sessionCtl.state" class="margin-top-half">
+  <form
+     ng-submit="sessionCtl.submit()"
+     name="sessionForm"
+     class="forms width-300">
+
+    <div class="formrow">
+      <label for="session-filed">Session Timeout</label>
+      <p>Empty field or zero value mean no timeout.</p>
+      <div class="form-inline">
+        <input
+           id="session-filed"
+           type="number"
+           class="input-short-1"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           ng-disabled="!rbac.cluster.admin.security.write"
+           ng-model="sessionCtl.state.uiSessionTimeout">
+        <small>
+          min
+        </small>
+      </div>
+      <div
+         class="error error-field"
+         ng-show="sessionCtl.errors.error">
+        {{sessionCtl.errors.error}}
+      </div>
+    </div>
+
+    <button
+       ng-show="rbac.cluster.admin.security.write"
+       type="submit">
+      Save
+    </button>
+  </form>
+</div>

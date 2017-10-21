@@ -16,7 +16,8 @@
       'mnInternalRoles',
       'ui.router',
       'mnPluggableUiRegistry',
-      'mnElementCrane'
+      'mnElementCrane',
+      'mnSession'
     ])
     .config(mnSettingsConfig);
 

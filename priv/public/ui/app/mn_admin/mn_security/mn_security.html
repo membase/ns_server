@@ -27,6 +27,9 @@
        ng-show="pools.isEnterprise && securityCtl.poolDefault.ldapEnabled && poolDefault.compat.atLeast40 && !poolDefault.compat.atLeast45 && rbac.cluster.admin.security.read"
        ui-sref="app.admin.security.ldap"
        ui-sref-active="selected">LDAP Auth Setup</a>
+    <a
+       ui-sref="app.admin.security.session"
+       ui-sref-active="selected">Session</a>
   </nav>
 </mn-element-cargo>
 

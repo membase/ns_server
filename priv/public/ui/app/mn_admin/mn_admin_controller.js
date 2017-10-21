@@ -5,7 +5,7 @@
     .module('mnAdmin')
     .controller('mnAdminController', mnAdminController);
 
-  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService, mnResetPasswordDialogService, whoami, mnBucketsStats, mnBucketsService, $q) {
+  function mnAdminController($scope, $rootScope, $state, $uibModal, mnAlertsService, poolDefault, mnSettingsNotificationsService, mnPromiseHelper, pools, mnPoller, mnEtagPoller, mnAuthService, mnTasksDetails, mnPoolDefault, mnSettingsAutoFailoverService, formatProgressMessageFilter, mnPrettyVersionFilter, mnPoorMansAlertsService, mnLostConnectionService, mnPermissions, mnPools, mnMemoryQuotaService, mnResetPasswordDialogService, whoami, mnBucketsStats, mnBucketsService, $q, mnSessionService) {
     var vm = this;
     vm.poolDefault = poolDefault;
     vm.launchpadId = pools.launchID;
@@ -19,7 +19,7 @@
 
     vm.user = whoami;
 
-    vm.$state = $state
+    vm.$state = $state;
 
     vm.enableInternalSettings = $state.params.enableInternalSettings;
     vm.runInternalSettingsDialog = runInternalSettingsDialog;
@@ -71,6 +71,7 @@
     }
 
     function activate() {
+      mnSessionService.init($scope);
       if (mnPermissions.export.cluster.settings.read) {
         mnPromiseHelper(vm, mnSettingsNotificationsService.maybeCheckUpdates({group: "global"}))
           .applyToScope("updates")
@@ -90,6 +91,10 @@
       }).subscribe(function (resp, previous) {
         if (!_.isEqual(resp, previous)) {
           $rootScope.$broadcast("mnPoolDefaultChanged");
+        }
+
+        if ((previous && previous.uiSessionTimeout) !== resp.uiSessionTimeout) {
+          $rootScope.$broadcast("newSessionTimeout", resp.uiSessionTimeout);
         }
 
         vm.tabName = resp.clusterName;
@@ -173,6 +178,11 @@
 
       $scope.$on("reloadPermissions", function () {
         mnPermissions.getFresh();
+      });
+
+      $scope.$on("newSessionTimeout", function (e, uiSessionTimeout) {
+        mnSessionService.setTimeout(uiSessionTimeout);
+        mnSessionService.resetTimeoutAndSyncAcrossTabs();
       });
 
       $scope.$on("reloadTasksPoller", function (event, params) {

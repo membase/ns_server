@@ -54,11 +54,11 @@
       });
     }
     function logout() {
+      $uibModalStack.dismissAll("uilogout");
       return $http({
         method: 'POST',
         url: "/uilogout"
       }).then(function () {
-        $uibModalStack.dismissAll("uilogout");
         mnPools.clearCache();
         $state.go('app.auth').then(function () {
           delete $rootScope.poolDefault;
