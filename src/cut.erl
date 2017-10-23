@@ -641,7 +641,7 @@ make_var_name() ->
 find_cut_vars_deep(CutLine, Expr) ->
     Vars = generic:query(fun lists:append/2,
                          ?query(Var, fun is_placeholder/1, [Var], []), Expr),
-    NewVars = [{var, Line, make_var_name()} || {var, Line, _} <- Vars],
+    {Pattern, NewVars} = handle_vars(Vars, CutLine, Expr),
 
     {NewExpr, _} = generic:transformb(fun (T, Vs) ->
                                               case is_placeholder(T) of
@@ -653,11 +653,59 @@ find_cut_vars_deep(CutLine, Expr) ->
                                               end
                                       end, NewVars, Expr),
 
-    Pattern = [{var, CutLine, Name} || {var, _Line, Name} <- NewVars],
-
     {Pattern, NewExpr}.
 
-is_placeholder({var, _Line, '_'}) ->
+handle_vars(Vars, CutLine, Expr) ->
+    {SimpleVars, NumberedVars} =
+        lists:partition(fun (Var) ->
+                                R = is_simple_placeholder(Var),
+                                true = (R xor is_numbered_placeholder(Var)),
+                                R
+                        end, Vars),
+
+    case {SimpleVars, NumberedVars} of
+        {_, []} ->
+            handle_simple_vars(Vars, CutLine);
+        {[], _} ->
+            handle_numbered_vars(Vars, CutLine);
+        {_, _} ->
+            error({mixed_placeholders_disallowed, Expr, SimpleVars, NumberedVars})
+    end.
+
+handle_simple_vars(Vars, CutLine) ->
+    NewVars = [{var, Line, make_var_name()} || {var, Line, _} <- Vars],
+    Pattern = [{var, CutLine, Name} || {var, _Line, Name} <- NewVars],
+    {Pattern, NewVars}.
+
+handle_numbered_vars(Vars, CutLine) ->
+    Nums = lists:map(fun decode_numbered_placeholder/1, Vars),
+
+    PatternNames = [make_var_name() || _ <- lists:seq(1, lists:max(Nums))],
+    NewVars = [{var, Line, lists:nth(N, PatternNames)} ||
+                  {N, {var, Line, _}} <- lists:zip(Nums, Vars)],
+
+    Pattern = [{var, CutLine, Name} || Name <- PatternNames],
+    {Pattern, NewVars}.
+
+is_placeholder(Term) ->
+    is_simple_placeholder(Term) orelse
+        is_numbered_placeholder(Term).
+
+is_simple_placeholder({var, _Line, '_'}) ->
     true;
-is_placeholder(_) ->
+is_simple_placeholder(_) ->
     false.
+
+is_numbered_placeholder({var, _Line, Name}) ->
+    case atom_to_list(Name) of
+        "_" ++ [Char] ->
+            lists:member(Char, "123456789");
+        _ ->
+            false
+    end;
+is_numbered_placeholder(_) ->
+    false.
+
+decode_numbered_placeholder({var, _Line, Name}) ->
+    "_" ++ [Num] = atom_to_list(Name),
+    Num - $1 + 1.
