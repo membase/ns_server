@@ -294,8 +294,8 @@ query_node_spec(Config) ->
                                 [];
                             Port ->
                                 ["--https=:" ++ integer_to_list(Port),
-                                 "--certfile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
-                                 "--keyfile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
+                                 "--certfile=" ++ ns_ssl_services_setup:memcached_cert_path(),
+                                 "--keyfile=" ++ ns_ssl_services_setup:memcached_key_path(),
                                  "--ssl_minimum_protocol=" ++
                                      atom_to_list(ns_ssl_services_setup:ssl_minimum_protocol())]
                         end,
