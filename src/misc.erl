@@ -40,6 +40,8 @@
 -include("triq.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+-include("generic.hrl").
+
 -compile(export_all).
 
 shuffle(List) when is_list(List) ->
@@ -530,22 +532,15 @@ rotate_test() ->
     [] = rotate([]).
 
 rewrite(Fun, Term) ->
-    case Fun(Term) of
-        continue ->
-            do_rewrite(Fun, Term);
-        {stop, NewTerm} ->
-            NewTerm
-    end.
-
-do_rewrite(Fun, [H|T]) ->
-    [rewrite(Fun, H) | rewrite(Fun, T)];
-do_rewrite(_Fun, []) ->
-    [];
-do_rewrite(Fun, Tuple) when is_tuple(Tuple) ->
-    L = [rewrite(Fun, E) || E <- tuple_to_list(Tuple)],
-    list_to_tuple(L);
-do_rewrite(_Fun, Term) ->
-    Term.
+    generic:maybe_transform(
+      fun (T) ->
+              case Fun(T) of
+                  continue ->
+                      {continue, T};
+                  {stop, NewTerm} ->
+                      {stop, NewTerm}
+              end
+      end, Term).
 
 rewrite_correctly_callbacks_on_tuples_test() ->
     executing_on_new_process(
@@ -572,28 +567,10 @@ rewrite_correctly_callbacks_on_tuples_test() ->
       end).
 
 rewrite_value(Old, New, Struct) ->
-    rewrite(
-      fun (Term) ->
-              case Term =:= Old of
-                  true ->
-                      {stop, New};
-                  false ->
-                      continue
-              end
-      end,
-      Struct).
+    generic:transformb(?transform(Old, New), Struct).
 
 rewrite_key_value_tuple(Key, NewValue, Struct) ->
-    rewrite(
-      fun (Term) ->
-              case Term of
-                  {Key, _} ->
-                      {stop, {Key, NewValue}};
-                  _ ->
-                      continue
-              end
-      end,
-      Struct).
+    generic:transformb(?transform({Key, _}, {Key, NewValue}), Struct).
 
 rewrite_tuples(Fun, Struct) ->
     rewrite(
