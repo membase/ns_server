@@ -910,12 +910,16 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
         for bucket in set(correct_split(read_guts(guts, "buckets"), ",")) - set(correct_split(read_guts(guts, "memcached_buckets"), ","))
         for path in glob.glob(os.path.join(dbdir, bucket, "*.couch.*"))],
 
+        # RocksDB has logs per DB (i.e. vBucket). 'LOG' is the most
+        # recent file, with old files named LOG.old.<timestamp>.
+        # Sort so we go from oldest -> newest as per other log files.
         [AllOsTask("RocksDB Log file (%s, %s)" % (bucket, os.path.basename(path)),
-                   "cat '%s/LOG'" % path,
+                   "cat '%s'" % (log_file),
                    log_file="kv_rocks.log")
         for bucket in (set(correct_split(read_guts(guts, "buckets"), ",")) -
                        set(correct_split(read_guts(guts, "memcached_buckets"), ",")))
-        for path in glob.glob(os.path.join(dbdir, bucket, "rocksdb.*"))],
+        for path in glob.glob(os.path.join(dbdir, bucket, "rocksdb.*"))
+        for log_file in sorted(glob.glob(os.path.join(path, "LOG.old.*"))) + [os.path.join(path, "LOG")]],
 
         [UnixTask("moxi stats (port %s)" % port,
                   "echo stats proxy | nc 127.0.0.1 %s" % port,
