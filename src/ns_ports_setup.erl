@@ -436,8 +436,8 @@ index_node_spec(Config) ->
                                 [];
                             Port ->
                                 ["--httpsPort=" ++ integer_to_list(Port),
-                                 "--certFile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
-                                 "--keyFile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
+                                 "--certFile=" ++ ns_ssl_services_setup:memcached_cert_path(),
+                                 "--keyFile=" ++ ns_ssl_services_setup:memcached_key_path()]
                         end,
 
             Spec = {'indexer', IndexerCmd,
@@ -610,8 +610,8 @@ fts_spec(Config) ->
                                 [];
                             Port ->
                                 ["-bindHttps=:" ++ integer_to_list(Port),
-                                 "-tlsCertFile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
-                                 "-tlsKeyFile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
+                                 "-tlsCertFile=" ++ ns_ssl_services_setup:memcached_cert_path(),
+                                 "-tlsKeyFile=" ++ ns_ssl_services_setup:memcached_key_path()]
                         end,
             {ok, FTSMemoryQuota} = ns_storage_conf:get_memory_quota(Config, fts),
             MaxReplicasAllowed = case cluster_compat_mode:is_enterprise() of
