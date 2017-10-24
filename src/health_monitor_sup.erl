@@ -103,6 +103,8 @@ refresh_children() ->
 child_specs(kv) ->
     [{{kv, dcp_traffic_monitor}, {dcp_traffic_monitor, start_link, []},
       permanent, 1000, worker, [dcp_traffic_monitor]},
+     {{kv, kv_stats_monitor}, {kv_stats_monitor, start_link, []},
+      permanent, 1000, worker, [kv_stats_monitor]},
      {{kv, kv_monitor}, {kv_monitor, start_link, []},
       permanent, 1000, worker, [kv_monitor]}];
 child_specs(Service) ->

@@ -33,7 +33,7 @@
 -include("ns_heart.hrl").
 
 %% API
--export([start_link/0, enable/2, disable/0, reset_count/0, reset_count_async/0]).
+-export([start_link/0, enable/3, disable/1, reset_count/0, reset_count_async/0]).
 %% For email alert notificatons
 -export([alert_key/1, alert_keys/0]).
 
@@ -97,15 +97,31 @@ start_link() ->
 %% automatically failovered
 %% `Max` is the maximum number of nodes that can will be automatically
 %% failovered
--spec enable(Timeout::integer(), Max::integer()) -> ok.
-enable(Timeout, Max) ->
+%% `Extras` are optional settings.
+-spec enable(Timeout::integer(), Max::integer(), Extras::list()) -> ok.
+enable(Timeout, Max, Extras) ->
     1 = Max,
-    call({enable_auto_failover, Timeout, Max}).
+    %% Request will be sent to the master for processing.
+    %% In a mixed version cluster, node running highest version is
+    %% usually selected as the master.
+    %% But to be safe, if the cluster has not been fully upgraded yet,
+    %% then use the old API.
+    case cluster_compat_mode:is_cluster_vulcan() of
+        true ->
+            call({enable_auto_failover, Timeout, Max, Extras});
+        false ->
+            call({enable_auto_failover, Timeout, Max})
+    end.
 
 %% @doc Disable auto-failover
--spec disable() -> ok.
-disable() ->
-    call(disable_auto_failover).
+-spec disable(Extras::list()) -> ok.
+disable(Extras) ->
+    case cluster_compat_mode:is_cluster_vulcan() of
+        true ->
+            call({disable_auto_failover, Extras});
+        false ->
+            call(disable_auto_failover)
+    end.
 
 %% @doc Reset the number of nodes that were auto-failovered to zero
 -spec reset_count() -> ok.
@@ -169,35 +185,48 @@ init_logic_state(Timeout) ->
     DownThreshold = (Timeout * 1000 + TickPeriod - 1) div TickPeriod,
     auto_failover_logic:init_state(DownThreshold).
 
+handle_call({enable_auto_failover, Timeout, Max}, From, State) ->
+    handle_call({enable_auto_failover, Timeout, Max, []}, From, State);
 %% @doc Auto-failover isn't enabled yet (tick_ref isn't set).
-handle_call({enable_auto_failover, Timeout, Max}, _From,
+handle_call({enable_auto_failover, Timeout, Max, Extras}, _From,
             #state{tick_ref=nil}=State) ->
     1 = Max,
     ale:info(?USER_LOGGER, "Enabled auto-failover with timeout ~p", [Timeout]),
     {ok, Ref} = timer2:send_interval(get_tick_period(), tick),
     State2 = State#state{tick_ref=Ref, timeout=Timeout,
                          auto_failover_logic_state=init_logic_state(Timeout)},
-    make_state_persistent(State2),
+    make_state_persistent(State2, Extras),
     {reply, ok, State2};
 %% @doc Auto-failover is already enabled, just update the settings.
-handle_call({enable_auto_failover, Timeout, Max}, _From, State) ->
+handle_call({enable_auto_failover, Timeout, Max, Extras}, _From,
+            #state{timeout = CurrTimeout} = State) ->
     ?log_debug("updating auto-failover settings: ~p", [State]),
     1 = Max,
-    ale:info(?USER_LOGGER, "Updating auto-failover timeout to ~p", [Timeout]),
-    State2 = State#state{timeout=Timeout,
-                         auto_failover_logic_state = init_logic_state(Timeout)},
-    make_state_persistent(State2),
+    State2 = case Timeout =/= CurrTimeout of
+                 true ->
+                     ale:info(?USER_LOGGER,
+                              "Updating auto-failover timeout to ~p",
+                              [Timeout]),
+                     State#state{timeout = Timeout,
+                                 auto_failover_logic_state = init_logic_state(Timeout)};
+                 false ->
+                     ?log_debug("No change in timeout ~p", [Timeout]),
+                     State
+             end,
+    make_state_persistent(State2, Extras),
     {reply, ok, State2};
 
+handle_call(disable_auto_failover, From, State) ->
+    handle_call({disable_auto_failover, []}, From, State);
 %% @doc Auto-failover is already disabled, so we don't do anything
-handle_call(disable_auto_failover, _From, #state{tick_ref=nil}=State) ->
+handle_call({disable_auto_failover, _}, _From, #state{tick_ref=nil}=State) ->
     {reply, ok, State};
 %% @doc Auto-failover is enabled, disable it
-handle_call(disable_auto_failover, _From, #state{tick_ref=Ref}=State) ->
+handle_call({disable_auto_failover, Extras}, _From, #state{tick_ref=Ref}=State) ->
     ?log_debug("disable_auto_failover: ~p", [State]),
     {ok, cancel} = timer2:cancel(Ref),
     State2 = State#state{tick_ref=nil, auto_failover_logic_state = undefined},
-    make_state_persistent(State2),
+    make_state_persistent(State2, Extras),
     ale:info(?USER_LOGGER, "Disabled auto-failover"),
     {reply, ok, State2};
 handle_call(reset_auto_failover_count, _From, State) ->
@@ -484,14 +513,25 @@ actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
 %% @doc Save the current state in ns_config
 -spec make_state_persistent(State::#state{}) -> ok.
 make_state_persistent(State) ->
+    make_state_persistent(State, []).
+make_state_persistent(State, Extras) ->
     Enabled = case State#state.tick_ref of
-                  nil -> false;
-                  _ -> true
+                  nil ->
+                      false;
+                  _ ->
+                      true
               end,
-    ns_config:set(auto_failover_cfg,
-                  [{enabled, Enabled},
-                   {timeout, State#state.timeout},
-                   {count, State#state.count}]).
+    {value, Cfg} = ns_config:search(ns_config:get(), auto_failover_cfg),
+    NewCfg0 = lists:keyreplace(enabled, 1, Cfg, {enabled, Enabled}),
+    NewCfg1 = lists:keyreplace(timeout, 1, NewCfg0,
+                               {timeout, State#state.timeout}),
+    NewCfg2 = lists:keyreplace(count, 1, NewCfg1,
+                               {count, State#state.count}),
+    NewCfg = lists:foldl(
+               fun ({Key, Val}, Acc) ->
+                       lists:keyreplace(Key, 1, Acc, {Key, Val})
+               end, NewCfg2, Extras),
+    ns_config:set(auto_failover_cfg, NewCfg).
 
 note_reported(Flag, State) ->
     false = element(Flag, State),
