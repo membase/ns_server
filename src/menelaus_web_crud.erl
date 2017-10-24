@@ -87,6 +87,10 @@ do_handle_list(Req, Bucket, {Skip, Limit, Params}, N) ->
         {error, {memcached_error, not_my_vbucket}} ->
             timer:sleep(1000),
             do_handle_list(Req, Bucket, {Skip, Limit, Params}, N - 1);
+        {error, {memcached_error, not_supported}} ->
+            menelaus_util:reply_json(Req,
+                                     {struct, [{error, memcached_error},
+                                               {reason, not_supported}]}, 501);
         {error, {memcached_error, Type}} ->
             menelaus_util:reply_json(Req,
                                      {struct, [{error, memcached_error},
