@@ -53,7 +53,10 @@
 -define(DISK_ISSUE_THRESHOLD, ns_config:read_key_fast(disk_issue_threshold, 60)).
 
 -export([start_link/0]).
--export([get_buckets/0]).
+-export([get_buckets/0,
+         get_reason/1,
+         analyze_status/1,
+         is_failure/1]).
 
 -export([init/1,
          handle_call/3,
@@ -157,7 +160,40 @@ code_change(_OldVsn, State, _Extra) ->
 get_buckets() ->
     gen_server:call(?MODULE, get_buckets).
 
+get_reason({io_failed, Buckets}) ->
+    {"Disk reads and writes failed on following buckets: " ++
+         string:join(Buckets, ", ") ++ ".", io_failed};
+get_reason({read_failed, Buckets}) ->
+    {"Disk reads failed on following buckets: " ++
+         string:join(Buckets, ", ") ++ ".", read_failed};
+get_reason({write_failed, Buckets}) ->
+    {"Disk writes failed on following buckets: " ++
+         string:join(Buckets, ", ") ++ ".", write_failed}.
+
+is_failure(Failure) ->
+    lists:member(Failure, get_errors()).
+
+analyze_status(Buckets) ->
+    DiskErrs = get_errors(),
+    lists:foldl(
+      fun ({B, State}, Acc) ->
+              case lists:member(State, DiskErrs) of
+                  true ->
+                      case lists:keyfind(State, 1, Acc) of
+                          false ->
+                              [{State, [B]} | Acc];
+                          {State, Bs} ->
+                              lists:keyreplace(State, 1, Acc, {State, [B | Bs]})
+                      end;
+                  false ->
+                      Acc
+              end
+      end, [], Buckets).
+
 %% Internal functions
+get_errors() ->
+    [io_failed | [Err || {_, Err} <- failure_stats()]].
+
 reset_bucket_info() ->
     Buckets = ns_bucket:node_bucket_names_of_type(node(), membase, couchstore),
     lists:foldl(

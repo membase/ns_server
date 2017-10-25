@@ -57,9 +57,106 @@ handle_info(Info, Statuses, _Nodes) ->
 get_nodes() ->
     gen_server:call(?MODULE, get_nodes).
 
+%%
+%% Analyze status of buckets on Node.
+%% Returns one of the following:
+%%  - healthy: If all buckets are active or ready on Node.
+%%  - unhealthy: If none of the buckets are active or ready.
+%%  - A list of one or more of the following:
+%%    {not_ready, NotReadyBuckets}
+%%    {io_failed, BucketsForWhichAllIOFailed},
+%%    {read_failed, BucketsForWhichReadFailed},
+%%    {write_failed, BucketsForWhichWriteFailed},
+%%
+%% E.g. if read operation had failed on buckets B1, B2 and
+%% buckets B3, B4 are not ready (warmed-up)
+%% then it will return: [{read_failed, [B1, B2]}, {not_ready, [B3, B4]}].
+%%
 analyze_status(Node, AllNodes) ->
-    Buckets = ns_bucket:node_bucket_names(Node),
+    AllBuckets = lists:sort(ns_bucket:node_bucket_names(Node)),
 
+    IOFailed = analyze_kv_stats(Node, AllNodes),
+    IOFailedBkts = lists:umerge([lists:sort(Bkts) || {_, Bkts} <- IOFailed]),
+
+    case IOFailedBkts of
+        [] ->
+            check_ready_buckets(AllNodes, Node, AllBuckets);
+        AllBuckets ->
+            IOFailed;
+        _ ->
+            %% Find status of the rest of the buckets
+            ChkBuckets = lists:subtract(AllBuckets, IOFailedBkts),
+            case check_ready_buckets(AllNodes, Node, ChkBuckets) of
+                healthy ->
+                    IOFailed;
+                unhealthy ->
+                    lists:append(IOFailed, [{not_ready, ChkBuckets}]);
+                NotReady ->
+                    lists:append(IOFailed, NotReady)
+            end
+    end.
+
+is_node_down(needs_attention) ->
+    {true, {"The data service did not respond for the duration of the " ++
+                "auto-failover threshold. Either none of the buckets have " ++
+                "warmed up or there is an issue with the data service.",
+            no_buckets_ready}};
+is_node_down(States) ->
+    {true, is_node_down(States, [], none)}.
+
+%% Internal functions
+is_node_down([], RAcc, MAInfo) ->
+    {RAcc, MAInfo};
+is_node_down([State | Rest], RAcc, MA) ->
+    {Reason, MAInfo0} = get_reason(State),
+    MAInfo = case MA of
+                 none ->
+                     MAInfo0;
+                 _ ->
+                     multiple_data_service_failures
+             end,
+    is_node_down(Rest, Reason ++ " " ++  RAcc, MAInfo).
+
+get_reason({not_ready, Buckets}) ->
+    {"The data service is online but the following buckets' data " ++
+         "are not accessible: " ++ string:join(Buckets, ", ") ++ ".",
+     some_buckets_not_ready};
+get_reason({Failure, Buckets} = State) ->
+    case kv_stats_monitor:is_failure(Failure) of
+        true ->
+            kv_stats_monitor:get_reason(State);
+        false ->
+            {"Following buckets encountered an unknown data service failure: "
+             ++ string:join(Buckets, ", ") ++ ".",
+             unknown_data_service_failure}
+    end.
+
+analyze_kv_stats(Node, AllNodes) ->
+    %% AllNodes contains each node's view of every other node.
+    %% Since each node monitors only its local KV stats,
+    %% we are interested only in the Node's view of itself.
+    case lists:keyfind(Node, 1, AllNodes) of
+        false ->
+            [];
+        {Node, active, View} ->
+            case proplists:get_value(Node, View, []) of
+                [] ->
+                    [];
+                Status ->
+                    case proplists:get_value(kv, Status, unknown) of
+                        unknown ->
+                            [];
+                        [] ->
+                            [];
+                        Buckets ->
+                            kv_stats_monitor:analyze_status(Buckets)
+                    end
+            end;
+        _ ->
+            []
+    end.
+
+check_ready_buckets(AllNodes, Node, Buckets) ->
     %% Initially, all buckets are considered not ready.
     case get_not_ready_buckets(AllNodes, Node, Buckets) of
         [] ->
@@ -69,15 +166,9 @@ analyze_status(Node, AllNodes) ->
             %% None of the buckets are active or ready
             unhealthy;
         NotReadyBuckets ->
-            {not_ready, NotReadyBuckets}
+            [{not_ready, NotReadyBuckets}]
     end.
 
-is_node_down(needs_attention) ->
-    {true, {"The data service did not respond for the duration of the auto-failover threshold. Either none of the buckets have warmed up or there is an issue with the data service.", no_buckets_ready}};
-is_node_down({not_ready, Buckets}) ->
-    {true, {"The data service is online but the following buckets' data are not accessible: " ++ string:join(Buckets, ", ") ++ ".", some_buckets_not_ready}}.
-
-%% Internal functions
 get_not_ready_buckets(_, _, []) ->
     [];
 get_not_ready_buckets([], _, NotReadyBuckets) ->
@@ -138,6 +229,10 @@ erase_unknown_nodes(NodesDict, Nodes) ->
     Statuses.
 
 maybe_add_local_node(Statuses) ->
+    NewStatuses = check_for_ready_buckets(Statuses),
+    check_for_io_failure(NewStatuses).
+
+check_for_ready_buckets(Statuses) ->
     case dict:find(node(), Statuses) of
         {ok, Buckets} ->
             %% Some buckets may not have DCP streams.
@@ -183,3 +278,23 @@ get_buckets(Buckets) ->
     end,
     [{B, not_ready} || B <- NotReadyBuckets] ++
         [{B, ready} || B <- ReadyBuckets, lists:member(B, Buckets)].
+
+check_for_io_failure(Statuses) ->
+    IOFailed = [{B, State} || {B, State} <- kv_stats_monitor:get_buckets(),
+                              State =/= active],
+    case IOFailed of
+        [] ->
+            Statuses;
+        _ ->
+            {ok, Buckets} = dict:find(node(), Statuses),
+            NewBuckets = lists:map(
+                           fun ({Bucket, State}) ->
+                                   case lists:keyfind(Bucket, 1, IOFailed) of
+                                       false ->
+                                           {Bucket, State};
+                                       {Bucket, NewState} ->
+                                           {Bucket, NewState}
+                                   end
+                           end, Buckets),
+            dict:store(node(), NewBuckets, Statuses)
+    end.
