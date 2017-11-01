@@ -17,8 +17,8 @@ mn.services.MnApp = (function () {
             .filter(function (rv) {
               //rejection.config.url !== "/controller/changePassword"
               //$injector.get('mnLostConnectionService').getState().isActivated
-              return rv instanceof ng.common.http.HttpErrorResponse &&
-                rv.status === 401 && !rv.headers.get("ignore-401");
+              return (rv instanceof ng.common.http.HttpErrorResponse) &&
+                (rv.status === 401) && !rv.headers.get("ignore-401");
             });
         }
       });
@@ -103,7 +103,6 @@ mn.services.MnApp = (function () {
       ng.core.Component({
         selector: "app-root",
         template: '<ui-view class="root-container"></ui-view>'
-        // + '<div ng-show="mnGlobalSpinnerFlag" class="global-spinner"></div>'
       })
       .Class({
         constructor: function AppComponent() {
@@ -113,9 +112,12 @@ mn.services.MnApp = (function () {
   var AppModule =
       ng.core.NgModule({
         declarations: [
-          AppComponent
+          AppComponent,
+          ServersComponent,
+          OverviewComponent,
         ],
         imports: [
+          mn.modules.MnElementModule,
           mn.modules.MnPipesModule,
           mn.modules.MnAuth,
           mn.modules.MnAdmin,
@@ -145,7 +147,7 @@ mn.services.MnApp = (function () {
               component: mn.components.MnAuth
             }, {
               name: "app.admin",
-              url: "admin",
+              abstract: true,
               component: mn.components.MnAdmin
             }],
             useHash: true,
@@ -186,7 +188,6 @@ mn.services.MnApp = (function () {
       .Class({
         constructor: [
           mn.services.MnExceptionHandler,
-          mn.services.MnPools,
           mn.pipes.MnPrettyVersion,
           ng.platformBrowser.Title,
           mn.services.MnApp,
@@ -194,7 +195,6 @@ mn.services.MnApp = (function () {
           window['@uirouter/angular'].UIRouter,
           ng.common.http.HttpClient,
           function AppModule(mnExceptionHandlerService,
-                             mnPoolsService,
                              mnPrettyVersionPipe,
                              title, mnAppService, mnAuthService, uiRouter, http) {
 
@@ -219,7 +219,7 @@ mn.services.MnApp = (function () {
               .stream
               .pageNotFound
               .subscribe(function (pools) {
-                uiRouter.stateService.go('app.admin');
+                uiRouter.stateService.go('app.admin.overview');
               });
 
             http.get("/versions").toPromise().then(function (versions) {

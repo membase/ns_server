@@ -36,9 +36,9 @@ mn.services.MnAdmin = (function () {
               .pluck("enableInternalSettings");
 
             this.stream.whomi =
-              this.getWhoami()
-              .publishReplay(1)
-              .refCount();
+              (new Rx.BehaviorSubject())
+              .switchMap(this.getWhoami.bind(this))
+              .shareReplay(1);
 
             this.stream.getPoolsDefault =
               uiRouter.globals
@@ -47,15 +47,9 @@ mn.services.MnAdmin = (function () {
                 return state.to().name === "app.admin.overview" ? 3000 : 10000;
               })
               .combineLatest(this.stream.etag)
-              .map(function (rv) {
-                return {
-                  etag: rv[1] ? rv[1] : "",
-                  waitChange: rv[0]
-                };
-              })
               .switchMap(this.getPoolsDefault.bind(this))
-              .publishReplay(1)
-              .refCount();
+              .shareReplay(1)
+
 
             this.stream.thisNode =
               this.stream
@@ -85,8 +79,8 @@ mn.services.MnAdmin = (function () {
         getPoolsDefault: function (params) {
           return this.http.get('/pools/default', {
             params: new ng.common.http.HttpParams()
-              .set('waitChange', params.waitChange)
-              .set('etag', params.etag)
+              .set('waitChange', params[0])
+              .set('etag', params[1] || "")
           });
         },
         getWhoami: function () {

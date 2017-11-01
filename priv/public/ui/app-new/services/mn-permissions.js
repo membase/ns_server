@@ -96,8 +96,7 @@ mn.services.MnPermissions = (function () {
               .combineLatest(this.stream
                              .url)
               .switchMap(this.doGet.bind(this))
-              .publishReplay(1)
-              .refCount();
+              .shareReplay(1);
 
             this.stream.getSuccess =
               this.stream
@@ -106,8 +105,7 @@ mn.services.MnPermissions = (function () {
                 return [getAll(), url];
               })
               .switchMap(this.doGet.bind(this))
-              .publishReplay(1)
-              .refCount();
+              .shareReplay(1);
 
             this.stream.permissionByBucketNames =
               this.stream

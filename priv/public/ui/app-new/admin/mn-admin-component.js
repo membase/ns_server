@@ -15,18 +15,44 @@ mn.components.MnAdmin =
             mn.services.MnPools,
             mn.services.MnPermissions,
             mn.services.MnTasks,
-            function MnAdminComponent(mnAuthService, mnAdminService, mnPoolsService, mnPermissionsService, mnTasksService) {
+            window['@uirouter/angular'].UIRouter,
+            function MnAdminComponent(mnAuthService, mnAdminService, mnPoolsService, mnPermissionsService, mnTasksService, uiRouter) {
               this.doLogout = mnAuthService.stream.doLogout;
               this.destroy = new Rx.Subject();
               this.isProgressBarClosed = new Rx.BehaviorSubject(true);
               this.mnAdminService = mnAdminService;
+              this.showRespMenu = false;
 
               this.majorMinorVersion = mnPoolsService.stream.majorMinorVersion;
-              this.getPoolsDefaultSuccess = mnAdminService.stream.getPoolsDefaultSuccess;
               this.tasksToDisplay = mnTasksService.stream.tasksToDisplay;
               this.isEnterprise = mnPoolsService.stream.isEnterprise;
               this.whomiId = mnAdminService.stream.whomi.pluck("id");
 
+              this.stateService = uiRouter.stateService;
+
+              mnAdminService
+                .stream
+                .getPoolsDefault
+                .takeUntil(this.destroy)
+                .subscribe(function (rv) {
+                  mnAdminService.stream.etag.next(rv.etag);
+                }, function (rv) {
+                  if ((rv instanceof ng.common.http.HttpErrorResponse) && (rv.status === 404)) {
+                    uiRouter.stateService.go('app.wizard.welcome');
+                  }
+                });
+
+              this.isAdminRootReady =
+                mnAdminService
+                .stream
+                .getPoolsDefault
+                .map(Boolean);
+
+              this.clusterName =
+                mnAdminService
+                .stream
+                .getPoolsDefault
+                .pluck("clusterName");
 
               this.tasksReadPermission =
                 mnPermissionsService
@@ -65,14 +91,6 @@ mn.components.MnAdmin =
                 .subscribe(function (interval) {
                   mnTasksService.stream.interval.next(interval);
                 });
-
-              this.mnAdminService
-                .stream
-                .getPoolsDefault
-                .takeUntil(this.destroy)
-                .subscribe(function (rv) {
-                  mnAdminService.stream.etag.next(rv.etag);
-                });
             }],
           ngOnDestroy: function () {
             this.destroy.next();
@@ -96,6 +114,24 @@ mn.components.MnAdmin =
     return MnAdmin;
   })();
 
+  var OverviewComponent =
+      ng.core.Component({
+        template: 'overview'
+      })
+      .Class({
+        constructor: function OverviewComponent() {
+        }
+      });
+
+  var ServersComponent =
+      ng.core.Component({
+        template: '<mn-element-cargo depot="alerts">asdasdasdas</mn-element-cargo>'
+      })
+      .Class({
+        constructor: function ServersComponent() {
+        }
+      });
+
 
 var mn = mn || {};
 mn.modules = mn.modules || {};
@@ -110,6 +146,28 @@ mn.modules.MnAdmin =
             mn.components.MnAdmin
           ],
           imports: [
+            window['@uirouter/angular'].UIRouterModule.forChild({
+              states: [{
+                name: "app.admin.overview",
+                url: "overview",
+                views: {
+                  "main@app.admin": OverviewComponent
+                },
+                data: {
+                  title: "Dashboard"
+                }
+              }, {
+                name: "app.admin.servers",
+                url: "servers",
+                views: {
+                  "main@app.admin": ServersComponent
+                },
+                data: {
+                  title: "Servers"
+                }
+              }]
+            }),
+            mn.modules.MnElementModule,
             mn.modules.MnPipesModule,
             ng.platformBrowser.BrowserModule,
             ngb.NgbModule

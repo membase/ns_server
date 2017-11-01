@@ -1,3 +1,4 @@
+
 var mn = mn || {};
 mn.services = mn.services || {};
 mn.services.MnAuth = (function () {

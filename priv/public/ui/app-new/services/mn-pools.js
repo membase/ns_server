@@ -14,13 +14,11 @@ mn.services.MnPools = (function () {
           function MnPoolsService(http, mnParseVersionPipe) {
             this.http = http;
             this.stream = {};
+
             this.stream.getSuccess =
-              this.get()
-              .filter(function (rv) {
-                return !(rv instanceof ng.common.http.HttpErrorResponse);
-              })
-              .publishReplay(1)
-              .refCount();
+              (new Rx.BehaviorSubject())
+              .switchMap(this.get.bind(this))
+              .shareReplay(1);
 
             this.stream.isEnterprise =
               this.stream
@@ -46,8 +44,6 @@ mn.services.MnPools = (function () {
         pools.isInitialized = !!pools.pools.length;
         pools.launchID = pools.uuid + '-' + launchID;
         return pools;
-      }).catch(function (resp) {
-        return Rx.Observable.of(resp);
       });
   }
 })();
