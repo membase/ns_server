@@ -26,7 +26,8 @@ mn.services.MnAdmin = (function () {
         constructor: [
           window['@uirouter/angular'].UIRouter,
           ng.common.http.HttpClient,
-          function MnAdminService(uiRouter, http) {
+          mn.pipes.MnPrettyVersion,
+          function MnAdminService(uiRouter, http, mnPrettyVersionPipe) {
             this.stream = {};
             this.http = http;
             this.stream.etag = new Rx.BehaviorSubject();
@@ -48,8 +49,12 @@ mn.services.MnAdmin = (function () {
               })
               .combineLatest(this.stream.etag)
               .switchMap(this.getPoolsDefault.bind(this))
-              .shareReplay(1)
+              .shareReplay(1);
 
+            this.stream.prettyVersion =
+              this.getVersion()
+              .pluck("implementationVersion")
+              .map(mnPrettyVersionPipe.transform.bind(mnPrettyVersionPipe));
 
             this.stream.thisNode =
               this.stream
@@ -76,6 +81,9 @@ mn.services.MnAdmin = (function () {
               });
 
           }],
+        getVersion: function () {
+          return this.http.get("/versions");
+        },
         getPoolsDefault: function (params) {
           return this.http.get('/pools/default', {
             params: new ng.common.http.HttpParams()

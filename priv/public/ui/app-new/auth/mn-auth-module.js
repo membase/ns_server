@@ -7,12 +7,12 @@ mn.modules.MnAuth =
     var MnAuth =
         ng.core.NgModule({
           declarations: [
-            mn.components.MnAuth,
-            mn.directives.MnFocus
+            mn.components.MnAuth
           ],
           imports: [
             ng.platformBrowser.BrowserModule,
-            ng.forms.ReactiveFormsModule
+            ng.forms.ReactiveFormsModule,
+            mn.modules.MnShared
           ],
           entryComponents: [
             mn.components.MnAuth

@@ -56,7 +56,7 @@ mn.components.MnAdmin =
                   mnAdminService.stream.etag.next(rv.etag);
                 }, function (rv) {
                   if ((rv instanceof ng.common.http.HttpErrorResponse) && (rv.status === 404)) {
-                    uiRouter.stateService.go('app.wizard.welcome');
+                    uiRouter.stateService.go('app.wizard.welcome', null, {location: false});
                   }
                 });
 

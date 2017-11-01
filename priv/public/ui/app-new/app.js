@@ -105,8 +105,7 @@ mn.services.MnApp = (function () {
         template: '<ui-view class="root-container"></ui-view>'
       })
       .Class({
-        constructor: function AppComponent() {
-        }
+        constructor: function AppComponent() {}
       });
 
   var AppModule =
@@ -121,6 +120,7 @@ mn.services.MnApp = (function () {
           mn.modules.MnPipesModule,
           mn.modules.MnAuth,
           mn.modules.MnAdmin,
+          mn.modules.MnWizard,
           ng.platformBrowser.BrowserModule,
           ng.common.http.HttpClientModule,
           ngb.NgbModule.forRoot(),
@@ -188,15 +188,12 @@ mn.services.MnApp = (function () {
       .Class({
         constructor: [
           mn.services.MnExceptionHandler,
-          mn.pipes.MnPrettyVersion,
           ng.platformBrowser.Title,
           mn.services.MnApp,
           mn.services.MnAuth,
           window['@uirouter/angular'].UIRouter,
-          ng.common.http.HttpClient,
-          function AppModule(mnExceptionHandlerService,
-                             mnPrettyVersionPipe,
-                             title, mnAppService, mnAuthService, uiRouter, http) {
+          mn.services.MnAdmin,
+          function AppModule(mnExceptionHandlerService, title, mnAppService, mnAuthService, uiRouter, mnAdminService) {
 
             mnAppService
               .stream
@@ -218,19 +215,20 @@ mn.services.MnApp = (function () {
             mnAppService
               .stream
               .pageNotFound
-              .subscribe(function (pools) {
+              .subscribe(function () {
                 uiRouter.stateService.go('app.admin.overview');
               });
 
-            http.get("/versions").toPromise().then(function (versions) {
-              var version = mnPrettyVersionPipe.transform(versions.implementationVersion);
-              title.setTitle("Couchbase Console" + (version ? ' ' + version : ''));
-            });
+            mnAdminService
+              .stream
+              .prettyVersion
+              .subscribe(function (version) {
+                title.setTitle("Couchbase Console" + (version ? ' ' + version : ''));
+              });
 
             uiRouter.urlRouter.listen();
             uiRouter.urlRouter.sync();
           }]
-
       });
 
   document.addEventListener('DOMContentLoaded', function () {
