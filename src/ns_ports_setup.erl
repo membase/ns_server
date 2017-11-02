@@ -626,6 +626,7 @@ fts_spec(Config) ->
                       "failoverAssignAllPrimaries=false," ++
                       "hideUI=true," ++
                       "cbaudit=" ++ atom_to_list(cluster_compat_mode:is_enterprise()) ++ "," ++
+                      "ipv6=" ++ atom_to_list(misc:is_ipv6()) ++ "," ++
                       "ftsMemoryQuota=" ++ integer_to_list(FTSMemoryQuota * 1024000) ++ "," ++
                       "maxReplicasAllowed=" ++ integer_to_list(MaxReplicasAllowed) ++ "," ++
                       "bucketTypesAllowed=" ++ BucketTypesAllowed,
