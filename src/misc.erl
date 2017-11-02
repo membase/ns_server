@@ -1348,9 +1348,13 @@ try_with_maybe_ignorant_after(TryBody, AfterBody) ->
 letrec(Args, F) ->
     erlang:apply(F, [F | Args]).
 
+-spec is_ipv6() -> true | false.
+is_ipv6() ->
+    get_env_default(ns_server, ipv6, false).
+
 -spec get_net_family() -> inet:address_family().
 get_net_family() ->
-    case get_env_default(ns_server, ipv6, false) of
+    case misc:is_ipv6() of
         true ->
             inet6;
         false ->
@@ -1359,7 +1363,7 @@ get_net_family() ->
 
 -spec get_proto_dist_type() -> string().
 get_proto_dist_type() ->
-    case get_env_default(ns_server, ipv6, false) of
+    case misc:is_ipv6() of
         true ->
             "inet6_tcp";
         false ->
@@ -1372,7 +1376,7 @@ localhost() ->
 
 -spec localhost([] | [url]) -> string().
 localhost(Options) ->
-    case get_env_default(ns_server, ipv6, false) of
+    case misc:is_ipv6() of
         true ->
             case Options of
                 [] ->
@@ -1390,7 +1394,7 @@ inaddr_any() ->
 
 -spec inaddr_any([] | [url]) -> string().
 inaddr_any(Options) ->
-    case get_env_default(ns_server, ipv6, false) of
+    case misc:is_ipv6() of
         true ->
             case Options of
                 [] ->
@@ -1428,7 +1432,7 @@ local_url(Port, Path, Options) ->
                                        | {cannot_listen, inet:posix()}
                                        | {address_not_allowed, string()}.
 is_good_address(Address) ->
-    is_good_address(Address, misc:get_env_default(ns_server, ipv6, false)).
+    is_good_address(Address, misc:is_ipv6()).
 
 is_good_address(Address, false) ->
     check_short_name(Address, ".");
@@ -2026,7 +2030,7 @@ decompress(Blob) ->
 
 -spec split_host_port(list(), list()) -> tuple().
 split_host_port(HostPort, DefaultPort) ->
-    split_host_port(HostPort, DefaultPort, misc:get_env_default(ns_server, ipv6, false)).
+    split_host_port(HostPort, DefaultPort, misc:is_ipv6()).
 
 -spec split_host_port(list(), list(), boolean()) -> tuple().
 split_host_port("[" ++ Rest, DefaultPort, true) ->
