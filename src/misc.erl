@@ -1354,7 +1354,7 @@ is_ipv6() ->
 
 -spec get_net_family() -> inet:address_family().
 get_net_family() ->
-    case misc:is_ipv6() of
+    case is_ipv6() of
         true ->
             inet6;
         false ->
@@ -1363,7 +1363,7 @@ get_net_family() ->
 
 -spec get_proto_dist_type() -> string().
 get_proto_dist_type() ->
-    case misc:is_ipv6() of
+    case is_ipv6() of
         true ->
             "inet6_tcp";
         false ->
@@ -1376,7 +1376,7 @@ localhost() ->
 
 -spec localhost([] | [url]) -> string().
 localhost(Options) ->
-    case misc:is_ipv6() of
+    case is_ipv6() of
         true ->
             case Options of
                 [] ->
@@ -1394,7 +1394,7 @@ inaddr_any() ->
 
 -spec inaddr_any([] | [url]) -> string().
 inaddr_any(Options) ->
-    case misc:is_ipv6() of
+    case is_ipv6() of
         true ->
             case Options of
                 [] ->
@@ -1432,7 +1432,7 @@ local_url(Port, Path, Options) ->
                                        | {cannot_listen, inet:posix()}
                                        | {address_not_allowed, string()}.
 is_good_address(Address) ->
-    is_good_address(Address, misc:is_ipv6()).
+    is_good_address(Address, is_ipv6()).
 
 is_good_address(Address, false) ->
     check_short_name(Address, ".");
@@ -2030,7 +2030,7 @@ decompress(Blob) ->
 
 -spec split_host_port(list(), list()) -> tuple().
 split_host_port(HostPort, DefaultPort) ->
-    split_host_port(HostPort, DefaultPort, misc:is_ipv6()).
+    split_host_port(HostPort, DefaultPort, is_ipv6()).
 
 -spec split_host_port(list(), list(), boolean()) -> tuple().
 split_host_port("[" ++ Rest, DefaultPort, true) ->
