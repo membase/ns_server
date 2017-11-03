@@ -1440,8 +1440,8 @@ is_good_address(Address, true) ->
     case inet:getaddr(Address, inet) of
         {ok, _} ->
             Msg = io_lib:format("~s seems to be an IPv4 address or a name that resolves to "
-                                "an IPv4 address. Please use a Fully Qualified Domain Name "
-                                "mapped to an IPv6 address.", [Address]),
+                                "an IPv4 address. Please use an IPv6 address or a Fully Qualified "
+                                "Domain Name mapped to an IPv6 address.", [Address]),
             {address_not_allowed, Msg};
         _ ->
             check_short_name(Address, ".:")
