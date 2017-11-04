@@ -98,6 +98,6 @@ upgrade_config_from_4_6_to_5_0(Config) ->
     [{delete, roles_definitions} | menelaus_users:config_upgrade() ++
          ns_bucket:config_upgrade_to_50(Config)].
 
-upgrade_config_from_5_0_to_5_1(Config) ->
+upgrade_config_from_5_0_to_5_1(_Config) ->
     ?log_info("Performing online config upgrade to 5.1 version"),
     query_settings_manager:config_upgrade_to_51().
