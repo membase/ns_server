@@ -292,6 +292,7 @@ query_node_spec(Config) ->
             CnfgStoreArg = "--configstore=" ++ misc:local_url(RestPort, []),
             HttpArg = "--http=:" ++ integer_to_list(query_rest:get_query_port(Config, node())),
             EntArg = "--enterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
+            Ipv6 = "--ipv6=" ++ atom_to_list(misc:is_ipv6()),
 
             HttpsArgs = case query_rest:get_ssl_query_port(Config, node()) of
                             undefined ->
@@ -304,7 +305,7 @@ query_node_spec(Config) ->
                                      atom_to_list(ns_ssl_services_setup:ssl_minimum_protocol())]
                         end,
             Spec = {'query', Command,
-                    [DataStoreArg, HttpArg, CnfgStoreArg, EntArg] ++ HttpsArgs,
+                    [DataStoreArg, HttpArg, CnfgStoreArg, EntArg, Ipv6] ++ HttpsArgs,
                     [via_goport, exit_status, stderr_to_stdout,
                      {env, build_go_env_vars(Config, 'cbq-engine') ++
                           build_tls_config_env_var(Config)},
