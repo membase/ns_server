@@ -239,4 +239,3 @@ delete_pidfile() ->
 
 delete_pidfile(PidFile) ->
     ok = file:delete(PidFile).
-
