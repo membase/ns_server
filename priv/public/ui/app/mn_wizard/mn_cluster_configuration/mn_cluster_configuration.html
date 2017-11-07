@@ -80,6 +80,42 @@
       </div>
 
       <div class="formrow">
+        <div class="row">
+          <div class="column width-9">
+            <label for="setup_query_temp_input">Query Temp Disk Path</label>
+            <input
+               type="text"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
+               id="setup_query_temp_input"
+               ng-model="clusterConfigurationCtl.querySettings.queryTmpSpaceDir">
+          </div>
+          <div class="width-3">
+            <label for="setup_query_gb_input">Quota &nbsp;<small>in MB</small></label>
+            <input
+               type="text"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
+               id="setup_query_gb_input"
+               ng-model="clusterConfigurationCtl.querySettings.queryTmpSpaceSize">
+          </div>
+        </div>
+      </div>
+
+      <div
+         class="error error-form"
+         ng-show="!!clusterConfigurationCtl.postQuerySettingsErrors.queryTmpSpaceDir">
+        {{clusterConfigurationCtl.postQuerySettingsErrors.queryTmpSpaceDir}}
+      </div>
+      <div
+         class="error error-form"
+         ng-show="!!clusterConfigurationCtl.postQuerySettingsErrors.queryTmpSpaceSize">
+        {{clusterConfigurationCtl.postQuerySettingsErrors.queryTmpSpaceSize}}
+      </div>
+
+      <div class="formrow">
         <div class="row formrow">
           <label>Couchbase Memory Quotas</label>
           <small class="text-smaller">Per service / per node</small>

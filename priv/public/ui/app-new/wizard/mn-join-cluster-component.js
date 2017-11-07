@@ -37,8 +37,9 @@ mn.components.MnJoinCluster =
       }
 
       this.groupHttp.post({
-        hostnameHttp: this.wizardForm.newClusterConfig.get("clusterStorage.hostname").value,
-        diskStorageHttp: this.wizardForm.newClusterConfig.get("clusterStorage.storage").value
+        hostnameHttp: this.wizardForm.joinCluster.get("clusterStorage.hostname").value,
+        diskStorageHttp: this.wizardForm.joinCluster.get("clusterStorage.storage").value,
+        querySettingsHttp: this.wizardForm.joinCluster.get("querySettings").value
       });
     }
 
@@ -60,7 +61,8 @@ mn.components.MnJoinCluster =
       this.groupHttp =
         new mn.helper.MnPostGroupHttp({
           hostnameHttp: this.hostnameHttp,
-          diskStorageHttp: this.diskStorageHttp
+          diskStorageHttp: this.diskStorageHttp,
+          querySettingsHttp: mnWizardService.stream.querySettingsHttp
         })
         .addLoading()
         .addSuccess();

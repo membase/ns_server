@@ -9,10 +9,11 @@
     'mnStorageMode',
     'mnPoolDefault',
     'mnMemoryQuotaService',
-    'mnSpinner'
+    'mnSpinner',
+    'mnClusterConfigurationService'
   ]).controller('mnSettingsClusterController', mnSettingsClusterController);
 
-  function mnSettingsClusterController($scope, $q, $uibModal, mnPoolDefault, mnMemoryQuotaService, mnSettingsClusterService, mnHelper, mnPromiseHelper) {
+  function mnSettingsClusterController($scope, $q, $uibModal, mnPoolDefault, mnMemoryQuotaService, mnSettingsClusterService, mnHelper, mnPromiseHelper, mnClusterConfigurationService) {
     var vm = this;
     vm.saveVisualInternalSettings = saveVisualInternalSettings;
 
@@ -58,8 +59,19 @@
         queries.push(promise2);
       }
 
-      var promise3 = $q.all(queries);
-      mnPromiseHelper(vm, promise3)
+      if (mnPoolDefault.export.compat.atLeast55 && $scope.rbac.cluster.settings.write) {
+        var promise3 = mnPromiseHelper(vm, mnClusterConfigurationService.postQuerySettings({
+          queryTmpSpaceDir: vm.querySettings.queryTmpSpaceDir,
+          queryTmpSpaceSize: vm.querySettings.queryTmpSpaceSize
+        }))
+          .catchErrors("querySettingsErrors")
+          .getPromise();
+
+        queries.push(promise3);
+      }
+
+      var promise4 = $q.all(queries);
+      mnPromiseHelper(vm, promise4)
         .showGlobalSpinner()
         .showGlobalSuccess("Settings saved successfully!");
     }
@@ -80,6 +92,11 @@
         .applyToScope(function (resp) {
           vm.clusterName = resp.clusterName;
         });
+
+      if (mnPoolDefault.export.compat.atLeast55 && $scope.rbac.cluster.settings.read) {
+        mnPromiseHelper(vm, mnClusterConfigurationService.getQuerySettings())
+          .applyToScope("querySettings");
+      }
 
       mnPromiseHelper(vm, mnMemoryQuotaService.memoryQuotaConfig({
         kv: true,

@@ -13,6 +13,11 @@ mn.services.MnWizard = (function () {
     })
   });
 
+  var querySettings =  new ng.forms.FormGroup({
+    queryTmpSpaceDir: new ng.forms.FormControl(null),
+    queryTmpSpaceSize: new ng.forms.FormControl(null),
+  });
+
   var wizardForm = {
     newCluster: new ng.forms.FormGroup({
       clusterName: new ng.forms.FormControl(null, [
@@ -31,6 +36,7 @@ mn.services.MnWizard = (function () {
     }),
     newClusterConfig: new ng.forms.FormGroup({
       clusterStorage: clusterStorage,
+      querySettings: querySettings,
       services: new ng.forms.FormGroup({
         flag: new ng.forms.FormGroup({
           kv: new ng.forms.FormControl({value: true, disabled: true}),
@@ -81,7 +87,8 @@ mn.services.MnWizard = (function () {
           eventing: new ng.forms.FormControl(true)
         })
       }),
-      clusterStorage: clusterStorage
+      clusterStorage: clusterStorage,
+      querySettings: querySettings
     })
   };
 
@@ -104,11 +111,13 @@ mn.services.MnWizard = (function () {
   MnWizardService.prototype.postDiskStorage = postDiskStorage;
   MnWizardService.prototype.postIndexes = postIndexes;
   MnWizardService.prototype.postServices = postServices;
+  MnWizardService.prototype.postQuerySettings = postQuerySettings;
   MnWizardService.prototype.postStats = postStats;
   MnWizardService.prototype.postEmail = postEmail;
   MnWizardService.prototype.postJoinCluster = postJoinCluster;
   MnWizardService.prototype.getServicesValues = getServicesValues;
   MnWizardService.prototype.getUserCreds = getUserCreds;
+  MnWizardService.prototype.getQuerySettings = getQuerySettings;
 
   return MnWizardService;
 
@@ -145,6 +154,11 @@ mn.services.MnWizard = (function () {
       .addSuccess()
       .addError();
 
+    this.stream.querySettingsHttp =
+      new mn.helper.MnPostHttp(this.postQuerySettings.bind(this))
+      .addSuccess()
+      .addError();
+
     this.stream.emailHttp =
       new mn.helper.MnPostHttp(this.postEmail.bind(this));
 
@@ -168,6 +182,7 @@ mn.services.MnWizard = (function () {
         poolsDefaultHttp: mnAdminService.stream.poolsDefaultHttp,
         servicesHttp: this.stream.servicesHttp,
         diskStorageHttp: this.stream.diskStorageHttp,
+        querySettingsHttp: this.stream.querySettingsHttp,
         hostnameHttp: this.stream.hostnameHttp,
         statsHttp: this.stream.statsHttp
       })
@@ -307,6 +322,10 @@ mn.services.MnWizard = (function () {
     return preprocessPathStandard(p);
   }
 
+  function getQuerySettings() {
+    return this.http.get("/settings/querySettings");
+  }
+
   function getCELicense() {
     return this.http.get("CE_license_agreement.txt", {responseType: 'text'});
   }
@@ -336,6 +355,10 @@ mn.services.MnWizard = (function () {
 
   function postServices(data) {
     return this.http.post('/node/controller/setupServices', data);
+  }
+
+  function postQuerySettings(data) {
+    return this.http.post("/settings/querySettings", data);
   }
 
   function postIndexes(data) {

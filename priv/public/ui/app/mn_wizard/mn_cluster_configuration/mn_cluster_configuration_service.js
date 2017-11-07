@@ -19,7 +19,9 @@
       getConfig: getConfig,
       postAuth: postAuth,
       postEmail: postEmail,
-      postStats: postStats
+      postStats: postStats,
+      getQuerySettings: getQuerySettings,
+      postQuerySettings: postQuerySettings
     };
     var re = /^[A-Z]:\//;
     var preprocessPath;
@@ -57,6 +59,25 @@
     };
 
     return mnClusterConfigurationService;
+
+    function getQuerySettings() {
+      return $http({
+        method: 'GET',
+        url: '/settings/querySettings'
+      }).then(function (resp) {
+        return resp.data;
+      });
+    }
+
+    function postQuerySettings(data) {
+      return $http({
+        method: 'POST',
+        url: '/settings/querySettings',
+        data: data
+      }).then(function (resp) {
+        return resp.data;
+      });
+    }
 
     function postStats(user, sendStats) {
       user.email && postEmail(user);

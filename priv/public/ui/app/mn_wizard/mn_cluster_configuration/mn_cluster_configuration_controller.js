@@ -27,6 +27,9 @@
           vm.onIndexPathChange();
         });
 
+      mnPromiseHelper(vm, mnClusterConfigurationService.getQuerySettings())
+        .applyToScope("querySettings");
+
       $scope.$watch('clusterConfigurationCtl.config.startNewClusterConfig', _.debounce(onMemoryQuotaChanged, 500), true);
     }
 
@@ -79,6 +82,12 @@
         services: mnHelper.checkboxesToList(vm.config.startNewClusterConfig.services.model).join(',')
       }), "setupServices");
     }
+    function postQuerySettings() {
+      return addErrorHandler(mnClusterConfigurationService.postQuerySettings({
+        queryTmpSpaceDir: vm.querySettings.queryTmpSpaceDir,
+        queryTmpSpaceSize: vm.querySettings.queryTmpSpaceSize
+      }), "postQuerySettings");
+    }
     function postDiskStorage() {
       return addErrorHandler(mnClusterConfigurationService.postDiskStorage({
         path: vm.config.dbPath,
@@ -128,8 +137,12 @@
       delete vm.postJoinClusterErrors;
       delete vm.postHostnameErrors;
       delete vm.postIndexSettingsErrors;
+      delete vm.postQuerySettingsErrors;
 
-      var promise = postDiskStorage().then(function () {
+      var promise = $q.all([
+        postDiskStorage(),
+        postQuerySettings()
+      ]).then(function () {
         return addErrorHandler(mnClusterConfigurationService.postHostname(vm.config.hostname), "postHostname");
       }).then(function () {
         if (mnWizardService.getState().isNewCluster) {
