@@ -58,7 +58,7 @@ do_upgrade_config(Config, FinalVersion) ->
              upgrade_config_from_4_6_to_5_0(Config)];
         {value, ?VERSION_50} ->
             [{set, cluster_compat_version, ?VULCAN_VERSION_NUM} |
-             upgrade_config_from_5_0_to_5_1(Config)]
+             upgrade_config_from_5_0_to_vulcan(Config)]
     end.
 
 upgrade_config_from_3_0_to_4_0(Config) ->
@@ -98,6 +98,6 @@ upgrade_config_from_4_6_to_5_0(Config) ->
     [{delete, roles_definitions} | menelaus_users:config_upgrade() ++
          ns_bucket:config_upgrade_to_50(Config)].
 
-upgrade_config_from_5_0_to_5_1(_Config) ->
-    ?log_info("Performing online config upgrade to 5.1 version"),
-    query_settings_manager:config_upgrade_to_51().
+upgrade_config_from_5_0_to_vulcan(_Config) ->
+    ?log_info("Performing online config upgrade to Vulcan"),
+    query_settings_manager:config_upgrade_to_vulcan().

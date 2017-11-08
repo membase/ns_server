@@ -22,7 +22,7 @@
          get/1,
          get_from_config/3,
          update/2,
-         config_upgrade_to_51/0
+         config_upgrade_to_vulcan/0
         ]).
 
 -export([cfg_key/0,
@@ -52,15 +52,15 @@ required_compat_mode() ->
 update(Key, Value) ->
     json_settings_manager:update(?MODULE, [{Key, Value}]).
 
-config_upgrade_to_51() ->
+config_upgrade_to_vulcan() ->
     [{set, ?QUERY_CONFIG_KEY,
-      json_settings_manager:build_settings_json(default_settings_for_51(),
+      json_settings_manager:build_settings_json(default_settings_for_vulcan(),
                                                 dict:new(), known_settings())}].
 
 known_settings() ->
     [{generalSettings, general_settings_lens()}].
 
-default_settings_for_51() ->
+default_settings_for_vulcan() ->
     [{generalSettings, general_settings_defaults()}].
 
 general_settings_lens_props() ->
@@ -85,7 +85,7 @@ general_settings_lens() ->
 defaults_test() ->
     Keys = fun (L) -> lists:sort([K || {K, _} <- L]) end,
 
-    ?assertEqual(Keys(known_settings()), Keys(default_settings_for_51())),
+    ?assertEqual(Keys(known_settings()), Keys(default_settings_for_vulcan())),
     ?assertEqual(Keys(general_settings_lens_props()),
                  Keys(general_settings_defaults())).
 
