@@ -95,7 +95,11 @@ do_start_link_capi_service(SSLPort) ->
     %% fossilized couchdb code.
     %%
     %% Also couchdb code is reformatted for ns_server formatting
-    BindAddress = couch_config:get("httpd", "bind_address", any),
+    Field = case misc:is_ipv6() of
+                true -> "ip6_bind_address";
+                false -> "ip4_bind_address"
+            end,
+    BindAddress = couch_config:get("httpd", Field, any),
     DefaultSpec = "{couch_httpd_db, handle_request}",
     DefaultFun = make_arity_1_fun(
                    couch_config:get("httpd", "default_handler", DefaultSpec)),
