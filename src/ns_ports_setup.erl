@@ -670,10 +670,20 @@ eventing_spec(Config) ->
             RestArg = "-restport=" ++ integer_to_list(RestPort),
             UUIDArg = "-uuid=" ++ binary_to_list(NodeUUID),
 
+            BindHttps =
+                case ns_config:search(Config, {node, node(), eventing_https_port}, undefined) of
+                    undefined ->
+                        [];
+                    Port ->
+                        ["-adminsslport=" ++ integer_to_list(Port),
+                         "-certfile=" ++ ns_ssl_services_setup:memcached_cert_path(),
+                         "-keyfile=" ++ ns_ssl_services_setup:memcached_key_path()]
+                end,
+
             Spec = {eventing, Command,
-                    [EventingAdminArg, EventingDirArg, KVAddrArg, RestArg, UUIDArg],
+                    [EventingAdminArg, EventingDirArg, KVAddrArg, RestArg, UUIDArg] ++ BindHttps,
                     [via_goport, exit_status, stderr_to_stdout,
-                     {env, build_go_env_vars(Config, eventing)},
+                     {env, build_go_env_vars(Config, eventing) ++ build_tls_config_env_var(Config)},
                      {log, ?EVENTING_LOG_FILENAME}]},
             [Spec];
         false ->

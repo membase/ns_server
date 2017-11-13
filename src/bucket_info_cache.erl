@@ -179,7 +179,13 @@ build_services(Node, Config, EnabledServices) ->
                      end;
              eventing ->
                  [{eventingAdminPort,
-                   ns_config:search(Config, {node, Node, eventing_http_port}, undefined)}];
+                   ns_config:search(Config, {node, Node, eventing_http_port}, undefined)}] ++
+                     case ns_config:search(Config, {node, Node, eventing_https_port}, undefined) of
+                         undefined ->
+                             [];
+                         Port ->
+                             [{eventingSSL, Port}]
+                     end;
              example ->
                  []
          end || S <- EnabledServices],

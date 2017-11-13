@@ -215,6 +215,12 @@ default() ->
      {{node, node(), eventing_http_port},
       misc:get_env_default(eventing_http_port, 8096)},
 
+     {{node, node(), eventing_https_port},
+      case IsEnterprise of
+          true -> misc:get_env_default(eventing_https_port, 18096);
+          _ -> undefined
+      end},
+
      {{node, node(), ssl_proxy_downstream_port},
       case IsEnterprise of
           true -> misc:get_env_default(ssl_proxy_downstream_port, 11214);
