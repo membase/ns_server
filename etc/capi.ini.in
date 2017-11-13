@@ -6,8 +6,7 @@ view_index_dir = @COUCHBASE_DB_DIR@
 
 [httpd]
 db_frontend = capi_frontend
-ip4_bind_address = 0.0.0.0
-ip6_bind_address = ::
+bind_address = 0.0.0.0
 port = 8092
 ; this gets us auth support on capi port
 WWW-Authenticate = Basic realm="capi"
