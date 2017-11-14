@@ -1,0 +1,156 @@
+<div
+   class="panel dialog-med dialog dialog-wizard">
+   <!-- mn-spinner="termsCtl.viewLoading"> -->
+  <div class="panel-header flex-left">
+    <img
+       src="../images/cb_logo_bug_white_2.svg"
+       width="32"
+       height="32"
+       class="margin-right-half">
+    <h2>Couchbase &gt; New Cluster</h2>
+  </div>
+  <form
+     [formGroup]="termsForm"
+     (ngSubmit)="onSubmit()"
+     class="forms"
+     novalidate>
+    <div class="panel-content">
+      <h4 class="inline">Terms and Conditions&nbsp;</h4>
+      <small [hidden]="!(isEnterprise | async)">Enterprise Edition</small>
+      <div
+         class="formrow text-small"
+         [hidden]="!(isEnterprise | async)">
+        <i>Couchbase Server must be licensed for use in production environments.</i>
+      </div>
+      <small [hidden]="(isEnterprise | async)">Community Edition</small>
+
+      <div
+         class="formrow">
+         <!-- mn-spinner="termsCtl.viewLoading"> -->
+        <textarea class="text-smaller" rows="10" readonly="readonly">{{license | async}}</textarea>
+      </div>
+
+      <div
+         class="error error-form"
+         [hidden]="!(termsForm.get('agree').touched || submitted) ||
+                   !termsForm.get('agree').errors?.required">
+        Terms and conditions need to be accepted in order to continue
+      </div>
+      <!-- <div -->
+      <!--    class="error error-form" -->
+      <!--    [hidden]="!(errors | async)"> -->
+      <!--   {{errors[0]}} -->
+      <!-- </div> -->
+
+      <div class="row">
+        <div class="formrow">
+          <input
+             type="checkbox"
+             id="for-accept-terms"
+             formControlName="agree"
+             name="agree">
+          <label class="checkbox" for="for-accept-terms">
+            I accept the
+            <a [attr.href]="termsHref | async" target="_blank">
+              terms & conditions
+            </a>
+          </label>
+        </div>
+
+        <div
+           class="formrow">
+          <input
+             type="checkbox"
+             id="for-register"
+             (change)="registerChange()"
+             formControlName="register"
+             name="agree">
+          <label class="checkbox" for="for-register">
+            Register for updates
+          </label>
+        </div>
+      </div>
+
+      <div
+         *ngIf="termsForm.get('register').value"
+         formGroupName="user">
+        <div class="error error-form">
+          <span [hidden]="!(termsForm.get('user.email').touched || submitted) ||
+                          !termsForm.get('user.email').errors?.email">Email appears to be invalid</span>
+          <!-- <span [hidden]="!(errors | async)">{{errors}}</span> -->
+        </div>
+
+        <div class="row margin-bottom-half">
+          <div class="column width-6">
+            <label for="init-join-community-firstname">First Name</label>
+            <input
+               type="text"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
+               id="init-join-community-firstname"
+               formControlName="email">
+          </div>
+
+          <div class="column width-6">
+            <label for="init-join-community-lastname">Last Name</label>
+            <input
+               type="text"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
+               id="init-join-community-lastname"
+               formControlName="lastname">
+          </div>
+        </div>
+
+        <div class="formrow row">
+          <div class="column width-6">
+            <label for="init-join-community-company">Company</label>
+            <input
+               type="text"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
+               id="init-join-community-company"
+               formControlName="company">
+          </div>
+          <div class="column width-6">
+            <label for="init-join-community-email">Email</label>
+            <input
+               id="init-join-community-email"
+               type="email"
+               name="email"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
+               formControlName="email">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-footer">
+      <a class="tight"
+         [uiOptions]="{location: false}"
+         uiSref="app.wizard.newCluster">&lt; Back</a>
+
+      <span>
+        <button
+           type="button"
+           class="outline tight"
+           title="All services enabled / Memory optimized for Couchbase / Default disk paths">
+          Finish With Defaults
+        </button>
+        <!-- ng-click="termsCtl.finishWithDefault()" -->
+        <button
+           [(mnFocus)]="focusField"
+           type="submit"
+           class="tight">
+          Configure Disk, Memory, Services
+        </button>
+      </span>
+    </div>
+  </form>
+</div>
+<!-- END init_update_notifications-->

@@ -54,6 +54,7 @@ mn.modules.MnWizard =
         declarations: [
           MnWizardComponent,
           mn.components.MnNewCluster,
+          mn.components.MnTermsAndConditions,
           mn.components.MnWelcome
         ],
         imports: [
@@ -73,6 +74,9 @@ mn.modules.MnWizard =
             }, {
               name: "app.wizard.newCluster",
               component: mn.components.MnNewCluster
+            }, {
+              name: "app.wizard.termsAndConditions",
+              component: mn.components.MnTermsAndConditions
             }]
           })
         ],
