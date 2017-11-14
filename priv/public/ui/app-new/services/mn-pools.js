@@ -32,9 +32,14 @@ mn.services.MnPools = (function () {
       .getSuccess
       .pluck("isEnterprise");
 
+    this.stream.implementationVersion =
+      this.stream
+      .getSuccess
+      .pluck("implementationVersion");
+
     this.stream.majorMinorVersion =
-      this.stream.getSuccess
-      .pluck("implementationVersion")
+      this.stream
+      .implementationVersion
       .map(mnParseVersionPipe.transform.bind(mnParseVersionPipe))
       .map(function (rv) {
         return rv[0].split('.').splice(0,2).join('.');

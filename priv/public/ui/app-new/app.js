@@ -1,69 +1,3 @@
-var mn = mn || {};
-mn.services = mn.services || {};
-mn.services.MnApp = (function () {
-  "use strict";
-
-  MnApp.annotations = [
-    new ng.core.Injectable()
-  ];
-
-  return MnApp;
-
-  function MnApp() {
-    this.stream = {};
-    this.stream.httpResponse = new Rx.Subject();
-    this.stream.pageNotFound = new Rx.Subject();
-    this.stream.appError = new Rx.Subject();
-    this.stream.http401 =
-      this.stream
-      .httpResponse
-      .filter(function (rv) {
-        //rejection.config.url !== "/controller/changePassword"
-        //$injector.get('mnLostConnectionService').getState().isActivated
-        return (rv instanceof ng.common.http.HttpErrorResponse) &&
-          (rv.status === 401) && !rv.headers.get("ignore-401");
-      });
-  }
-})();
-
-var mn = mn || {};
-mn.classes = mn.classes || {};
-mn.classes.MnHttpEncoder = (function (_super) {
-  "use strict";
-
-  mn.helper.extends(MnHttpEncoder ,_super);
-
-  MnHttpEncoder.prototype.encodeKey = encodeKey;
-  MnHttpEncoder.prototype.ecodeValue = ecodeValue;
-  MnHttpEncoder.prototype.serializeValue = serializeValue;
-
-  return MnHttpEncoder;
-
-  function MnHttpEncoder() {
-    var _this = _super.call(this) || this;
-    return _this;
-  }
-
-  function encodeKey(k) {
-    return encodeURIComponent(k);
-  }
-
-  function ecodeValue(v) {
-    return encodeURIComponent(this.serializeValue(v));
-  }
-
-  function serializeValue(v) {
-    if (_.isObject(v)) {
-      return _.isDate(v) ? v.toISOString() : JSON.stringify(v);
-    }
-    if (v === null || _.isUndefined(v)) {
-      return "";
-    }
-    return v;
-  }
-})(ng.common.http.HttpUrlEncodingCodec);
-
-
 (function () {
 
   MnHttpInterceptor.annotations = [
@@ -96,7 +30,7 @@ mn.classes.MnHttpEncoder = (function (_super) {
 
     if (req.method === 'POST' || req.method === 'PUT') {
       if (_.isObject(mnReq.body) && !_.isArray(mnReq.body)) {
-        params = new ng.common.http.HttpParams({encoder: new mn.classes.MnHttpEncoder()});
+        params = new ng.common.http.HttpParams({encoder: new mn.helper.MnHttpEncoder()});
         _.forEach(mnReq.body, function (v, k) {
           params = params.set(k, v);
         });
@@ -105,6 +39,7 @@ mn.classes.MnHttpEncoder = (function (_super) {
       }
       mnReq = mnReq.clone({
         body: params,
+        responseType: 'text',
         headers: mnReq.headers.set(
           'Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8')});
     }
@@ -122,11 +57,17 @@ mn.classes.MnHttpEncoder = (function (_super) {
   AppComponent.annotations = [
     new ng.core.Component({
       selector: "app-root",
-      template: '<ui-view class="root-container"></ui-view>'
+      template: '<ui-view class="root-container"></ui-view>' +
+      '<div class="global-spinner" [hidden]="!(loading | async)"></div>'
     })
   ];
 
-  function AppComponent () {
+  AppComponent.parameters = [
+    mn.services.MnApp
+  ];
+
+  function AppComponent(mnAppService) {
+    this.loading = mnAppService.stream.loading;
   }
 
   AppModule.annotations = [
@@ -214,7 +155,7 @@ mn.classes.MnHttpEncoder = (function (_super) {
     mn.services.MnApp,
     mn.services.MnAuth,
     window['@uirouter/angular'].UIRouter,
-    mn.services.MnAdmin,
+    mn.services.MnAdmin
   ];
 
   function AppModule(mnExceptionHandlerService, title, mnAppService, mnAuthService, uiRouter, mnAdminService) {
