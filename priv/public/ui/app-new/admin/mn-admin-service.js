@@ -33,6 +33,7 @@ mn.services.MnAdmin = (function () {
   MnAdminService.prototype.getVersion = getVersion;
   MnAdminService.prototype.getPoolsDefault = getPoolsDefault;
   MnAdminService.prototype.getWhoami = getWhoami;
+  MnAdminService.prototype.postPoolsDefault = postPoolsDefault;
 
   return MnAdminService;
 
@@ -89,6 +90,11 @@ mn.services.MnAdmin = (function () {
         };
       });
 
+    this.stream.poolsDefaultHttp =
+      new mn.helper.MnPostHttp(this.postPoolsDefault.bind(this))
+      .addSuccess()
+      .addError();
+
   }
 
   function getVersion() {
@@ -101,6 +107,12 @@ mn.services.MnAdmin = (function () {
         .set('waitChange', params[0])
         .set('etag', params[1] || "")
     });
+  }
+
+  function postPoolsDefault(data) {
+    return this.http.post('/pools/default', data[0], {
+      params: new ng.common.http.HttpParams().set("just_validate", data[1] ? 1 : 0)
+    }).catch(mn.helper.errorToStream)
   }
 
   function getWhoami() {

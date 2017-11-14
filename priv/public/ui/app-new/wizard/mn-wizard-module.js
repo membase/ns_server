@@ -54,8 +54,11 @@ mn.modules.MnWizard =
         declarations: [
           MnWizardComponent,
           mn.components.MnNewCluster,
+          mn.components.MnNewClusterConfig,
           mn.components.MnTermsAndConditions,
-          mn.components.MnWelcome
+          mn.components.MnWelcome,
+          mn.components.MnNodeStorageConfig,
+          mn.components.MnServicesConfig
         ],
         imports: [
           ng.platformBrowser.BrowserModule,
@@ -77,6 +80,9 @@ mn.modules.MnWizard =
             }, {
               name: "app.wizard.termsAndConditions",
               component: mn.components.MnTermsAndConditions
+            }, {
+              name: "app.wizard.newClusterConfig",
+              component: mn.components.MnNewClusterConfig
             }]
           })
         ],
