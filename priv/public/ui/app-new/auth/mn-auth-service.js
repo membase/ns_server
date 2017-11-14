@@ -1,56 +1,57 @@
-
 var mn = mn || {};
 mn.services = mn.services || {};
 mn.services.MnAuth = (function () {
   "use strict";
 
   //TODO chech that the streams do not contain privat info after logout
-  var MnAuth =
-      ng.core.Injectable()
-      .Class({
-        constructor: [
-          ng.common.http.HttpClient,
-          function MnAuthService(http) {
-            this.http = http;
-            this.stream = {};
-            this.stream.doLogin = new Rx.Subject();
-            this.stream.doLogout = new Rx.Subject();
+  MnAuthService.annotations = [
+    new ng.core.Injectable()
+  ];
 
-            this.stream.loginResult =
-              this.stream
-              .doLogin
-              .switchMap(this.login.bind(this))
-              .share();
+  MnAuthService.parameters = [
+    ng.common.http.HttpClient
+  ];
 
-            this.stream.loginError =
-              this.stream
-              .loginResult
-              .filter(function (rv) {
-                return rv instanceof ng.common.http.HttpErrorResponse;
-              })
-              .share();
+  MnAuthService.prototype.login = login;
+  MnAuthService.prototype.logout = logout;
+  MnAuthService.prototype.whoami = whoami;
 
-            this.stream.loginSuccess =
-              this.stream
-              .loginResult
-              .filter(function (rv) {
-                return !(rv instanceof ng.common.http.HttpErrorResponse);
-              })
-              .share();
+  return MnAuthService;
 
-            this.stream.logoutResult =
-              this.stream
-              .doLogout
-              .switchMap(this.logout.bind(this))
-              .share();
+  function MnAuthService(http) {
+    this.http = http;
+    this.stream = {};
+    this.stream.doLogin = new Rx.Subject();
+    this.stream.doLogout = new Rx.Subject();
 
-          }],
-        login: login,
-        logout: logout,
-        whoami: whoami
-      });
+    this.stream.loginResult =
+      this.stream
+      .doLogin
+      .switchMap(this.login.bind(this))
+      .share();
 
-  return MnAuth;
+    this.stream.loginError =
+      this.stream
+      .loginResult
+      .filter(function (rv) {
+        return rv instanceof ng.common.http.HttpErrorResponse;
+      })
+      .share();
+
+    this.stream.loginSuccess =
+      this.stream
+      .loginResult
+      .filter(function (rv) {
+        return !(rv instanceof ng.common.http.HttpErrorResponse);
+      })
+      .share();
+
+    this.stream.logoutResult =
+      this.stream
+      .doLogout
+      .switchMap(this.logout.bind(this))
+      .share();
+  }
 
   function whoami() {
     return this.http.get('/whoami');
@@ -81,12 +82,11 @@ mn.services.MnAuth = (function () {
       .catch(function (err) {
         return Rx.Observable.of(err);
       });
-      // .do(function () {
-        // $uibModalStack.dismissAll("uilogout");
-        // $state.go('app.auth');
-        // $window.localStorage.removeItem('mn_xdcr_regex');
-        // $window.localStorage.removeItem('mn_xdcr_testKeys');
-      // });
+    // .do(function () {
+    // $uibModalStack.dismissAll("uilogout");
+    // $state.go('app.auth');
+    // $window.localStorage.removeItem('mn_xdcr_regex');
+    // $window.localStorage.removeItem('mn_xdcr_testKeys');
+    // });
   }
-
 })();

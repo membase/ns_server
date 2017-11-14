@@ -5,38 +5,41 @@ mn.services.MnPools = (function () {
 
   var launchID =  (new Date()).valueOf() + '-' + ((Math.random() * 65536) >> 0);
 
-  var MnPools =
-      ng.core.Injectable()
-      .Class({
-        constructor: [
-          ng.common.http.HttpClient,
-          mn.pipes.MnParseVersion,
-          function MnPoolsService(http, mnParseVersionPipe) {
-            this.http = http;
-            this.stream = {};
+  MnPoolsService.annotations = [
+    new ng.core.Injectable()
+  ];
 
-            this.stream.getSuccess =
-              (new Rx.BehaviorSubject())
-              .switchMap(this.get.bind(this))
-              .shareReplay(1);
+  MnPoolsService.parameters = [
+    ng.common.http.HttpClient,
+    mn.pipes.MnParseVersion
+  ];
 
-            this.stream.isEnterprise =
-              this.stream
-              .getSuccess
-              .pluck("isEnterprise");
+  MnPoolsService.prototype.get = get;
 
-            this.stream.majorMinorVersion =
-              this.stream.getSuccess
-              .pluck("implementationVersion")
-              .map(mnParseVersionPipe.transform.bind(mnParseVersionPipe))
-              .map(function (rv) {
-                return rv[0].split('.').splice(0,2).join('.');
-              });
-          }],
-        get: get,
+  return MnPoolsService;
+
+  function MnPoolsService(http, mnParseVersionPipe) {
+    this.http = http;
+    this.stream = {};
+
+    this.stream.getSuccess =
+      (new Rx.BehaviorSubject())
+      .switchMap(this.get.bind(this))
+      .shareReplay(1);
+
+    this.stream.isEnterprise =
+      this.stream
+      .getSuccess
+      .pluck("isEnterprise");
+
+    this.stream.majorMinorVersion =
+      this.stream.getSuccess
+      .pluck("implementationVersion")
+      .map(mnParseVersionPipe.transform.bind(mnParseVersionPipe))
+      .map(function (rv) {
+        return rv[0].split('.').splice(0,2).join('.');
       });
-
-  return MnPools;
+  }
 
   function get(mnHttpParams) {
     return this.http

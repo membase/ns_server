@@ -5,16 +5,18 @@ mn.services.MnElementCrane = (function () {
 
   var depots = {};
 
-  var MnElement =
-      ng.core.Injectable()
-      .Class({
-        constructor: function MnElementCraneService() {},
-        get: get,
-        register: register,
-        unregister: unregister
-      });
+  MnElementCraneService.annotations = [
+    new ng.core.Injectable()
+  ];
 
-  return MnElement;
+  MnElementCraneService.prototype.get = get;
+  MnElementCraneService.prototype.register = register;
+  MnElementCraneService.prototype.unregister = unregister;
+
+  return MnElementCraneService;
+
+  function MnElementCraneService() {
+  }
 
   function register(element, name) {
     depots[name] = element;
@@ -35,34 +37,41 @@ mn.components.MnElementCargo =
   (function () {
     "use strict";
 
-    var MnElementCargo =
-        ng.core.Component({
-          selector: "mn-element-cargo",
-          template: "<ng-content></ng-content>",
-          inputs: [
-            "depot"
-          ],
-        })
-        .Class({
-          constructor: [
-            ng.core.ElementRef,
-            ng.core.Renderer2,
-            mn.services.MnElementCrane,
-            function MnElementCargoComponent(el, renderer2, mnElementCrane) {
-              this.el = el;
-              this.renderer = renderer2;
-              this.mnElementCrane = mnElementCrane;
-            }],
-          ngOnInit: function () {
-            this.depotElement = this.mnElementCrane.get(this.depot);
-            this.renderer.appendChild(this.depotElement.nativeElement, this.el.nativeElement);
-          },
-          ngOnDestroy: function () {
-            this.renderer.removeChild(this.depotElement.nativeElement, this.el.nativeElement);
-          },
-        });
+    MnElementCargoComponent.annotations = [
+      new ng.core.Component({
+        selector: "mn-element-cargo",
+        template: "<ng-content></ng-content>",
+        inputs: [
+          "depot"
+        ],
+      })
+    ];
 
-    return MnElementCargo;
+    MnElementCargoComponent.parameters = [
+      ng.core.ElementRef,
+      ng.core.Renderer2,
+      mn.services.MnElementCrane
+    ];
+
+    MnElementCargoComponent.prototype.ngOnInit = ngOnInit;
+    MnElementCargoComponent.prototype.ngOnDestroy = ngOnDestroy;
+
+    return MnElementCargoComponent;
+
+    function MnElementCargoComponent(el, renderer2, mnElementCrane) {
+      this.el = el;
+      this.renderer = renderer2;
+      this.mnElementCrane = mnElementCrane;
+    }
+
+    function ngOnInit() {
+      this.depotElement = this.mnElementCrane.get(this.depot);
+      this.renderer.appendChild(this.depotElement.nativeElement, this.el.nativeElement);
+    }
+
+    function ngOnDestroy() {
+      this.renderer.removeChild(this.depotElement.nativeElement, this.el.nativeElement);
+    }
   })();
 
 var mn = mn || {};
@@ -71,31 +80,38 @@ mn.components.MnElementDepot =
   (function () {
     "use strict";
 
-    var MnElementDepot =
-        ng.core.Component({
-          selector: "mn-element-depot",
-          template: "<ng-content></ng-content>",
-          inputs: [
-            "name"
-          ],
-        })
-        .Class({
-          constructor: [
-            ng.core.ElementRef,
-            mn.services.MnElementCrane,
-            function MnElementDepotComponent(el, mnElementCrane) {
-              this.el = el;
-              this.mnElementCrane = mnElementCrane;
-            }],
-          ngOnInit: function () {
-            this.mnElementCrane.register(this.el, this.name);
-          },
-          ngOnDestroy: function () {
-            this.mnElementCrane.unregister(this.name);
-          },
-        });
+    MnElementDepotComponent.annotations = [
+      new ng.core.Component({
+        selector: "mn-element-depot",
+        template: "<ng-content></ng-content>",
+        inputs: [
+          "name"
+        ],
+      })
+    ];
 
-    return MnElementDepot;
+    MnElementDepotComponent.parameters = [
+      ng.core.ElementRef,
+      mn.services.MnElementCrane
+    ];
+
+    MnElementDepotComponent.prototype.ngOnInit = ngOnInit;
+    MnElementDepotComponent.prototype.ngOnDestroy = ngOnDestroy;
+
+    return MnElementDepotComponent;
+
+    function MnElementDepotComponent(el, mnElementCrane) {
+      this.el = el;
+      this.mnElementCrane = mnElementCrane;
+    }
+
+    function ngOnInit() {
+      this.mnElementCrane.register(this.el, this.name);
+    }
+
+    function ngOnDestroy() {
+      this.mnElementCrane.unregister(this.name);
+    }
   })();
 
 
@@ -105,24 +121,25 @@ mn.modules.MnElementModule =
   (function () {
     "use strict";
 
-    var MnElement =
-        ng.core.NgModule({
-          declarations: [
-            mn.components.MnElementDepot,
-            mn.components.MnElementCargo
-          ],
-          exports: [
-            mn.components.MnElementDepot,
-            mn.components.MnElementCargo
-          ],
-          imports: [],
-          providers: [
-            mn.services.MnElementCrane
-          ]
-        })
-        .Class({
-          constructor: function MnElementModule() {}
-        });
+    MnElementModule.annotations = [
+      new ng.core.NgModule({
+        declarations: [
+          mn.components.MnElementDepot,
+          mn.components.MnElementCargo
+        ],
+        exports: [
+          mn.components.MnElementDepot,
+          mn.components.MnElementCargo
+        ],
+        imports: [],
+        providers: [
+          mn.services.MnElementCrane
+        ]
+      })
+    ];
 
-    return MnElement;
+    return MnElementModule;
+
+    function MnElementModule() {
+    }
   })();

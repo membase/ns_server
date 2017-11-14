@@ -4,18 +4,19 @@ mn.modules.MnShared =
   (function () {
     "use strict";
 
-    var MnShared =
-        ng.core.NgModule({
-          declarations: [
-            mn.directives.MnFocus
-          ],
-          exports: [
-            mn.directives.MnFocus
-          ]
-        })
-        .Class({
-          constructor: function MnSharedModule() {},
-        });
+    MnSharedModule.annotations = [
+      new ng.core.NgModule({
+        declarations: [
+          mn.directives.MnFocus
+        ],
+        exports: [
+          mn.directives.MnFocus
+        ]
+      })
+    ];
 
-    return MnShared;
+    return MnSharedModule;
+
+    function MnSharedModule() {
+    }
   })();

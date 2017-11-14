@@ -66,67 +66,70 @@ mn.services.MnPermissions = (function () {
   interestingPermissions =
     interestingPermissions.concat(generateBucketPermissions("."));
 
-  var MnPermissions =
-      ng.core.Injectable()
-      .Class({
-        constructor: [
-          ng.common.http.HttpClient,
-          mn.services.MnBuckets,
-          mn.services.MnAdmin,
-          function MnPermissionsService(http, mnBucketsService, mnAdminService) {
-            this.http = http;
-            this.stream = {};
+  MnPermissionsService.annotations = [
+    new ng.core.Injectable()
+  ];
 
-            this.stream.url =
-              mnAdminService
-              .stream
-              .getPoolsDefault
-              .pluck("checkPermissionsURI")
-              .distinctUntilChanged();
+  MnPermissionsService.parameters = [
+    ng.common.http.HttpClient,
+    mn.services.MnBuckets,
+    mn.services.MnAdmin
+  ];
 
-            this.stream.getBucketsPermissions =
-              mnBucketsService
-              .stream
-              .getSuccess
-              .map(function (rv) {
-                return _.reduce(rv, function (acc, bucket) {
-                  return acc.concat(generateBucketPermissions(bucket.name, rv));
-                }, []);
-              })
-              .combineLatest(this.stream
-                             .url)
-              .switchMap(this.doGet.bind(this))
-              .shareReplay(1);
+  MnPermissionsService.prototype.getAll = getAll;
+  MnPermissionsService.prototype.set = set;
+  MnPermissionsService.prototype.setBucketSpecific = setBucketSpecific;
+  MnPermissionsService.prototype.doGet = doGet;
 
-            this.stream.getSuccess =
-              this.stream
-              .url
-              .map(function (url) {
-                return [getAll(), url];
-              })
-              .switchMap(this.doGet.bind(this))
-              .shareReplay(1);
+  return MnPermissionsService;
 
-            this.stream.permissionByBucketNames =
-              this.stream
-              .getBucketsPermissions
-              .map(_.curry(_.reduce)(_, function (rv, value, key, permissions) {
-                var splitKey = key.split(/bucket\[|\]/);
-                var bucketPermission = splitKey[2];
-                var bucketName = splitKey[1];
-                if (bucketPermission) {
-                  rv[bucketPermission] = rv[bucketPermission] || [];
-                  rv[bucketPermission].push(bucketName);
-                }
-              }, {}));
-          }],
-        getAll: getAll,
-        set: set,
-        setBucketSpecific: setBucketSpecific,
-        doGet: doGet
-      });
+  function MnPermissionsService(http, mnBucketsService, mnAdminService) {
+    this.http = http;
+    this.stream = {};
 
-  return MnPermissions;
+    this.stream.url =
+      mnAdminService
+      .stream
+      .getPoolsDefault
+      .pluck("checkPermissionsURI")
+      .distinctUntilChanged();
+
+    this.stream.getBucketsPermissions =
+      mnBucketsService
+      .stream
+      .getSuccess
+      .map(function (rv) {
+        return _.reduce(rv, function (acc, bucket) {
+          return acc.concat(generateBucketPermissions(bucket.name, rv));
+        }, []);
+      })
+      .combineLatest(this.stream
+                     .url)
+      .switchMap(this.doGet.bind(this))
+      .shareReplay(1);
+
+    this.stream.getSuccess =
+      this.stream
+      .url
+      .map(function (url) {
+        return [getAll(), url];
+      })
+      .switchMap(this.doGet.bind(this))
+      .shareReplay(1);
+
+    this.stream.permissionByBucketNames =
+      this.stream
+      .getBucketsPermissions
+      .map(_.curry(_.reduce)(_, function (rv, value, key, permissions) {
+        var splitKey = key.split(/bucket\[|\]/);
+        var bucketPermission = splitKey[2];
+        var bucketName = splitKey[1];
+        if (bucketPermission) {
+          rv[bucketPermission] = rv[bucketPermission] || [];
+          rv[bucketPermission].push(bucketName);
+        }
+      }, {}));
+  }
 
   function generateBucketPermissions(bucketName, buckets) {
     return bucketSpecificPermissions.reduce(function (acc, getChunk) {
@@ -155,5 +158,4 @@ mn.services.MnPermissions = (function () {
   function doGet(urlAndPermissions) {
     return this.http.post(urlAndPermissions[1], urlAndPermissions[0].join(','));
   }
-
 })();

@@ -4,22 +4,24 @@ mn.components.MnWelcome =
   (function () {
     "use strict";
 
-    var MnWelcome =
-        ng.core.Component({
-          templateUrl: "app-new/wizard/welcome/mn-welcome.html",
-        })
-        .Class({
-          constructor: [
-            mn.services.MnAdmin,
-            function MnWelcomeComponent(mnAdmin) {
-              this.focusField = true;
+    MnWelcomeComponent.annotations = [
+      new ng.core.Component({
+        templateUrl: "app-new/wizard/welcome/mn-welcome.html",
+      })
+    ];
 
-              this.prettyVersion =
-                mnAdmin
-                .stream
-                .prettyVersion;
-            }]
-        });
+    MnWelcomeComponent.parameters = [
+      mn.services.MnAdmin
+    ];
 
-    return MnWelcome;
+    return MnWelcomeComponent;
+
+    function MnWelcomeComponent(mnAdmin) {
+      this.focusField = true;
+
+      this.prettyVersion =
+        mnAdmin
+        .stream
+        .prettyVersion;
+    }
   })();

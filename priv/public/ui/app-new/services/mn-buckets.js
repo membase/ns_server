@@ -3,20 +3,23 @@ mn.services = mn.services || {};
 mn.services.MnBuckets = (function () {
   "use strict";
 
-  var MnBuckets =
-      ng.core.Injectable()
-      .Class({
-        constructor: [
-          ng.common.http.HttpClient,
-          function MnBucketsService(http) {
-            this.http = http;
-            this.stream = {};
-            this.stream.getSuccess = this.get().share();
-          }],
-        get: get,
-      });
+  MnBucketsService.annotations = [
+    new ng.core.Injectable()
+  ];
 
-  return MnBuckets;
+  MnBucketsService.parameters = [
+    ng.common.http.HttpClient
+  ];
+
+  MnBucketsService.prototype.get = get;
+
+  return MnBucketsService;
+
+  function MnBucketsService(http) {
+    this.http = http;
+    this.stream = {};
+    this.stream.getSuccess = this.get().share();
+  }
 
   function get() {
     return this.http
