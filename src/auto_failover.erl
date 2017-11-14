@@ -262,11 +262,7 @@ handle_info(tick, State0) ->
     %% rest of the cluster. And say we win the battle over mastership
     %% again. In this case our failover count will still be zero which is
     %% incorrect.
-    {value, AutoFailoverConfig} = ns_config:search(Config, auto_failover_cfg),
-    AutoFailoverCount = proplists:get_value(count, AutoFailoverConfig),
-    true = is_integer(AutoFailoverCount),
-
-    State = State0#state{count=AutoFailoverCount},
+    State = State0#state{count = get_auto_failover_count(Config)},
 
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
 
@@ -274,16 +270,7 @@ handle_info(tick, State0) ->
     DownNodes = get_down_nodes(NodeStatuses, NonPendingNodes, Config),
     CurrentlyDown = [N || {N, _} <- DownNodes],
 
-    NodeUUIDs =
-        ns_config:fold(
-          fun (Key, Value, Acc) ->
-                  case Key of
-                      {node, Node, uuid} ->
-                          dict:store(Node, Value, Acc);
-                      _ ->
-                          Acc
-                  end
-          end, dict:new(), Config),
+    NodeUUIDs = ns_config:get_node_uuid_map(Config),
 
     %% Extract service specfic information from the Config
     ServicesConfig = all_services_config(Config),
@@ -293,91 +280,11 @@ handle_info(tick, State0) ->
                                           attach_node_uuids(CurrentlyDown, NodeUUIDs),
                                           State#state.auto_failover_logic_state,
                                           ServicesConfig),
-    NewState =
-        lists:foldl(
-          fun ({mail_too_small, Service, SvcNodes, {Node, _UUID}}, S) ->
-                  ?user_log(?EVENT_CLUSTER_TOO_SMALL,
-                            "Could not auto-failover node (~p). "
-                            "Number of nodes running ~s service is ~p. "
-                            "You need at least ~p nodes.",
-                            [Node,
-                             ns_cluster_membership:user_friendly_service_name(Service),
-                             length(SvcNodes),
-                             auto_failover_logic:service_failover_min_node_count(Service) + 1]),
-                  S;
-              ({_, {Node, _UUID}}, #state{count=1} = S) ->
-                  case should_report(#state.reported_max_reached, S) of
-                      true ->
-                          ?user_log(?EVENT_MAX_REACHED,
-                                    "Could not auto-failover more nodes (~p). "
-                                    "Maximum number of nodes that will be "
-                                    "automatically failovered (1) is reached.",
-                                    [Node]),
-                          note_reported(#state.reported_max_reached, S);
-                      false ->
-                          S
-                  end;
-              ({mail_down_warning, {Node, _UUID}}, S) ->
-                  ?user_log(?EVENT_OTHER_NODES_DOWN,
-                            "Could not auto-failover node (~p). "
-                            "There was at least another node down.",
-                            [Node]),
-                  S;
-              ({mail_auto_failover_disabled, Service, {Node, _UUID}}, S) ->
-                  ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
-                            "Could not auto-failover node (~p). "
-                            "Auto-failover for ~s service is disabled.",
-                            [Node, ns_cluster_membership:user_friendly_service_name(Service)]),
-                  S;
-              ({failover, {Node, _UUID}}, S) ->
-                  case ns_orchestrator:try_autofailover(Node) of
-                      ok ->
-                          {_, DownInfo} = lists:keyfind(Node, 1, DownNodes),
-                          case DownInfo of
-                              unknown ->
-                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                                            "Node (~p) was automatically failovered.~n~p",
-                                            [Node, ns_doctor:get_node(Node, NodeStatuses)]);
-                              {Reason, MARes} ->
-                                  MA = [atom_to_list(M) || M <- MARes],
-                                  master_activity_events:note_autofailover_done(Node, string:join(MA, ",")),
-                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                                            "Node (~p) was automatically failed over. Reason: ~s",
-                                            [Node, Reason])
-                          end,
-                          init_reported(S#state{count = S#state.count+1});
-                      {autofailover_unsafe, UnsafeBuckets} ->
-                          case should_report(#state.reported_autofailover_unsafe, S) of
-                              true ->
-                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                                            "Could not automatically fail over node (~p)."
-                                            " Would lose vbuckets in the following buckets: ~p", [Node, UnsafeBuckets]),
-                                  note_reported(#state.reported_autofailover_unsafe, S);
-                              false ->
-                                  S
-                          end;
-                      rebalance_running ->
-                          case should_report(#state.reported_rebalance_running, S) of
-                              true ->
-                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                                            "Could not automatically fail over node (~p). "
-                                            "Rebalance is running.", [Node]),
-                                  note_reported(#state.reported_rebalance_running, S);
-                              false ->
-                                  S
-                          end;
-                      in_recovery ->
-                          case should_report(#state.reported_in_recovery, S) of
-                              true ->
-                                  ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                                            "Could not automatically fail over node (~p)."
-                                            "Cluster is in recovery mode.", [Node]),
-                                  note_reported(#state.reported_in_recovery, S);
-                              false ->
-                                  S
-                          end
-                  end
-          end, State#state{auto_failover_logic_state = LogicState}, Actions),
+    NewState = lists:foldl(
+                 fun(Action, S) ->
+                         process_action(Action, S, DownNodes, NodeStatuses)
+                 end, State#state{auto_failover_logic_state = LogicState},
+                 Actions),
 
     NewState1 = update_reported_flags_by_actions(Actions, NewState),
 
@@ -401,6 +308,91 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% Internal functions
 %%
+process_action({mail_too_small, Service, SvcNodes, {Node, _UUID}}, S, _, _) ->
+    ?user_log(?EVENT_CLUSTER_TOO_SMALL,
+              "Could not auto-failover node (~p). "
+              "Number of nodes running ~s service is ~p. "
+              "You need at least ~p nodes.",
+              [Node,
+               ns_cluster_membership:user_friendly_service_name(Service),
+               length(SvcNodes),
+               auto_failover_logic:service_failover_min_node_count(Service) + 1]),
+    S;
+process_action({_, {Node, _UUID}}, #state{count = 1} = S, _, _) ->
+    case should_report(#state.reported_max_reached, S) of
+        true ->
+            ?user_log(?EVENT_MAX_REACHED,
+                      "Could not auto-failover more nodes (~p). "
+                      "Maximum number of nodes that will be "
+                      "automatically failovered (1) is reached.",
+                      [Node]),
+            note_reported(#state.reported_max_reached, S);
+        false ->
+            S
+    end;
+process_action({mail_down_warning, {Node, _UUID}}, S, _, _) ->
+    ?user_log(?EVENT_OTHER_NODES_DOWN,
+              "Could not auto-failover node (~p). "
+              "There was at least another node down.",
+              [Node]),
+    S;
+process_action({mail_auto_failover_disabled, Service, {Node, _}}, S, _, _) ->
+    ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
+              "Could not auto-failover node (~p). "
+              "Auto-failover for ~s service is disabled.",
+              [Node, ns_cluster_membership:user_friendly_service_name(Service)]),
+    S;
+process_action({failover, {Node, _UUID}}, S, DownNodes, NodeStatuses) ->
+    case ns_orchestrator:try_autofailover(Node) of
+        ok ->
+            {_, DownInfo} = lists:keyfind(Node, 1, DownNodes),
+            case DownInfo of
+                unknown ->
+                    ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                              "Node (~p) was automatically failovered.~n~p",
+                              [Node, ns_doctor:get_node(Node, NodeStatuses)]);
+                {Reason, MARes} ->
+                    MA = [atom_to_list(M) || M <- MARes],
+                    master_activity_events:note_autofailover_done(Node, string:join(MA, ",")),
+                    ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                              "Node (~p) was automatically failed over. Reason: ~s",
+                              [Node, Reason])
+            end,
+            init_reported(S#state{count = S#state.count + 1});
+        Error ->
+            process_failover_error(Error, Node, S)
+    end.
+
+process_failover_error({autofailover_unsafe, UnsafeBuckets}, Node, S) ->
+    ErrMsg = lists:flatten(io_lib:format("Would lose vbuckets in the"
+                                         " following buckets: ~p",
+                                         [UnsafeBuckets])),
+    report_failover_error(#state.reported_autofailover_unsafe, ErrMsg,
+                          Node, S);
+process_failover_error(rebalance_running, Node, S) ->
+    report_failover_error(#state.reported_rebalance_running,
+                          "Rebalance is running.", Node, S);
+process_failover_error(in_recovery, Node, S) ->
+    report_failover_error(#state.reported_in_recovery,
+                          "Cluster is in recovery mode.", Node, S).
+
+report_failover_error(Flag, ErrMsg, Node, State) ->
+    case should_report(Flag, State) of
+        true ->
+            ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                      "Could not automatically fail over node (~p). ~s",
+                      [Node, ErrMsg]),
+            note_reported(Flag, State);
+        false ->
+            State
+    end.
+%% TODO - move this later to (yet to be created) auto_failover_settings module.
+get_auto_failover_count(Config) ->
+    {value, AutoFailoverConfig} = ns_config:search(Config, auto_failover_cfg),
+    AutoFailoverCount = proplists:get_value(count, AutoFailoverConfig),
+    true = is_integer(AutoFailoverCount),
+    AutoFailoverCount.
+
 get_tick_period() ->
     case cluster_compat_mode:is_cluster_50() of
         true ->

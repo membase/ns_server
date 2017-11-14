@@ -73,6 +73,7 @@
          fold/3, read_key_fast/2, get_timeout/2,
          delete/1,
          regenerate_node_uuid/0,
+         get_node_uuid_map/1,
          strip_metadata/1, extract_vclock/1,
          latest/0,
          merge_dynamic_and_static/0,
@@ -260,6 +261,18 @@ delete(Key) ->
 
 regenerate_node_uuid() ->
     gen_server:call(?MODULE, regenerate_node_uuid).
+
+get_node_uuid_map(Config) ->
+    fold(
+      fun (Key, Value, Acc) ->
+              case Key of
+                  {node, Node, uuid} ->
+                      dict:store(Node, Value, Acc);
+                  _ ->
+                      Acc
+              end
+      end, dict:new(), Config).
+
 
 %% update config by applying Fun to it. Fun should return a pair
 %% {NewPairs, NewConfig} where NewConfig is new config and NewPairs is
