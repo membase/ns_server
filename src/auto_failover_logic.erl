@@ -108,32 +108,40 @@ fold_matching_nodes([Node | RestNodes] = AllNodes,
             end
     end.
 
+process_down_state(NodeState, Threshold, NewState, ResetCounter) ->
+    CurrCounter = NodeState#node_state.down_counter,
+    NewCounter = CurrCounter + 1,
+    case NewCounter >= Threshold of
+        true ->
+            Counter = case ResetCounter of
+                          true ->
+                              0;
+                          false ->
+                              CurrCounter
+                      end,
+            NodeState#node_state{down_counter = Counter, state = NewState};
+        _ ->
+            NodeState#node_state{down_counter = NewCounter}
+    end.
+
 increment_down_state(NodeState, DownNodes, BigState, NodesChanged) ->
     case {NodeState#node_state.state, NodesChanged} of
-        {new, _} -> NodeState#node_state{state = half_down};
-        {up, _} -> NodeState#node_state{state = half_down};
+        {new, _} ->
+            NodeState#node_state{state = half_down};
+        {up, _} ->
+            NodeState#node_state{state = half_down};
         {_, true} ->
-            NodeState#node_state{state = half_down,
-                                 down_counter = 0};
+            NodeState#node_state{state = half_down, down_counter = 0};
         {half_down, _} ->
-            NewCounter = NodeState#node_state.down_counter + 1,
-            case NewCounter >= BigState#state.down_threshold of
-                true ->
-                    NodeState#node_state{down_counter = 0,
-                                         state = nearly_down};
-                _ ->
-                    NodeState#node_state{down_counter = NewCounter}
-            end;
+            process_down_state(NodeState, BigState#state.down_threshold,
+                               nearly_down, true);
         {nearly_down, _} ->
             case DownNodes of
                 [_,_|_] ->
                     NodeState#node_state{down_counter = 0};
                 [_] ->
-                    NewCounter = NodeState#node_state.down_counter + 1,
-                    case NewCounter >= ?DOWN_GRACE_PERIOD of
-                        true -> NodeState#node_state{state = failover};
-                        _ -> NodeState#node_state{down_counter = NewCounter}
-                    end
+                    process_down_state(NodeState, ?DOWN_GRACE_PERIOD,
+                                       failover, false)
             end;
         {failover, _} ->
             NodeState
@@ -154,15 +162,7 @@ log_master_activity(#node_state{state = Prev, name = {Node, _} = Name} = NodeSta
     end,
     master_activity_events:note_autofailover_node_state_change(Node, Prev,
                                                                New, NewCounter).
-
-process_frame(Nodes, DownNodes, State, SvcConfig) ->
-    SortedNodes = ordsets:from_list(Nodes),
-    SortedDownNodes = ordsets:from_list(DownNodes),
-
-    PrevNodes = [NS#node_state.name || NS <- State#state.nodes_states],
-    NodesChanged = (SortedNodes =/= ordsets:from_list(PrevNodes)),
-
-    UpNodes = ordsets:subtract(SortedNodes, SortedDownNodes),
+get_up_states(UpNodes, NodeStates) ->
     UpFun =
         fun (#node_state{state = removed}, Acc) -> Acc;
             (NodeState, Acc) ->
@@ -172,59 +172,73 @@ process_frame(Nodes, DownNodes, State, SvcConfig) ->
                 log_master_activity(NodeState, NewUpState),
                 [NewUpState | Acc]
         end,
-    UpStates0 = fold_matching_nodes(UpNodes, State#state.nodes_states, UpFun, []),
-    UpStates = lists:reverse(UpStates0),
+    UpStates0 = fold_matching_nodes(UpNodes, NodeStates, UpFun, []),
+    lists:reverse(UpStates0).
+
+get_down_states(DownNodes, State, NodesChanged) ->
     DownFun =
         fun (#node_state{state = removed}, Acc) -> Acc;
             (NodeState, Acc) ->
-                NewState = increment_down_state(NodeState, DownNodes, State, NodesChanged),
+                NewState = increment_down_state(NodeState, DownNodes,
+                                                State, NodesChanged),
                 log_master_activity(NodeState, NewState),
                 [NewState | Acc]
         end,
-    DownStates0 = fold_matching_nodes(DownNodes, State#state.nodes_states, DownFun, []),
-    DownStates = lists:reverse(DownStates0),
-    HasNearlyDown =
-        lists:any(fun (#node_state{state = nearly_down}) -> true;
-                      (_) -> false
-                  end, DownStates),
-    {Actions, DownStates2} =
-        case DownStates of
-            [#node_state{state = failover, name = Node}] ->
-                ServiceAction = should_failover_node(State, Node, SvcConfig),
-                {ServiceAction, DownStates};
-            [#node_state{state = nearly_down}] -> {[], DownStates};
-            Else ->
-                case HasNearlyDown of
-                    true ->
-                        %% Return separate events for all nodes that are down,
-                        %% which haven't been sent already.
-                        {Actions2, DownStates3} = lists:foldl(
-                                                    fun (#node_state{state = nearly_down,
-                                                                     name = Node,
-                                                                     mailed_down_warning = false}=S,
-                                                         {Warnings, DS}) ->
-                                                            {[{mail_down_warning, Node}|Warnings],
-                                                             [S#node_state{mailed_down_warning = true}|DS]};
-                                                        %% Warning was already sent
-                                                        (S, {Warnings, DS}) ->
-                                                            {Warnings, [S|DS]}
-                                                    end, {[], []}, Else),
-                        {lists:reverse(Actions2), lists:reverse(DownStates3)};
-                    _ ->
-                        {[], DownStates}
-                end
-        end,
-    NewState = State#state{
-                 nodes_states = lists:umerge(UpStates, DownStates2),
-                 services_state = update_services_state(Actions,
-                                                        State#state.services_state)
-                },
+    DownStates0 = fold_matching_nodes(DownNodes, State#state.nodes_states,
+                                      DownFun, []),
+    lists:reverse(DownStates0).
+
+process_frame(Nodes, DownNodes, State, SvcConfig) ->
+    SortedNodes = ordsets:from_list(Nodes),
+    SortedDownNodes = ordsets:from_list(DownNodes),
+
+    PrevNodes = [NS#node_state.name || NS <- State#state.nodes_states],
+    NodesChanged = (SortedNodes =/= ordsets:from_list(PrevNodes)),
+
+    UpStates = get_up_states(ordsets:subtract(SortedNodes, SortedDownNodes),
+                             State#state.nodes_states),
+    DownStates = get_down_states(DownNodes, State, NodesChanged),
+
+    {Actions, NewDownStates} = process_node_down(DownStates, State, SvcConfig),
+
+    NodeStates = lists:umerge(UpStates, NewDownStates),
+    SvcS = update_services_state(Actions, State#state.services_state),
+
     case Actions of
-        [] -> ok;
+        [] ->
+            ok;
         _ ->
             ?log_debug("Decided on following actions: ~p", [Actions])
     end,
-    {Actions, NewState}.
+    {Actions, State#state{nodes_states = NodeStates, services_state = SvcS}}.
+
+process_node_down([#node_state{state = failover, name = Node}] = DownStates,
+                  State, SvcConfig) ->
+    {should_failover_node(State, Node, SvcConfig), DownStates};
+process_node_down([#node_state{state = nearly_down}] = DownStates, _, _) ->
+    {[], DownStates};
+process_node_down(DownStates, _, _) ->
+    Fun = fun (#node_state{state = nearly_down}) -> true; (_) -> false end,
+    case lists:any(Fun, DownStates) of
+        true ->
+            process_multiple_nodes_down(DownStates);
+        _ ->
+            {[], DownStates}
+    end.
+
+%% Return separate events for all nodes that are down.
+process_multiple_nodes_down(DownStates) ->
+    {Actions, NewDownStates} =
+        lists:foldl(
+          fun (#node_state{state = nearly_down, name = Node,
+                           mailed_down_warning = false} = S, {Warnings, DS}) ->
+                  {[{mail_down_warning, Node} | Warnings],
+                   [S#node_state{mailed_down_warning = true} | DS]};
+              %% Warning was already sent
+              (S, {Warnings, DS}) ->
+                  {Warnings, [S | DS]}
+          end, {[], []}, DownStates),
+    {lists:reverse(Actions), lists:reverse(NewDownStates)}.
 
 %% Update mailed_too_small_cluster state
 %% At any time, only one node can have mail_too_small Action.
