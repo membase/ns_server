@@ -27,6 +27,8 @@
          apply_certificate_chain_from_inbox/0,
          apply_certificate_chain_from_inbox/1,
          get_warnings/1,
+         get_subject_fields_by_type/2,
+         get_sub_alt_names_by_type/2,
          get_node_cert_info/1]).
 
 inbox_chain_path() ->
@@ -217,6 +219,12 @@ format_name({rdnSequence, STVList}) ->
     Attributes = lists:foldl(fun format_attribute/2, [], STVList),
     lists:flatten(string:join(lists:reverse(Attributes), ", ")).
 
+extract_fields_by_type({rdnSequence, STVList}, Type) ->
+    [format_value(V) || [#'AttributeTypeAndValue'{type = T, value = V}] <- STVList,
+                        T =:= Type];
+extract_fields_by_type(_, _) ->
+    [].
+
 convert_date(Year, Rest) ->
     {ok, [Month, Day, Hour, Min, Sec], "Z"} = io_lib:fread("~2d~2d~2d~2d~2d", Rest),
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, Sec}}).
@@ -243,6 +251,35 @@ get_info(DerCert) ->
     NotBefore = convert_date(Validity#'Validity'.notBefore),
     NotAfter = convert_date(Validity#'Validity'.notAfter),
     {Subject, NotBefore, NotAfter}.
+
+-spec get_subject_fields_by_type(binary(), term()) -> list() | {error, not_found}.
+get_subject_fields_by_type(Cert, Type) ->
+    OtpCert = public_key:pkix_decode_cert(Cert, otp),
+    TBSCert = OtpCert#'OTPCertificate'.tbsCertificate,
+    case extract_fields_by_type(TBSCert#'OTPTBSCertificate'.subject, Type) of
+        [] ->
+            {error, not_found};
+        Vals ->
+            Vals
+    end.
+
+-spec get_sub_alt_names_by_type(binary(), term()) -> list() | {error, not_found}.
+get_sub_alt_names_by_type(Cert, Type) ->
+    OtpCert = public_key:pkix_decode_cert(Cert, otp),
+    TBSCert = OtpCert#'OTPCertificate'.tbsCertificate,
+    TBSExts = TBSCert#'OTPTBSCertificate'.extensions,
+    Exts = ssl_certificate:extensions_list(TBSExts),
+    case ssl_certificate:select_extension(?'id-ce-subjectAltName', Exts) of
+        {'Extension', _, _, Vals} ->
+            case [N || {T, N} <- Vals, T == Type] of
+                [] ->
+                    {error, not_found};
+                V ->
+                    V
+            end;
+        _ ->
+            {error, not_found}
+    end.
 
 parse_cluster_ca(CA) ->
     case decode_single_certificate(CA) of
