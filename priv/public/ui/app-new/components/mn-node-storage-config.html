@@ -1,0 +1,66 @@
+<div [formGroup]="group">
+  <div class="formrow">
+    <div class="row">
+      <label for="setup_hostname">Host Name / IP Address</label>
+      <small class="text-smaller">Usually localhost or similar</small>
+    </div>
+    <input
+       type="text"
+       autocorrect="off"
+       spellcheck="false"
+       autocapitalize="off"
+       name="hostname"
+       id="setup_hostname"
+       [(mnFocus)]="focusField"
+       formControlName="hostname">
+    <div
+       class="error error-form"
+       [hidden]="!(hostnameHttp.error | async)">
+      <div *ngFor="let error of (hostnameHttp.error | async)">{{error}}</div>
+    </div>
+  </div>
+
+  <div formGroupName="storage">
+    <div class="formrow">
+      <div class="row">
+        <label for="setup_db_path_input">Data Disk Path</label>
+        <small class="text-smaller">Path cannot be changed after setup</small>
+      </div>
+      <input
+         type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
+         id="setup_db_path_input"
+         formControlName="path">
+      <p>
+        Free: {{lookUpDBPath | async}}
+      </p>
+    </div>
+
+    <div
+       class="error error-form"
+       [hidden]="!(diskStorageHttp.error | async)">
+      <div *ngFor="let error of (diskStorageHttp.error | async)">
+        Attention: {{error}}<br>
+      </div>
+    </div>
+
+    <div class="formrow">
+      <div class="row">
+        <label for="setup_index_path_input">Indexes Disk Path</label>
+        <small class="text-smaller">Path cannot be changed after setup</small>
+      </div>
+      <input
+         type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
+         id="setup_index_path_input"
+         formControlName="index_path">
+      <p>
+        Free: {{lookUpIndexPath | async}}
+      </p>
+    </div>
+  </div>
+</div>
