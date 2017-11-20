@@ -17,6 +17,9 @@
 
 -include("ns_common.hrl").
 
+-include_lib("eunit/include/eunit.hrl").
+-include_lib("public_key/include/public_key.hrl").
+
 -export([start_link/0,
          start_link_capi_service/0,
          start_link_rest_service/0,
@@ -28,6 +31,7 @@
          ssl_minimum_protocol/0,
          ssl_minimum_protocol/1,
          client_cert_auth/0,
+         get_user_name_from_client_cert/1,
          set_node_certificate_chain/4,
          ciphers_strength/1,
          upgrade_client_cert_auth_to_51/1]).
@@ -598,6 +602,93 @@ apply_node_cert_data({user_set, Cert, PKey, CAChain}, Path) ->
     ok = misc:atomic_write_file(memcached_cert_path(), [Cert, CAChain]),
     ok = misc:atomic_write_file(memcached_key_path(), PKey).
 
+-spec get_user_name_from_client_cert(term()) -> string() | undefined | failed.
+get_user_name_from_client_cert(Val) ->
+    case cluster_compat_mode:is_cluster_vulcan() of
+        true ->
+            ClientAuth = ns_ssl_services_setup:client_cert_auth(),
+            {state, State} = lists:keyfind(state, 1, ClientAuth),
+            case Val of
+                {ssl, SSLSock} ->
+                    case {ssl:peercert(SSLSock), State} of
+                        {_, "disable"} ->
+                            undefined;
+                        {{ok, Cert}, _} ->
+                            get_user_name_from_client_cert(Cert, ClientAuth);
+                        {{error, no_peercert}, "enable"} ->
+                            undefined;
+                        {{error, R}, _} ->
+                            ?log_debug("Error getting client certificate: ~p",
+                                       [R]),
+                            failed
+                    end;
+                _ ->
+                    undefined
+            end;
+        false ->
+            undefined
+    end.
+
+get_user_name_from_client_cert(Cert, ClientAuth) ->
+    Triples = proplists:get_value(prefixes, ClientAuth),
+    case get_user_name_from_client_cert_inner(Cert, Triples) of
+        {error, _} ->
+            failed;
+        Username ->
+            Username
+    end.
+
+get_user_name_from_client_cert_inner(_Cert, []) ->
+    {error, not_found};
+get_user_name_from_client_cert_inner(Cert, [Triple | Rest]) ->
+    {path, Path} = lists:keyfind(path, 1, Triple),
+    [Category, Field] = string:tokens(Path, "."),
+    case get_fields_from_cert(Cert, Category, Field) of
+        {error, _} ->
+            get_user_name_from_client_cert_inner(Cert, Rest);
+        Values ->
+            Prefix = proplists:get_value(prefix, Triple),
+            Delimiters = proplists:get_value(delimiter, Triple),
+            case extract_user_name(Values, Prefix, Delimiters) of
+                {error, _} ->
+                    get_user_name_from_client_cert_inner(Cert, Rest);
+                UName ->
+                    UName
+            end
+    end.
+
+get_fields_from_cert(Cert, "subject", "cn") ->
+    ns_server_cert:get_subject_fields_by_type(Cert, ?'id-at-commonName');
+get_fields_from_cert(Cert, "san", Field) ->
+    Type = san_field_to_type(Field),
+    ns_server_cert:get_sub_alt_names_by_type(Cert, Type).
+
+extract_user_name([], _Prefix, _Delimiters) ->
+    {error, not_found};
+extract_user_name([Val | Rest], Prefix, Delimiters) ->
+    case do_extract_user_name(Val, Prefix, Delimiters) of
+        {error, not_found} ->
+            extract_user_name(Rest, Prefix, Delimiters);
+        Username ->
+            Username
+    end.
+
+do_extract_user_name(Name, Prefix, Delimiters) ->
+    Name1 = misc:string_prefix(Name, Prefix),
+
+    case Name1 of
+        nomatch ->
+            {error, not_found};
+        _ ->
+            lists:takewhile(fun(C) ->
+                                    not lists:member(C, Delimiters)
+                            end, Name1)
+    end.
+
+san_field_to_type("dnsname") -> dNSName;
+san_field_to_type("uri") -> uniformResourceIdentifier;
+san_field_to_type("email") -> rfc822Name.
+
 all_services() ->
     [ssl_service, capi_ssl_service, xdcr_proxy, query_svc, memcached, event].
 
@@ -641,3 +732,17 @@ do_notify_service(memcached) ->
     memcached_refresh:refresh(ssl_certs);
 do_notify_service(event) ->
     gen_event:notify(ssl_service_events, cert_changed).
+
+-ifdef(EUNIT).
+
+extract_user_name_test() ->
+    ?assertEqual(extract_user_name(["www.abc.com"], "www.", ";,."), "abc"),
+    ?assertEqual(extract_user_name(["xyz.abc.com", "qwerty", "www.abc.com"],
+                                   "www.", "."), "abc"),
+    ?assertEqual(extract_user_name(["xyz.com", "www.abc.com"], "", "."), "xyz"),
+    ?assertEqual(extract_user_name(["abc", "xyz"], "", ""), "abc"),
+    ?assertEqual(extract_user_name(["xyz.abc.com"],
+                                   "www.", "."), {error, not_found}),
+    ?assertEqual(extract_user_name(["xyz.abc.com"], "", "-"), "xyz.abc.com").
+
+-endif.

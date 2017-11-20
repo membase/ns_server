@@ -1915,6 +1915,16 @@ item_count(List, Item) ->
               end
       end, 0, List).
 
+%% TODO: Use string:prefix API (not exported in R16) and remove this when we
+%%       upgrade to newer versions of Erlang.
+-spec string_prefix(string(), string()) -> string() | nomatch.
+string_prefix([C | Str], [C | Pre]) ->
+    string_prefix(Str, Pre);
+string_prefix(Str, []) when is_list(Str) ->
+    Str;
+string_prefix(Str, Pre) when is_list(Pre), is_list(Str) ->
+    nomatch.
+
 compress(Term) ->
     zlib:compress(term_to_binary(Term)).
 
