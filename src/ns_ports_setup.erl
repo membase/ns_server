@@ -452,6 +452,7 @@ index_node_spec(Config) ->
                      "-storageDir=" ++ IdxDir2,
                      "-diagDir=" ++ MinidumpDir,
                      "-nodeUUID=" ++ NodeUUID,
+                     "-ipv6=" ++ atom_to_list(misc:is_ipv6()),
                      "-isEnterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise())] ++ AddSM ++ HttpsArgs,
                     [via_goport, exit_status, stderr_to_stdout,
                      {log, ?INDEXER_LOG_FILENAME},
