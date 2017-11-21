@@ -175,10 +175,10 @@
   </div>
 
   <div class="formrow">
-    <label class="inline">Metadata Purge Interval</label>
+    <label class="inline">Tombstone Purge Interval</label>
     <span
        class="fa-stack icon-info"
-       uib-tooltip="Set how frequently a node will purge metadata on deleted items. The available range is 0.04 - 60 where 0.04 = 1h, 0.5 = 12h. If set too high, it may significantly delay the node from reclaiming disk space. If set too low, it may cause data inconsistencies in XDCR or Views."
+       uib-tooltip="Sets the time period during which tombstones (metadata on deleted items) may remain on disk. The default value is 3 days. The acceptable range of values is 0.04 – 60, where 0.04 = 1 hour and 1 = 1 day. Setting this value too high may significantly delay reclaiming of disk space; setting it too low may cause data inconsistencies in XDCR."
        tooltip-placement="top">
       <span class="icon fa-circle-thin fa-stack-2x"></span>
       <span class="icon fa-info fa-stack-1x"></span>
@@ -190,8 +190,12 @@
            ng-disabled="(rbac && !rbac.cluster.settings.write)"
            ng-model="autoCompactionSettings.purgeInterval"
            ng-class="{invalid: validationErrors.purgeInterval}"
-           id="metadata-purge-frequency">
-        <small>Range 0.04 (1 H) - 60days</small>
+           id="metadata-purge-frequency"
+           class="input-short-1">
+        <small ng-show="autoCompactionSettings.purgeInterval > 1 || autoCompactionSettings.purgeInterval < 1">days</small>
+        <small ng-show="autoCompactionSettings.purgeInterval == 1">day</small>
+        <br>
+        <div class="desc">Range .04 (1hr) - 60 days</div>
       </div>
       <div
          class="error"

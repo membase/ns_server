@@ -934,7 +934,7 @@ input.input-small {
 }
 input.input-short-1,
 .forms input.input-short-1 {
-  width: 4rem;
+  width: 4rem !important;
 }
 select.select-small {
   font-size: .75rem;
