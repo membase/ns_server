@@ -115,6 +115,8 @@ get_auth_user(Req) ->
             "ui-token";
         {"", _} ->
             "-";
+        {client_cert_auth, User} ->
+            User;
         {User, _} ->
             User
     end.

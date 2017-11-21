@@ -164,18 +164,28 @@ extract_auth_user(Req) ->
         _ -> undefined
     end.
 
--spec extract_auth(mochiweb_request()) -> {User :: string(), Password :: string()}
-                                              | {token, string()} | undefined.
+-spec extract_auth(mochiweb_request()) -> {User :: string(), Passwd :: string()}
+                                              | {token, string()}
+                                              | {client_cert_auth, string()}
+                                              | undefined.
 extract_auth(Req) ->
     case Req:get_header_value("ns-server-ui") of
         "yes" ->
             {token, extract_ui_auth_token(Req)};
         _ ->
-            case Req:get_header_value("authorization") of
-                "Basic " ++ Value ->
-                    parse_user_password(base64:decode_to_string(Value));
-                _ ->
-                    undefined
+            Sock = Req:get(socket),
+            case ns_ssl_services_setup:get_user_name_from_client_cert(Sock) of
+                undefined ->
+                    case Req:get_header_value("authorization") of
+                        "Basic " ++ Value ->
+                            parse_user_password(base64:decode_to_string(Value));
+                        _ ->
+                            undefined
+                    end;
+                failed ->
+                    undefined;
+                UName ->
+                    {client_cert_auth, UName}
             end
     end.
 
@@ -204,7 +214,10 @@ parse_user(UserPasswordStr) ->
 has_permission(Permission, Req) ->
     menelaus_roles:is_allowed(Permission, get_identity(Req)).
 
--spec authenticate(undefined | {token, auth_token()} | {rbac_user_id(), rbac_password()}) ->
+-spec authenticate(undefined |
+                   {token, auth_token()} |
+                   {client_cert_auth, string()} |
+                   {rbac_user_id(), rbac_password()}) ->
                           false | {ok, rbac_identity()} | {error, term()}.
 authenticate(undefined) ->
     {ok, {"", anonymous}};
@@ -226,6 +239,22 @@ authenticate({token, Token} = Param) ->
             end;
         true ->
             rpc:call(ns_node_disco:ns_server_node(), ?MODULE, authenticate, [Param])
+    end;
+authenticate({client_cert_auth, Username} = Param) ->
+    %% Just returning the username as the request is already authenticated based
+    %% on the client certificate.
+    case ns_node_disco:couchdb_node() == node() of
+        false ->
+            Identity = {Username, local},
+            case menelaus_users:user_exists(Identity) of
+                true ->
+                    {ok, Identity};
+                false ->
+                    false
+            end;
+        true ->
+            rpc:call(ns_node_disco:ns_server_node(), ?MODULE, authenticate,
+                     [Param])
     end;
 authenticate({Username, Password}) ->
     case ns_config_auth:authenticate(Username, Password) of
