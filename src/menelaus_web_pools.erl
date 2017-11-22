@@ -55,7 +55,8 @@ handle_pools(Req) ->
 
     RV1 = [{isAdminCreds, true},
            {isROAdminCreds, false},
-           {isEnterprise, cluster_compat_mode:is_enterprise()}
+           {isEnterprise, cluster_compat_mode:is_enterprise()},
+           {isIPv6, misc:is_ipv6()}
            | get_content_for_provisioned_system()],
     RV = RV1 ++ menelaus_web_cache:versions_response(),
     reply_json(Req, {struct, RV}).
