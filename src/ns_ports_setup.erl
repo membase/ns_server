@@ -368,8 +368,9 @@ create_goxdcr_spec(Config, Cmd, Upgrade) ->
     XdcrRestPort = "-xdcrRestPort=" ++
         integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
     IsEnterprise = "-isEnterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
+    IsIpv6 = "-ipv6=" ++ atom_to_list(misc:is_ipv6()),
 
-    Args0 = [AdminPort, XdcrRestPort, IsEnterprise],
+    Args0 = [AdminPort, XdcrRestPort, IsEnterprise, IsIpv6],
 
     Args1 = case Upgrade of
                 true ->
