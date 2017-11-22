@@ -162,33 +162,48 @@ handle_client_cert_auth_settings(Req) ->
     Val = ns_ssl_services_setup:client_cert_auth(),
     menelaus_util:reply_json(Req, {[{K, list_to_binary(V)} || {K,V} <- Val]}).
 
+validate_client_cert_auth_settings({Key, Val}, Params, OldVal, Acc) ->
+    case Key == "state" andalso Val =/= "disable" of
+        true ->
+            case {proplists:get_value("path", Params), proplists:get_value(path, OldVal)} of
+                {undefined, undefined} ->
+                    [{error, {400, io_lib:format("'path' must be defined when 'state' is "
+                                                 "being set to '~s'", [Val])}}] ++ Acc;
+                _ ->
+                    Acc
+            end;
+        false ->
+            Acc
+    end.
+
 handle_client_cert_auth_settings_post(Req) ->
     menelaus_util:assert_is_enterprise(),
     menelaus_util:assert_is_50(),
     Params = Req:parse_post(),
     OldVal = ns_ssl_services_setup:client_cert_auth(),
     AccumulateChanges =
-        fun({Key, Val}, Acc) ->
+        fun({Key, Val} = Pair, Acc) ->
                 case allowed_values(Key) of
                     none ->
                         [{error, {400, io_lib:format("Invalid key: '~s'", [Key])}}]
                             ++ Acc;
                     Values ->
+                        Acc1 = validate_client_cert_auth_settings(Pair, Params, OldVal, Acc),
                         case Values == any orelse lists:member(Val, Values) of
                             true ->
                                 NewKey = list_to_atom(Key),
                                 case proplists:get_value(NewKey, OldVal) =/= Val of
                                     true ->
-                                        [{NewKey, Val}] ++ Acc;
+                                        [{NewKey, Val}] ++ Acc1;
                                     _Else ->
-                                        Acc
+                                        Acc1
                                 end;
                             Invalid ->
                                 [{error, {400, io_lib:format("Invalid value '~s' "
                                                              "for key '~s'",
                                                              [Invalid, Key])
                                          }
-                                 }] ++ Acc
+                                 }] ++ Acc1
                         end
                 end
         end,
