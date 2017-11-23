@@ -360,12 +360,11 @@ expr({'fun', Line, Body}) ->
 expr({named_fun, Line, Name, Cs0}) ->
     Cs1 = fun_clauses(Cs0),
     {named_fun, Line, Name, Cs1};
-expr({call, Line, {remote, _,
-                   {atom, _, cut},
-                   {atom, _, f}},
-      [Expr]}) ->
-    {Pattern, NewExpr} = find_cut_vars_deep(Line, Expr),
-    {'fun', Line, {clauses, [{clause, Line, Pattern, [], [NewExpr]}]}};
+expr({call, _, {remote, _,
+                {atom, _, cut},
+                {atom, _, f}},
+      [_]} = Expr) ->
+    handle_extended_cuts(Expr);
 expr({call, Line, F0, As0}) ->
     %% N.B. If F an atom then call to local function or BIF, if F a
     %% remote structure (see below) then call to other module,
@@ -638,6 +637,24 @@ make_var_name() ->
     put(var_count, VarCount+1),
     list_to_atom("__cut_" ++ integer_to_list(VarCount)).
 
+handle_extended_cuts(Expr) ->
+    generic:transformb(
+      fun (T) ->
+              case is_extended_cut(T) of
+                  true ->
+                      handle_single_extended_cut(T);
+                  false ->
+                      T
+              end
+      end, Expr).
+
+handle_single_extended_cut({call, Line, {remote, _,
+                                         {atom, _, cut},
+                                         {atom, _, f}},
+                            [Expr]}) ->
+    {Pattern, NewExpr} = find_cut_vars_deep(Line, Expr),
+    {'fun', Line, {clauses, [{clause, Line, Pattern, [], [NewExpr]}]}}.
+
 find_cut_vars_deep(CutLine, Expr) ->
     Vars = generic:query(fun lists:append/2,
                          ?query(Var, fun is_placeholder/1, [Var], []), Expr),
@@ -686,6 +703,13 @@ handle_numbered_vars(Vars, CutLine) ->
 
     Pattern = [{var, CutLine, Name} || Name <- PatternNames],
     {Pattern, NewVars}.
+
+is_extended_cut({call, _, {remote, _,
+                           {atom, _, cut},
+                           {atom, _, f}}, [_]}) ->
+    true;
+is_extended_cut(_) ->
+    false.
 
 is_placeholder(Term) ->
     is_simple_placeholder(Term) orelse
