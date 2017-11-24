@@ -6,7 +6,7 @@ mn.components.MnTermsAndConditions =
 
     MnTermsAndConditions.annotations = [
       new ng.core.Component({
-        templateUrl: "app-new/wizard/mn-terms-and-conditions/mn-terms-and-conditions.html"
+        templateUrl: "app-new/wizard/mn-terms-and-conditions.html"
       })
     ];
 

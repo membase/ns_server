@@ -6,7 +6,7 @@ mn.components.MnNewClusterConfig =
 
     MnNewClusterConfig.annotations = [
       new ng.core.Component({
-        templateUrl: "app-new/wizard/mn-new-cluster-config/mn-new-cluster-config.html"
+        templateUrl: "app-new/wizard/mn-new-cluster-config.html"
       })
     ];
 

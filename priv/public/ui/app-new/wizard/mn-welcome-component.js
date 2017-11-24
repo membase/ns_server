@@ -6,7 +6,7 @@ mn.components.MnWelcome =
 
     MnWelcomeComponent.annotations = [
       new ng.core.Component({
-        templateUrl: "app-new/wizard/welcome/mn-welcome.html",
+        templateUrl: "app-new/wizard/mn-welcome.html",
       })
     ];
 
