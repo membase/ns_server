@@ -58,7 +58,8 @@ mn.modules.MnWizard =
           mn.components.MnTermsAndConditions,
           mn.components.MnWelcome,
           mn.components.MnNodeStorageConfig,
-          mn.components.MnServicesConfig
+          mn.components.MnServicesConfig,
+          mn.components.MnStorageMode
         ],
         imports: [
           ng.platformBrowser.BrowserModule,

@@ -98,7 +98,7 @@ mn.pipes.MnFormatProgressMessage =
       })
     ];
 
-    MnFormatProgressMessage.prototype.transform;
+    MnFormatProgressMessage.prototype.transform = transform;
 
     return MnFormatProgressMessage;
 
@@ -128,7 +128,45 @@ mn.pipes.MnFormatProgressMessage =
           ("rebalancing " + addNodeCount(task.perNode));
       }
     }
-})();
+  })();
+
+var mn = mn || {};
+mn.pipes = mn.pipes || {};
+mn.pipes.MnFormatStorageModeError =
+  (function () {
+    "use strict";
+
+    MnFormatStorageModeError.annotations = [
+      new ng.core.Pipe({
+        name: "mnFormatStorageModeError"
+      })
+    ];
+
+    MnFormatStorageModeError.prototype.transform = transform;
+
+    return MnFormatStorageModeError;
+
+    function MnFormatStorageModeError() {
+    }
+
+    function transform(error) {
+      if (!error) {
+        return;
+      }
+      var errorCode =
+          error.indexOf("Storage mode cannot be set to") > -1 ? 1 :
+          error.indexOf("storageMode must be one of") > -1 ? 2 :
+          0;
+      switch (errorCode) {
+      case 1:
+        return "please choose another index storage mode";
+      case 2:
+        return "please choose an index storage mode";
+      default:
+        return error;
+      }
+    }
+  })();
 
 var mn = mn || {};
 mn.modules = mn.modules || {};
@@ -139,11 +177,13 @@ mn.modules.MnPipesModule =
     MnPipesModule.annotations = [
       new ng.core.NgModule({
         declarations: [
+          mn.pipes.MnFormatStorageModeError,
           mn.pipes.MnParseVersion,
           mn.pipes.MnPrettyVersion,
           mn.pipes.MnFormatProgressMessage
         ],
         exports: [
+          mn.pipes.MnFormatStorageModeError,
           mn.pipes.MnParseVersion,
           mn.pipes.MnPrettyVersion,
           mn.pipes.MnFormatProgressMessage
