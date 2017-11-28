@@ -67,6 +67,13 @@
         neededProperties = neededProperties.concat(["maxConcurrentReps", "workerProcesses"]);
       }
       if (mnPools.export.isEnterprise &&
+          mnPoolDefault.export.goxdcrEnabled &&
+          settings.type !== "capi" &&
+          mnPoolDefault.export.compat.atLeast55
+         ) {
+        neededProperties.push("enableCompression");
+      }
+      if (mnPools.export.isEnterprise &&
           mnPoolDefault.export.compat.atLeast50 &&
           mnPoolDefault.export.goxdcrEnabled &&
           settings.type === "xmem"

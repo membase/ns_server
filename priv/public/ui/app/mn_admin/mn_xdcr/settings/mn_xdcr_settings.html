@@ -12,6 +12,28 @@
       {{xdcrSettingsCtl.errors.maxConcurrentReps}}
     </div>
   </div>
+
+  <div class="formrow"
+       ng-show="xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled &&
+                xdcrSettingsCtl.mnPools.isEnterprise &&
+                xdcrSettingsCtl.settings.type !== 'capi' &&
+                xdcrSettingsCtl.mnPoolDefault.compat.atLeast55">
+    <label for="for-xdcr-compression">
+      XDCR Compression Type
+    </label>
+    <select
+       id="for-xdcr-compression"
+       ng-model="xdcrSettingsCtl.settings.compressionType">
+      <option value="None">None</option>
+      <option value="Snappy">Snappy</option>
+    </select>
+    <div
+       class="error error-field"
+       ng-show="xdcrSettingsCtl.errors.compressionType">
+      {{xdcrSettingsCtl.errors.compressionType}}
+    </div>
+  </div>
+
   <div
      class="formrow"
      ng-show="!xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled">
