@@ -35,7 +35,6 @@ mn.helper.httpErrorScenario = (function () {
   return function (obs) {
     return obs
       .map(function (rv) {
-        console.log(rv)
         if (rv instanceof ng.common.http.HttpErrorResponse) {
           return rv;
         } else if (mn.helper.isJson(rv)) {
@@ -99,6 +98,66 @@ mn.helper.isJson = (function () {
   }
 })();
 
+mn.helper.MnPostGroupHttp = (function () {
+
+  MnPostGroupHttp.prototype.post = post;
+  MnPostGroupHttp.prototype.addSuccess = addSuccess;
+  MnPostGroupHttp.prototype.addLoading = addLoading;
+  MnPostGroupHttp.prototype.clearErrors = clearErrors;
+  MnPostGroupHttp.prototype.getHttpGroupStreams = getHttpGroupStreams;
+
+  return MnPostGroupHttp;
+
+  function MnPostGroupHttp(httpMap) {
+    this.request = new Rx.Subject();
+    this.httpMap = httpMap;
+  }
+
+  function clearErrors() {
+    _.forEach(this.httpMap, function (value, key) {
+      value.clearError();
+    });
+  }
+
+  function addSuccess() {
+    this.success =
+      Rx.Observable
+      .zip
+      .apply(null, this.getHttpGroupStreams("response"))
+      .filter(function (responses) {
+        return !_.find(responses, function (resp) {
+          return resp instanceof ng.common.http.HttpErrorResponse;
+        });
+      });
+    return this;
+  }
+
+  function post(data) {
+    this.request.next();
+    _.forEach(this.httpMap, function (value, key) {
+      value.post(data[key]);
+    });
+  }
+
+  function getHttpGroupStreams(stream) {
+    return _.reduce(this.httpMap, function (result, value, key) {
+      result.push(value[stream]);
+      return result;
+    }, []);
+  }
+
+  function addLoading() {
+    this.loading =
+      Rx.Observable
+      .zip
+      .apply(null, this.getHttpGroupStreams("response"))
+      .mapTo(false)
+      .merge(this.request.mapTo(true));
+    return this;
+  }
+
+})();
+
 mn.helper.MnPostHttp = (function () {
 
   MnPostHttp.prototype.addResponse = addResponse;
@@ -124,12 +183,15 @@ mn.helper.MnPostHttp = (function () {
   function addResponse(call) {
     this.response = this._dataSubject.switchMap(function (data) {
       return call(data).catch(mn.helper.errorToStream);
-    }).share();
+    }).shareReplay(1);
     return this;
   }
 
   function addError(modify) {
-    var error = this.response.let(mn.helper.httpErrorScenario).merge(this._errorSubject);
+    var error =
+        this.response
+        .let(mn.helper.httpErrorScenario)
+        .merge(this._errorSubject);
     if (modify) {
       error = error.let(modify);
     }
@@ -138,11 +200,17 @@ mn.helper.MnPostHttp = (function () {
   }
 
   function addLoading() {
-    this.loading = this._loadingSubject.merge(this.response.mapTo(false));
+    this.loading =
+      this._loadingSubject
+      .merge(this.response.mapTo(false));
+
+    return this;
   }
 
   function addSuccess(modify) {
-    var success = this.response.let(mn.helper.httpSuccessScenario);
+    var success =
+        this.response
+        .let(mn.helper.httpSuccessScenario);
     if (modify) {
       success = success.let(modify);
     }
@@ -179,7 +247,6 @@ mn.helper.MnHttpEncoder = (function (_super) {
   }
 
   function encodeValue(v) {
-    console.log(v)
     return encodeURIComponent(this.serializeValue(v));
   }
 
