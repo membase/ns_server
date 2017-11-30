@@ -85,7 +85,8 @@ mn.modules.MnWizard =
           mn.components.MnWelcome,
           mn.components.MnNodeStorageConfig,
           mn.components.MnServicesConfig,
-          mn.components.MnStorageMode
+          mn.components.MnStorageMode,
+          mn.components.MnJoinCluster
         ],
         imports: [
           ng.platformBrowser.BrowserModule,
@@ -104,6 +105,9 @@ mn.modules.MnWizard =
             }, {
               name: "app.wizard.newCluster",
               component: mn.components.MnNewCluster
+            }, {
+              name: "app.wizard.joinCluster",
+              component: mn.components.MnJoinCluster
             }, {
               name: "app.wizard.termsAndConditions",
               component: mn.components.MnTermsAndConditions
