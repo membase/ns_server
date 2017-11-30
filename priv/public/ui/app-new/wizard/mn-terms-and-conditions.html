@@ -89,7 +89,7 @@
                spellcheck="false"
                autocapitalize="off"
                id="init-join-community-firstname"
-               formControlName="email">
+               formControlName="firstname">
           </div>
 
           <div class="column width-6">
@@ -139,6 +139,7 @@
         <button
            type="button"
            class="outline tight"
+           (click)="finishWithDefaut()"
            title="All services enabled / Memory optimized for Couchbase / Default disk paths">
           Finish With Defaults
         </button>
