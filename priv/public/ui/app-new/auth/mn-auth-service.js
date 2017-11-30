@@ -21,36 +21,14 @@ mn.services.MnAuth = (function () {
   function MnAuthService(http) {
     this.http = http;
     this.stream = {};
-    this.stream.doLogin = new Rx.Subject();
-    this.stream.doLogout = new Rx.Subject();
 
-    this.stream.loginResult =
-      this.stream
-      .doLogin
-      .switchMap(this.login.bind(this))
-      .share();
+    this.stream.loginHttp =
+      new mn.helper.MnPostHttp(this.login.bind(this))
+      .addSuccess()
+      .addError();
 
-    this.stream.loginError =
-      this.stream
-      .loginResult
-      .filter(function (rv) {
-        return rv instanceof ng.common.http.HttpErrorResponse;
-      })
-      .share();
-
-    this.stream.loginSuccess =
-      this.stream
-      .loginResult
-      .filter(function (rv) {
-        return !(rv instanceof ng.common.http.HttpErrorResponse);
-      })
-      .share();
-
-    this.stream.logoutResult =
-      this.stream
-      .doLogout
-      .switchMap(this.logout.bind(this))
-      .share();
+    this.stream.logoutHttp =
+      new mn.helper.MnPostHttp(this.logout.bind(this))
   }
 
   function whoami() {
@@ -59,10 +37,7 @@ mn.services.MnAuth = (function () {
 
   function login(user) {
     return this.http
-      .post('/uilogin', user || {}, {responseType: 'text'})
-      .catch(function (err) {
-        return Rx.Observable.of(err);
-      });
+      .post('/uilogin', user || {});
     // should be moved into app.admin alerts
     // we should say something like you are using cached vesrion, reload the tab
     // return that.mnPoolsService
@@ -78,10 +53,7 @@ mn.services.MnAuth = (function () {
   }
 
   function logout() {
-    return this.http.post("/uilogout", undefined, {responseType: 'text'})
-      .catch(function (err) {
-        return Rx.Observable.of(err);
-      });
+    return this.http.post("/uilogout");
     // .do(function () {
     // $uibModalStack.dismissAll("uilogout");
     // $state.go('app.auth');

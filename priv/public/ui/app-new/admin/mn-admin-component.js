@@ -51,7 +51,7 @@ mn.components.MnAdmin =
                               mnTasksService,
                               uiRouter
                              ) {
-      this.doLogout = mnAuthService.stream.doLogout;
+      this.logoutHttp = mnAuthService.stream.logoutHttp;
       this.destroy = new Rx.Subject();
       this.isProgressBarClosed = new Rx.BehaviorSubject(true);
       this.mnAdminService = mnAdminService;
@@ -134,7 +134,7 @@ mn.components.MnAdmin =
     }
 
     function onLogout() {
-      this.doLogout.next(true);
+      this.logoutHttp.post(true);
     }
 
     function runInternalSettingsDialog() {

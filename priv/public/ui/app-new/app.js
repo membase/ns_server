@@ -172,7 +172,7 @@
       .http401
       .merge(mnAuthService
              .stream
-             .logoutResult)
+             .logoutHttp.response)
       .subscribe(function () {
         uiRouter.stateService.go('app.auth', null, {location: false});
       });
