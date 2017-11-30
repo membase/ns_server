@@ -226,6 +226,25 @@ mn.helper.MnPostHttp = (function () {
 
 var mn = mn || {};
 mn.helper = mn.helper || {};
+mn.helper.MnDestroyableComponent = (function () {
+
+  MnDestroyableComponent.prototype.ngOnDestroy = ngOnDestroy;
+
+  return MnDestroyableComponent;
+
+  function MnDestroyableComponent() {
+    this.mnDestroy = new Rx.Subject();
+  }
+
+  function ngOnDestroy() {
+    this.mnDestroy.next();
+    this.mnDestroy.complete();
+  }
+
+})();
+
+var mn = mn || {};
+mn.helper = mn.helper || {};
 mn.helper.MnHttpEncoder = (function (_super) {
   "use strict";
 
