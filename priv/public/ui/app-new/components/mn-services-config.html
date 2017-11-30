@@ -64,7 +64,7 @@
        *ngIf="group.value.field"
        formGroupName="field">
       <input
-         [(mnFocus)]="!group.value.kv"
+         [(mnFocus)]="!group.value.field.kv"
          formControlName="index"
          type="number"
          min="0">
@@ -102,7 +102,7 @@
        *ngIf="group.value.field"
        formGroupName="field">
       <input
-         [(mnFocus)]="!group.value.index && !group.value.kv"
+         [(mnFocus)]="!group.value.field.index && !group.value.field.kv"
          formControlName="fts"
          type="number">
       <!-- ng-disabled="config.services && !config.services.model.fts || (rbac && !rbac.cluster.pools.write)" -->
@@ -174,7 +174,7 @@
   </div>
 
   <div
-     ng-if="config.calculateTotal"
+     *ngIf="group.value.field"
      class="text-small text-right nowrap margin-right-1">
     <strong>TOTAL QUOTA</strong> &nbsp; {{total | async}} MB
   </div>

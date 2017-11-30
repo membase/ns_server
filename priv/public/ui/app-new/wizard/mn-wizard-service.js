@@ -3,6 +3,16 @@ mn.services = mn.services || {};
 mn.services.MnWizard = (function () {
   "use strict";
 
+  var clusterStorage = new ng.forms.FormGroup({
+    hostname: new ng.forms.FormControl(null, [
+      ng.forms.Validators.required
+    ]),
+    storage: new ng.forms.FormGroup({
+      path: new ng.forms.FormControl(null),
+      index_path: new ng.forms.FormControl(null)
+    })
+  });
+
   var wizardForm = {
     newCluster: new ng.forms.FormGroup({
       clusterName: new ng.forms.FormControl(null, [
@@ -20,15 +30,7 @@ mn.services.MnWizard = (function () {
       })
     }),
     newClusterConfig: new ng.forms.FormGroup({
-      clusterStorage: new ng.forms.FormGroup({
-        hostname: new ng.forms.FormControl(null, [
-          ng.forms.Validators.required
-        ]),
-        storage: new ng.forms.FormGroup({
-          path: new ng.forms.FormControl(null),
-          index_path: new ng.forms.FormControl(null)
-        })
-      }),
+      clusterStorage: clusterStorage,
       services: new ng.forms.FormGroup({
         flag: new ng.forms.FormGroup({
           kv: new ng.forms.FormControl({value: true, disabled: true}),
@@ -58,18 +60,29 @@ mn.services.MnWizard = (function () {
         ])
       })
     }),
-    // joinCluster: {
-    //   clusterMember: {
-    //     hostname: "127.0.0.1",
-    //     username: "Administrator",
-    //     password: ''
-    //   },
-    //   services: {
-    //     disabled: {kv: false, index: false, n1ql: false, fts: false, eventing: false},
-    //     model: {kv: true, index: true, n1ql: true, fts: true, eventing: true}
-    //   },
-    //   firstTimeAddedServices: undefined
-    // }
+    joinCluster: new ng.forms.FormGroup({
+      clusterAdmin: new ng.forms.FormGroup({
+        hostname: new ng.forms.FormControl("127.0.0.1", [
+          ng.forms.Validators.required
+        ]),
+        user: new ng.forms.FormControl("Administrator", [
+          ng.forms.Validators.required
+        ]),
+        password: new ng.forms.FormControl('', [
+          ng.forms.Validators.required
+        ])
+      }),
+      services: new ng.forms.FormGroup({
+        flag: new ng.forms.FormGroup({
+          kv: new ng.forms.FormControl(true),
+          index: new ng.forms.FormControl(true),
+          fts: new ng.forms.FormControl(true),
+          n1ql: new ng.forms.FormControl(true),
+          eventing: new ng.forms.FormControl(true)
+        })
+      }),
+      clusterStorage: clusterStorage
+    })
   };
 
   MnWizardService.annotations = [
@@ -77,7 +90,8 @@ mn.services.MnWizard = (function () {
   ];
 
   MnWizardService.parameters = [
-    ng.common.http.HttpClient
+    ng.common.http.HttpClient,
+    mn.services.MnAdmin
   ];
 
 
@@ -92,14 +106,29 @@ mn.services.MnWizard = (function () {
   MnWizardService.prototype.postServices = postServices;
   MnWizardService.prototype.postStats = postStats;
   MnWizardService.prototype.postEmail = postEmail;
+  MnWizardService.prototype.postJoinCluster = postJoinCluster;
+  MnWizardService.prototype.getServicesValues = getServicesValues;
+  MnWizardService.prototype.getUserCreds = getUserCreds;
 
   return MnWizardService;
 
-  function MnWizardService(http) {
+  function MnWizardService(http, mnAdminService) {
     this.http = http;
     this.wizardForm = wizardForm;
 
     this.stream = {};
+    this.initialValues = {
+      hostname: null,
+      storageMode: null,
+      clusterStorage: null,
+      implementationVersion: null
+    };
+
+    this.stream.joinClusterHttp =
+      new mn.helper.MnPostHttp(this.postJoinCluster.bind(this))
+      .addSuccess()
+      .addLoading()
+      .addError();
 
     this.stream.diskStorageHttp =
       new mn.helper.MnPostHttp(this.postDiskStorage.bind(this))
@@ -133,6 +162,25 @@ mn.services.MnWizard = (function () {
       new mn.helper.MnPostHttp(this.postStats.bind(this))
       .addSuccess()
       .addError();
+
+    this.stream.groupHttp =
+      new mn.helper.MnPostGroupHttp({
+        poolsDefaultHttp: mnAdminService.stream.poolsDefaultHttp,
+        servicesHttp: this.stream.servicesHttp,
+        diskStorageHttp: this.stream.diskStorageHttp,
+        hostnameHttp: this.stream.hostnameHttp,
+        statsHttp: this.stream.statsHttp
+      })
+      .addLoading()
+      .addSuccess();
+
+    this.stream.secondGroupHttp =
+      new mn.helper.MnPostGroupHttp({
+        indexesHttp: this.stream.indexesHttp,
+        authHttp: this.stream.authHttp
+      })
+      .addLoading()
+      .addSuccess();
 
     this.stream.getSelfConfig =
       (new Rx.BehaviorSubject())
@@ -187,6 +235,26 @@ mn.services.MnWizard = (function () {
       this.stream
       .totalRAMMegs
       .map(mn.helper.calculateMaxMemorySize);
+  }
+
+  function getServicesValues(servicesGroup) {
+    return _.reduce(
+      ["kv", "index", "fts", "n1ql", "eventing"],
+      function (result, serviceName) {
+        var service = servicesGroup.get(serviceName);
+        if (service && service.value) {
+          result.push(serviceName);
+        }
+        return result;
+      }, []);
+  }
+
+  function getUserCreds() {
+    var data = _.clone(this.wizardForm.newCluster.value.user);
+    data.user = data.username
+    delete data.passwordVerify;
+    delete data.username;
+    return data;
   }
 
   function createLookUpStream(subject) {
@@ -266,10 +334,8 @@ mn.services.MnWizard = (function () {
     return this.http.jsonp('http://ph.couchbase.net/email?' + params.toString(), "callback");
   }
 
-  function postServices(services) {
-    return this.http.post('/node/controller/setupServices', {
-      services: services.join(",")
-    });
+  function postServices(data) {
+    return this.http.post('/node/controller/setupServices', data);
   }
 
   function postIndexes(data) {
@@ -278,7 +344,7 @@ mn.services.MnWizard = (function () {
 
   function postAuth(user) {
     var data = _.clone(user[0]);
-    delete data.verifyPassword;
+    delete data.passwordVerify;
     data.port = "SAME";
 
     return this.http.post('/settings/web', data, {
@@ -295,7 +361,6 @@ mn.services.MnWizard = (function () {
     });
   }
   function postJoinCluster(clusterMember) {
-    clusterMember.user = clusterMember.username;
     return this.http.post('/node/controller/doJoinCluster', clusterMember)
   }
 

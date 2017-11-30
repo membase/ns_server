@@ -61,9 +61,12 @@ mn.services.MnAdmin = (function () {
       .switchMap(this.getPoolsDefault.bind(this))
       .shareReplay(1);
 
-    this.stream.prettyVersion =
+    this.stream.implementationVersion =
       this.getVersion()
-      .pluck("implementationVersion")
+      .pluck("implementationVersion");
+
+    this.stream.prettyVersion =
+      this.stream.implementationVersion
       .map(mnPrettyVersionPipe.transform.bind(mnPrettyVersionPipe));
 
     this.stream.thisNode =
