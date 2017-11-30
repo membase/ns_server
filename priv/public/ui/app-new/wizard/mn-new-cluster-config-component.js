@@ -4,6 +4,8 @@ mn.components.MnNewClusterConfig =
   (function () {
     "use strict";
 
+    mn.helper.extends(MnNewClusterConfig, mn.helper.MnDestroyableComponent);
+
     MnNewClusterConfig.annotations = [
       new ng.core.Component({
         templateUrl: "app-new/wizard/mn-new-cluster-config.html"
@@ -14,10 +16,14 @@ mn.components.MnNewClusterConfig =
       mn.services.MnWizard,
       mn.services.MnAdmin,
       mn.services.MnPools,
-      mn.services.MnApp
+      mn.services.MnApp,
+      mn.services.MnAuth,
+      window['@uirouter/angular'].UIRouter
     ];
 
     MnNewClusterConfig.prototype.onSubmit = onSubmit;
+    MnNewClusterConfig.prototype.getWizardValues = getWizardValues;
+    MnNewClusterConfig.prototype.getPoolsDefaultValues = getPoolsDefaultValues;
 
     return MnNewClusterConfig;
 
@@ -26,82 +32,25 @@ mn.components.MnNewClusterConfig =
         return;
       }
 
-      clearErrors.bind(this)();
-
-      showLoading.bind(this)()
-        .subscribe(this.mnAppLoding.next.bind(this.mnAppLoding));
-
-      whenAllRequestSuccessed.bind(this)()
-        .subscribe(function (result) {
-          console.log(result)
-        });
-
-      this.poolsDefaultHttp.post([getPoolsDefaultValues.bind(this)(), false]);
-
-      this.servicesHttp.post(getServicesValues.bind(this)());
-
-      this.indexesHttp.post({
-        storageMode: this.wizardForm.newClusterConfig.get("storageMode").value
-      });
-
-      this.hostnameHttp.post(
-        this.wizardForm.newClusterConfig.get("clusterStorage.hostname").value);
-
-      this.diskStorageHttp.post(
-        this.wizardForm.newClusterConfig.get("clusterStorage.storage").value);
-
-      this.statsHttp.post(
-        this.wizardForm.newClusterConfig.get("enableStats").value);
-
-      if (this.wizardForm.termsAndConditions.get("register").value) {
-        this.emailHttp
-          .response
-          .first()
-          .subscribe(console.log);
-        this.prettyVersion.first().subscribe((function (version) {
-          this.emailHttp.post([
-            this.wizardForm.termsAndConditions.get("user").value, version]);
-        }).bind(this));
-      }
+      this.groupHttp.clearErrors();
+      this.groupHttp.post(this.getWizardValues());
     }
 
-    function clearErrors() {
-      this.poolsDefaultHttp.clearError();
-      this.diskStorageHttp.clearError();
-      this.hostnameHttp.clearError();
-      this.indexesHttp.clearError();
-      this.servicesHttp.clearError();
-      this.statsHttp.clearError();
-    }
-
-    function showLoading() {
-      return Rx.Observable
-        .zip
-        .apply(null, getHttpGroupStreams.bind(this)("response"))
-        .first()
-        .mapTo(false)
-        .startWith(true);
-    }
-
-    function whenAllRequestSuccessed() {
-      return Rx.Observable
-        .zip
-        .apply(null, getHttpGroupStreams.bind(this)("success"))
-        .first()
-        .takeUntil(Rx.Observable
-                   .merge
-                   .apply(null, getHttpGroupStreams.bind(this)("error")));
-    }
-
-    function getHttpGroupStreams(name) {
-      return [
-        this.poolsDefaultHttp[name],
-        this.diskStorageHttp[name],
-        this.hostnameHttp[name],
-        this.statsHttp[name],
-        this.indexesHttp[name],
-        this.servicesHttp[name]
-      ];
+    function getWizardValues() {
+      return {
+        poolsDefaultHttp: [
+          this.getPoolsDefaultValues(),
+          false
+        ],
+        servicesHttp: {
+          services: this.getServicesValues(
+            this.wizardForm.newClusterConfig.get("services.flag")
+          ).join(","),
+        },
+        diskStorageHttp:this.wizardForm.newClusterConfig.get("clusterStorage.storage").value,
+        hostnameHttp: this.wizardForm.newClusterConfig.get("clusterStorage.hostname").value,
+        statsHttp: this.wizardForm.newClusterConfig.get("enableStats").value
+      };
     }
 
     function getPoolsDefaultValues() {
@@ -123,23 +72,9 @@ mn.components.MnNewClusterConfig =
       return result;
     }
 
-    function getServicesValues() {
-      return _.reduce(
-        ["kv", "index", "fts", "n1ql", "eventing"],
-        getServicesValue.bind(this),
-        []
-      );
-    }
+    function MnNewClusterConfig(mnWizardService, mnAdminService, mnPoolsService, mnAppService, mnAuthService, uiRouter) {
+      mn.helper.MnDestroyableComponent.call(this);
 
-    function getServicesValue(result, serviceName) {
-      var service = this.wizardForm.newClusterConfig.get("services.flag." + serviceName);
-      if (service && service.value) {
-        result.push(serviceName);
-      }
-      return result;
-    }
-
-    function MnNewClusterConfig(mnWizardService, mnAdminService, mnPoolsService, mnAppService) {
       this.focusField = true;
 
       this.wizardForm = mnWizardService.wizardForm;
@@ -148,22 +83,59 @@ mn.components.MnNewClusterConfig =
 
       this.newClusterConfigForm = mnWizardService.wizardForm.newClusterConfig;
 
-      this.prettyVersion = mnAdminService.stream.prettyVersion;
-
-      this.poolsDefaultHttp = mnAdminService.stream.poolsDefaultHttp;
-      this.hostnameHttp = mnWizardService.stream.hostnameHttp;
-      this.diskStorageHttp = mnWizardService.stream.diskStorageHttp;
-      this.indexesHttp = mnWizardService.stream.indexesHttp;
-      this.servicesHttp = mnWizardService.stream.servicesHttp;
-      this.statsHttp = mnWizardService.stream.statsHttp;
-      this.emailHttp = mnWizardService.stream.emailHttp;
+      this.getServicesValues = mnWizardService.getServicesValues;
 
       this.totalRAMMegs = mnWizardService.stream.totalRAMMegs;
       this.maxRAMMegs = mnWizardService.stream.maxRAMMegs;
 
+      this.servicesHttp = mnWizardService.stream.servicesHttp;
+      this.groupHttp = mnWizardService.stream.groupHttp;
+      this.initialValues = mnWizardService.initialValues;
+
       this.isButtonDisabled =
-        this.poolsDefaultHttp.error.map(function (error) {
+        mnAdminService.stream.poolsDefaultHttp
+        .error
+        .map(function (error) {
           return error && !_.isEmpty(error.errors);
+        });
+
+      mnWizardService.stream.groupHttp
+        .loading
+        .merge(mnWizardService.stream.secondGroupHttp.loading)
+        .takeUntil(this.mnDestroy)
+        .subscribe(this.mnAppLoding.next.bind(this.mnAppLoding));
+
+      mnWizardService.stream.groupHttp
+        .success
+        .takeUntil(this.mnDestroy)
+        .subscribe(function (result) {
+          mnWizardService.stream.secondGroupHttp.post({
+            indexesHttp: {
+              storageMode: mnWizardService.wizardForm.newClusterConfig.get("storageMode").value
+            },
+            authHttp: [mnWizardService.wizardForm.newCluster.value.user, false]
+          });
+        });
+
+      mnWizardService.stream.secondGroupHttp
+        .success
+        .takeUntil(this.mnDestroy)
+        .subscribe(function () {
+          mnAuthService.stream.loginHttp.post(mnWizardService.getUserCreds());
+        })
+
+      mnAuthService.stream.loginHttp
+        .success
+        .takeUntil(this.mnDestroy)
+        .subscribe(function () {
+          if (mnWizardService.wizardForm.termsAndConditions.get("register").value) {
+            mnWizardService.stream.emailHttp.response.first().subscribe();
+            mnWizardService.stream.emailHttp.post([
+              mnWizardService.wizardForm.termsAndConditions.get("user").value,
+              mnWizardService.initialValues.implementationVersion
+            ]);
+          }
+          uiRouter.urlRouter.sync();
         });
     }
   })();

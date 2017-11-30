@@ -38,7 +38,7 @@
   </div>
   <div
      class="error error-field"
-     *ngIf="(indexesHttp.error | async)?.storageMode">
-    {{(indexesHttp.error | async)?.storageMode | mnFormatStorageModeError}}
+     [hidden]="!(indexesHttp.error | async)?.errors?.storageMode">
+    {{(indexesHttp.error | async)?.errors?.storageMode | mnFormatStorageModeError}}
   </div>
 </div>
