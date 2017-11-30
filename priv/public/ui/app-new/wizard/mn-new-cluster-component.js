@@ -4,6 +4,8 @@ mn.components.MnNewCluster =
   (function () {
     "use strict";
 
+    mn.helper.extends(MnNewClusterComponent, mn.helper.MnDestroyableComponent);
+
     MnNewClusterComponent.annotations = [
       new ng.core.Component({
         templateUrl: "app-new/wizard/mn-new-cluster.html"
@@ -20,6 +22,8 @@ mn.components.MnNewCluster =
     return MnNewClusterComponent;
 
     function MnNewClusterComponent(mnWizardService, uiRouter) {
+      mn.helper.MnDestroyableComponent.call(this);
+
       this.focusField = true;
 
       this.authHttp = mnWizardService.stream.authHttp;
@@ -27,10 +31,9 @@ mn.components.MnNewCluster =
       this.newClusterForm.setValidators([mn.helper.validateEqual("user.password",
                                                                  "user.passwordVerify",
                                                                  "passwordMismatch")]);
-
       this.authHttp
         .success
-        .first()
+        .takeUntil(this.mnDestroy)
         .subscribe(onSuccess.bind(this));
 
       function onSuccess() {
