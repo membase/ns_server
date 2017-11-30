@@ -9,7 +9,8 @@ mn.components.MnServicesConfig =
         selector: "mn-services-config",
         templateUrl: "app-new/components/mn-services-config.html",
         inputs: [
-          "group"
+          "group",
+          "servicesOnly"
         ]
       })
     ];
@@ -27,6 +28,9 @@ mn.components.MnServicesConfig =
     return MnServicesConfig;
 
     function ngOnInit() {
+      if (this.servicesOnly) {
+        return
+      }
       this.total =
         this.group
         .valueChanges
