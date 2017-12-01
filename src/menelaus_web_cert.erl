@@ -164,6 +164,7 @@ handle_client_cert_auth_settings(Req) ->
 
 handle_client_cert_auth_settings_post(Req) ->
     menelaus_web:assert_is_enterprise(),
+    menelaus_web:assert_is_spock(),
     Params = Req:parse_post(),
     OldVal = ns_ssl_services_setup:client_cert_auth(),
     AccumulateChanges =
