@@ -47,8 +47,7 @@
 
 %% States
 -export([candidate/2,
-         master/2,
-         worker/2]).
+         master/2]).
 
 %%
 %% API
@@ -87,16 +86,9 @@ init([]) ->
             ale:info(?USER_LOGGER, "I'm the only node, so I'm the master.", []),
             {ok, master, start_master(#state{last_heard=Now, peers=P})};
         Peers when is_list(Peers) ->
-            case lists:member(node(), Peers) of
-                false ->
-                    %% We're a worker, but don't know who the master is yet
-                    ?log_debug("Starting as worker. Peers: ~p", [Peers]),
-                    {ok, worker, #state{last_heard=Now}};
-                true ->
-                    %% We're a candidate
-                    ?log_debug("Starting as candidate. Peers: ~p", [Peers]),
-                    {ok, candidate, #state{last_heard=Now, peers=Peers}}
-            end
+            %% We're a candidate
+            ?log_debug("Starting as candidate. Peers: ~p", [Peers]),
+            {ok, candidate, #state{last_heard=Now, peers=Peers}}
     end.
 
 maybe_invalidate_current_master() ->
@@ -248,12 +240,6 @@ handle_info(send_heartbeat, master, StateData) ->
     send_heartbeat_with_peers(ns_node_disco:nodes_wanted(), master, StateData1#state.peers),
     {next_state, master, StateData1};
 
-handle_info(send_heartbeat, worker, StateData) ->
-    misc:flush(send_heartbeat),
-    %% Workers don't send heartbeats, but it's simpler to just ignore
-    %% the timer than to turn it off.
-    {next_state, worker, StateData};
-
 handle_info({peers, Peers}, master, StateData) ->
     S = update_peers(StateData, Peers),
     case lists:member(node(), Peers) of
@@ -262,23 +248,17 @@ handle_info({peers, Peers}, master, StateData) ->
         false ->
             ?log_info("Master has been demoted. Peers = ~p", [Peers]),
             NewState = shutdown_master_sup(S),
-            {next_state, worker, NewState}
+            {next_state, candidate, NewState}
     end;
 
-handle_info({peers, Peers}, StateName, StateData) when
-      StateName == candidate; StateName == worker ->
+handle_info({peers, Peers}, candidate, StateData) ->
     S = update_peers(StateData, Peers),
     case Peers of
         [N] when N == node() ->
             ale:info(?USER_LOGGER, "I'm now the only node, so I'm the master.", []),
             {next_state, master, start_master(S)};
         _ ->
-            case lists:member(node(), Peers) of
-                true ->
-                    {next_state, candidate, S};
-                false ->
-                    {next_state, worker, S}
-            end
+            {next_state, candidate, S}
     end;
 
 handle_info(Info, StateName, StateData) ->
@@ -429,25 +409,6 @@ master(Event, State) ->
     ?log_warning("Got unexpected event ~p as master with state ~p",
                  [Event, State]),
     {next_state, master, State}.
-
-
-worker({heartbeat, NodeInfo, master, _H}, State) ->
-    Node = node_info_to_node(NodeInfo),
-
-    Now = time_compat:monotonic_time(),
-    case State#state.master of
-        Node ->
-            {next_state, worker, State#state{last_heard=Now}};
-        N ->
-            ?log_info("Saw master change from ~p to ~p", [N, Node]),
-            {next_state, worker, State#state{last_heard=Now, master=Node}}
-    end;
-
-worker(Event, State) ->
-    ?log_warning("Got unextected event ~p as worker with state ~p",
-                 [Event, State]),
-    {next_state, worker, State}.
-
 
 %%
 %% Internal functions
