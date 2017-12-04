@@ -32,5 +32,7 @@ init([]) ->
           child_specs()}}.
 
 child_specs() ->
-    [{mb_master, {mb_master, start_link, []},
+    [{leader_events, {gen_event, start_link, [{local, leader_events}]},
+      permanent, 1000, worker, dynamic},
+     {mb_master, {mb_master, start_link, []},
       permanent, infinity, supervisor, [mb_master]}].

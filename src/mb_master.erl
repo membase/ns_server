@@ -327,7 +327,8 @@ candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
                     ok;
                 false ->
                     ?log_info("Changing master from ~p to ~p",
-                              [OldMaster, NewMaster])
+                              [OldMaster, NewMaster]),
+                    announce_leader(NewMaster)
             end,
             {next_state, candidate, NewState}
     end;
@@ -368,6 +369,7 @@ master({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
                 true ->
                     ?log_info("Surrendering mastership to ~p", [Node]),
                     NewState = shutdown_master_sup(State),
+                    announce_leader(Node),
                     {next_state, candidate, NewState#state{last_heard=Now,
                                                            master=Node}};
                 false ->
@@ -430,6 +432,7 @@ send_heartbeat_with_peers(Nodes, StateName, Peers) ->
 %% @private
 %% @doc Go into master state. Returns new state data.
 start_master(StateData) ->
+    announce_leader(node()),
     {ok, Pid} = mb_master_sup:start_link(),
     StateData#state{child=Pid, master=node()}.
 
@@ -463,6 +466,8 @@ shutdown_master_sup(State) ->
                     ok
             end
     end,
+
+    announce_leader(undefined),
     State#state{child = undefined,
                 master = undefined}.
 
@@ -510,6 +515,9 @@ strongly_lower_priority_node(NodeInfo) ->
 strongly_lower_priority_node({SelfVersion, _SelfNode},
                               {Version, _Node}) ->
     (Version < SelfVersion).
+
+announce_leader(Node) ->
+    gen_event:sync_notify(leader_events, {new_leader, Node}).
 
 -ifdef(EUNIT).
 
