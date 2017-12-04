@@ -226,19 +226,8 @@ handle_info(send_heartbeat, master, StateData) ->
             ?log_warning("Skipped ~p heartbeats~n", [Eaten])
     end,
 
-    Node = node(),
-
-    %% Make sure our name hasn't changed
-    StateData1 = case StateData#state.master of
-                     Node ->
-                         StateData;
-                     N1 ->
-                         ?log_debug("Node changed name from ~p to ~p. "
-                                    "Updating state.", [N1, Node]),
-                         StateData#state{master=node()}
-                 end,
-    send_heartbeat_with_peers(ns_node_disco:nodes_wanted(), master, StateData1#state.peers),
-    {next_state, master, StateData1};
+    send_heartbeat_with_peers(ns_node_disco:nodes_wanted(), master, StateData#state.peers),
+    {next_state, master, StateData};
 
 handle_info({peers, Peers}, master, StateData) ->
     S = update_peers(StateData, Peers),
