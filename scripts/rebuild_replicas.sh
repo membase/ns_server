@@ -71,7 +71,7 @@ Rebalance =
 
     SyncConfig(),
     ok = ns_orchestrator:ensure_janitor_run({bucket, Bucket}),
-    ok = gen_fsm:sync_send_event({global, ns_orchestrator},
+    ok = gen_fsm:sync_send_event({via, leader_registry, ns_orchestrator},
                                  {move_vbuckets, Bucket, [{VBucket, C}]}),
     error_logger:info_msg("Waiting for a fixup rebalance ~p to complete", [{VBucket, C}]),
     WaitForRebalance(WaitForRebalance),

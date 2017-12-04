@@ -66,7 +66,7 @@ handle_info(refresh, _Statuses, NodesWanted) ->
     %% where the mb_master ping pongs among two or more nodes. But,
     %% the node where orchestrator is registered will remain the same.
     %% Send our status to both the mb_master and the orchestrator.
-    Orchestrator = case global:whereis_name(ns_orchestrator) of
+    Orchestrator = case leader_registry:whereis_name(ns_orchestrator) of
                        undefined ->
                            [];
                        OC ->

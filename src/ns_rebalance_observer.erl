@@ -26,6 +26,7 @@
 -export([code_change/3, init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2]).
 
+-define(SERVER, {via, leader_registry, ?MODULE}).
 -define(DOCS_LEFT_REFRESH_INTERVAL, 5000).
 
 -record(replica_building_stats, {node :: node(),
@@ -46,11 +47,11 @@
                }).
 
 start_link(BucketsCount) ->
-    gen_server:start_link({global, ?MODULE}, ?MODULE, BucketsCount, []).
+    gen_server:start_link(?SERVER, ?MODULE, BucketsCount, []).
 
 get_detailed_progress() ->
     try
-        gen_server:call({global, ?MODULE}, get_detailed_progress, 10000)
+        gen_server:call(?SERVER, get_detailed_progress, 10000)
     catch
         exit:_Reason ->
             not_running

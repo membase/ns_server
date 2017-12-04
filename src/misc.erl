@@ -326,12 +326,12 @@ terminate_and_wait(Reason, Processes) ->
 -define(WAIT_FOR_NAME_SLEEP, 200).
 
 %% waits until given name is globally registered. I.e. until calling
-%% {global, Name} starts working
+%% {via, leader_registry, Name} starts working
 wait_for_global_name(Name) ->
     wait_for_global_name(Name, ns_config:get_timeout(wait_for_global_name, 20000)).
 
 wait_for_global_name(Name, TimeoutMillis) ->
-    wait_for_name({global, Name}, TimeoutMillis).
+    wait_for_name({via, leader_registry, Name}, TimeoutMillis).
 
 wait_for_local_name(Name, TimeoutMillis) ->
     wait_for_name({local, Name}, TimeoutMillis).
@@ -358,7 +358,10 @@ wait_for_name_loop(Name, TriesLeft) ->
 whereis_name({global, Name}) ->
     global:whereis_name(Name);
 whereis_name({local, Name}) ->
-    erlang:whereis(Name).
+    erlang:whereis(Name);
+whereis_name({via, Module, Name}) ->
+    Module:whereis_name(Name).
+
 
 %% Like proc_lib:start_link but allows to specify a node to spawn a process on.
 -spec start_link(node(), module(), atom(), [any()]) -> any() | {error, term()}.
@@ -712,7 +715,7 @@ comm_test() ->
 
 
 start_singleton(Module, Name, Args, Opts) ->
-    case Module:start_link({global, Name}, Name, Args, Opts) of
+    case Module:start_link({via, leader_registry, Name}, Name, Args, Opts) of
         {error, {already_started, Pid}} ->
             ?log_debug("start_singleton(~p, ~p, ~p, ~p):"
                        " monitoring ~p from ~p",
@@ -736,7 +739,7 @@ start_singleton(Module, Name, Args, Opts) ->
 -spec verify_name(atom()) ->
                          ok | no_return().
 verify_name(Name) ->
-    case global:whereis_name(Name) of
+    case leader_registry:whereis_name(Name) of
         Pid when Pid == self() ->
             ok;
         Pid ->

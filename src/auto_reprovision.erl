@@ -39,6 +39,7 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
+-define(SERVER, {via, leader_registry, ?MODULE}).
 -define(DEFAULT_MAX_NODES_SUPPORTED, 1).
 
 -record(state, {enabled = false :: boolean(),
@@ -73,7 +74,7 @@ get_cleanup_options() ->
 
 call(Msg) ->
     misc:wait_for_global_name(?MODULE),
-    gen_server:call({global, ?MODULE}, Msg, 5000).
+    gen_server:call(?SERVER, Msg, 5000).
 
 %% gen_server callbacks.
 init([]) ->

@@ -65,7 +65,7 @@
          ensure_janitor_run/1,
          start_graceful_failover/1]).
 
--define(SERVER, {global, ?MODULE}).
+-define(SERVER, {via, leader_registry, ?MODULE}).
 
 -define(REBALANCE_SUCCESSFUL, 1).
 -define(REBALANCE_FAILED, 2).

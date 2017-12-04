@@ -26,13 +26,18 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 init([]) ->
-    {ok, {{one_for_all,
+    {ok, {{rest_for_one,
            misc:get_env_default(max_r, 3),
            misc:get_env_default(max_t, 10)},
           child_specs()}}.
 
 child_specs() ->
-    [{leader_events, {gen_event, start_link, [{local, leader_events}]},
+    [
+     %% Note to the users of leader_events. The events are announced
+     %% synchronously, make sure not to block mb_master for too long.
+     {leader_events, {gen_event, start_link, [{local, leader_events}]},
       permanent, 1000, worker, dynamic},
+     {leader_registry_server, {leader_registry_server, start_link, []},
+      permanent, 1000, worker, [leader_registry_server]},
      {mb_master, {mb_master, start_link, []},
       permanent, infinity, supervisor, [mb_master]}].

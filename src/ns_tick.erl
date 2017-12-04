@@ -21,7 +21,7 @@
 
 -define(EVENT_MANAGER, ns_tick_event).
 -define(INTERVAL, 1000).
--define(SERVER, ?MODULE).
+-define(SERVER, {via, leader_registry, ?MODULE}).
 
 -export([start_link/0, time/0]).
 
@@ -39,7 +39,7 @@ start_link() ->
 
 
 time() ->
-    gen_server:call({global, ?MODULE}, time).
+    gen_server:call(?SERVER, time).
 
 
 %%

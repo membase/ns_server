@@ -65,6 +65,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-define(SERVER, {via, leader_registry, ?MODULE}).
+
 %% @doc Fired when a node was auto-failovered.
 -define(EVENT_NODE_AUTO_FAILOVERED, 1).
 %% @doc Fired when the maximum number of nodes or server groups that can be
@@ -166,11 +168,11 @@ reset_count_async() ->
 
 call(Call) ->
     misc:wait_for_global_name(?MODULE),
-    gen_server:call({global, ?MODULE}, Call).
+    gen_server:call(?SERVER, Call).
 
 cast(Call) ->
     misc:wait_for_global_name(?MODULE),
-    gen_server:cast({global, ?MODULE}, Call).
+    gen_server:cast(?SERVER, Call).
 
 -spec alert_key(Code::integer()) -> atom().
 alert_key(?EVENT_NODE_AUTO_FAILOVERED) -> auto_failover_node;
