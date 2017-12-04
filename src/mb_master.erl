@@ -212,9 +212,7 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
             %% Take over
             ale:info(?USER_LOGGER, "Haven't heard from a higher priority node or "
                      "a master, so I'm taking over.", []),
-            {ok, Pid} = mb_master_sup:start_link(),
-            {next_state, master,
-             StateData#state{child=Pid, master=node()}};
+            {next_state, master, start_master(StateData)};
         false ->
             {next_state, candidate, StateData}
     end;
