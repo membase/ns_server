@@ -368,7 +368,8 @@ master({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
                 true ->
                     ?log_info("Surrendering mastership to ~p", [Node]),
                     NewState = shutdown_master_sup(State),
-                    {next_state, candidate, NewState#state{last_heard=Now}};
+                    {next_state, candidate, NewState#state{last_heard=Now,
+                                                           master=Node}};
                 false ->
                     ?log_info("Got master heartbeat from ~p when I'm master",
                               [Node]),
