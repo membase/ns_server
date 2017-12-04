@@ -463,7 +463,8 @@ shutdown_master_sup(State) ->
                     ok
             end
     end,
-    State#state{child = undefined}.
+    State#state{child = undefined,
+                master = undefined}.
 
 
 %% Auxiliary functions
