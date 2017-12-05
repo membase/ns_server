@@ -381,6 +381,28 @@ sync_wait(Pid) ->
             {error, Reason}
     end.
 
+spawn_monitor(F) ->
+    Start = make_ref(),
+    Parent = self(),
+
+    Pid = proc_lib:spawn(
+            fun () ->
+                    MRef = erlang:monitor(process, Parent),
+
+                    receive
+                        {'DOWN', MRef, process, Parent, Reason} ->
+                            exit(Reason);
+                        Start ->
+                            erlang:demonitor(MRef, [flush]),
+                            F()
+                    end
+            end),
+
+    MRef = erlang:monitor(process, Pid),
+    Pid ! Start,
+
+    {Pid, MRef}.
+
 poll_for_condition_rec(Condition, _Sleep, 0) ->
     case Condition() of
         false -> timeout;
