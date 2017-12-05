@@ -36,9 +36,9 @@ start(Fun, Opts) ->
     SpawnFun =
         case proplists:get_value(monitor, Opts, false) of
             true ->
-                fun spawn_monitor/1;
+                fun misc:spawn_monitor/1;
             false ->
-                fun spawn/1
+                fun proc_lib:spawn/1
         end,
 
     SpawnFun(
