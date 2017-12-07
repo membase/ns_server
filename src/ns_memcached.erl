@@ -205,13 +205,18 @@ do_worker_init(State) ->
 worker_loop(Parent, #state{sock = Sock} = State, PrevCounterSlot) ->
     ok = inet:setopts(Sock, [{active, once}]),
     {Msg, From, StartTS, CounterSlot} = gen_server:call(Parent, {get_work, PrevCounterSlot}, infinity),
-    ok = inet:setopts(Sock, [{active, false}]),
+    case inet:setopts(Sock, [{active, false}]) of
+        %% Exit if socket is closed by memcached, which is possible if our
+        %% previous request was erroneous.
+        {error, einval} ->
+            exit(lost_connection);
+        ok ->
+            ok
+    end,
 
     receive
         {tcp, Sock, Data} ->
-            exit({extra_data_on_socket, Data});
-        {tcp_closed, Sock} ->
-            exit(lost_connection)
+            exit({extra_data_on_socket, Data})
     after 0 ->
             ok
     end,

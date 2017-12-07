@@ -18,7 +18,10 @@
         .then(function () {
           vm.error = "Document with given ID already exists";
         }, function (resp) {
-          if (resp.status >= 400 && resp.status < 500) {
+          if (resp.status == 400) {
+            // Expect the REST API to tell you why this was a bad request.
+            vm.error = resp.data && resp.data.reason;
+          } else if (resp.status > 400 && resp.status < 500) {
             return mnPromiseHelper(vm, mnDocumentsEditingService.createDocument(newDocumentParams, doc), $uibModalInstance)
               .catchErrors(function (data) {
                 vm.error = data && data.reason;

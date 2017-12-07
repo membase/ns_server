@@ -27,6 +27,8 @@
 %% TODO: handle tmp failures here. E.g. during warmup
 handle_mutation_rv(#mc_header{status = ?SUCCESS} = _Header, _Entry) ->
     ok;
+handle_mutation_rv(#mc_header{status = ?EINVAL} = _Header, Entry) ->
+    {error, Entry#mc_entry.data};
 handle_mutation_rv(#mc_header{status = ?NOT_MY_VBUCKET} = _Header, _Entry) ->
     throw(not_my_vbucket).
 
@@ -62,7 +64,9 @@ get_inner(Bucket, DocId, VBucket, RetriesLeft) ->
         ?KEY_ENOENT ->
             {not_found, missing};
         ?NOT_MY_VBUCKET ->
-            throw(not_my_vbucket)
+            throw(not_my_vbucket);
+        ?EINVAL ->
+            {error, Entry#mc_entry.data}
     end.
 
 continue_get(Bucket, DocId, VBucket, Entry, RetriesLeft) ->

@@ -179,10 +179,32 @@ do_get(BucketId, DocId) ->
             BinaryDocId,
             capi_crud, get, [BinaryBucketId, BinaryDocId, [ejson_body]]).
 
+couch_errorjson_to_context(ErrData) ->
+    ErrStruct = mochijson2:decode(ErrData),
+    {struct, JsonData} = ErrStruct,
+    {struct, Error} = proplists:get_value(<<"error">>, JsonData),
+    Context = proplists:get_value(<<"context">>, Error),
+    case Context of
+        undefined -> throw(invalid_json);
+        _ -> Context
+    end.
+
+construct_error_reply(Msg) ->
+    Reason = try
+                 couch_errorjson_to_context(Msg)
+             catch
+                 _:_ ->
+                    ?log_debug("Unknown error format ~p", [Msg]),
+                    "unknown error"
+             end,
+    {struct, [{error, <<"bad_request">>}, {reason, Reason}]}.
+
 handle_get(BucketId, DocId, Req) ->
     case do_get(BucketId, DocId) of
         {not_found, missing} ->
             menelaus_util:reply(Req, 404);
+        {error, Msg} ->
+            menelaus_util:reply_json(Req, construct_error_reply(Msg), 400);
         {ok, EJSON} ->
             menelaus_util:reply_json(Req, capi_utils:couch_doc_to_mochi_json(EJSON))
     end.
@@ -225,13 +247,21 @@ handle_post(BucketId, DocId, Req) ->
         {error, Msg} ->
             menelaus_util:reply_text(Req, Msg, 400);
         _ ->
-            ok = do_mutate(BucketId, DocId, Value, Flags),
-            menelaus_util:reply_json(Req, [])
+            case do_mutate(BucketId, DocId, Value, Flags) of
+                ok ->
+                    menelaus_util:reply_json(Req, []);
+                {error, Msg} ->
+                    menelaus_util:reply_json(Req, construct_error_reply(Msg), 400)
+            end
     end.
 
 handle_delete(BucketId, DocId, Req) ->
-    ok = do_mutate(BucketId, DocId, undefined, undefined),
-    menelaus_util:reply_json(Req, []).
+    case  do_mutate(BucketId, DocId, undefined, undefined) of
+        ok ->
+            menelaus_util:reply_json(Req, []);
+        {error, Msg} ->
+            menelaus_util:reply_json(Req, construct_error_reply(Msg), 400)
+    end.
 
 
 %% Attempt to forward the request to the correct server, first try normal
