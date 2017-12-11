@@ -94,7 +94,9 @@ get_failover_on_disk_issues(Config) ->
 config_upgrade_to_vulcan(Config) ->
     {value, Current} = ns_config:search(Config, auto_failover_cfg),
     [Val] = disable_failover_on_disk_issues(),
-    New = lists:keystore(?DATA_DISK_ISSUES_CONFIG_KEY, 1, Current, Val),
+    New0 = lists:keystore(?DATA_DISK_ISSUES_CONFIG_KEY, 1, Current, Val),
+    New = lists:keystore(failoverServerGroup, 1, New0,
+                         {failoverServerGroup, false}),
     [{set, auto_failover_cfg, New}].
 
 %% Internal Functions

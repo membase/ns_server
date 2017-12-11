@@ -19,7 +19,7 @@
 
 -include("ns_common.hrl").
 
--export([process_frame/4,
+-export([process_frame/5,
          init_state/1,
          service_failover_min_node_count/1]).
 
@@ -58,9 +58,16 @@
           logged_auto_failover_disabled = false :: boolean()
          }).
 
+-record(down_group_state, {
+          name :: term(),
+          down_counter = 0 :: non_neg_integer(),
+          state :: nil|nearly_down|failover
+         }).
+
 -record(state, {
           nodes_states :: [#node_state{}],
           services_state :: [#service_state{}],
+          down_server_group_state :: #down_group_state{},
           down_threshold :: pos_integer()
          }).
 
@@ -70,6 +77,7 @@ init_state(DownThreshold) ->
 init_state(DownThreshold, CompatVersion) ->
     #state{nodes_states = [],
            services_state = init_services_state(CompatVersion),
+           down_server_group_state = init_down_group_state(),
            down_threshold = DownThreshold - 1 - ?DOWN_GRACE_PERIOD}.
 
 init_services_state(CompatVersion) ->
@@ -79,6 +87,9 @@ init_services_state(CompatVersion) ->
                              mailed_too_small_cluster = [],
                              logged_auto_failover_disabled = false}
       end, ns_cluster_membership:supported_services_for_version(CompatVersion)).
+
+init_down_group_state() ->
+    #down_group_state{name = nil, down_counter = 0, state = nil}.
 
 fold_matching_nodes([], NodeStates, Fun, Acc) ->
     lists:foldl(fun (S, A) ->
@@ -189,7 +200,62 @@ get_down_states(DownNodes, State, NodesChanged) ->
                                       DownFun, []),
     lists:reverse(DownStates0).
 
+log_down_sg_state_change(OldState, Newstate) ->
+    case Newstate of
+        OldState ->
+            ok;
+        _ ->
+            %% TODO: log master activity down group state transitions.
+            ?log_debug("Transitioned down server group state from ~p to ~p",
+                       [OldState, Newstate])
+    end.
+
+get_down_sg_state(DownStates, DownSG, DownSgState) ->
+    NewDownSgState = get_down_sg_state_inner(DownStates, DownSG, DownSgState),
+    log_down_sg_state_change(DownSgState, NewDownSgState),
+    NewDownSgState.
+
+get_down_sg_state_inner(_, [], _) ->
+    init_down_group_state();
+get_down_sg_state_inner(DownStates, DownSG, DownSgState) ->
+    Pred =
+        fun (#node_state{state = nearly_down}) -> true;
+            (#node_state{state = failover}) -> true;
+            (_) -> false
+        end,
+    case lists:all(Pred, DownStates) of
+        true ->
+            process_group_down_state(DownSG, DownSgState);
+        false ->
+            init_down_group_state()
+    end.
+
+process_group_down_state(DownSG,
+                         #down_group_state{name = PrevSG, down_counter = Ctr,
+                                           state = State} = DownSGState) ->
+    case DownSG of
+        PrevSG ->
+            case State of
+                nearly_down ->
+                    NewCtr = Ctr + 1,
+                    case NewCtr >= ?DOWN_GRACE_PERIOD of
+                        true ->
+                            DownSGState#down_group_state{state = failover};
+                        false ->
+                            DownSGState#down_group_state{down_counter = NewCtr}
+                    end;
+                failover ->
+                    DownSGState
+            end;
+        _ ->
+            #down_group_state{name = DownSG, down_counter = 0,
+                              state = nearly_down}
+    end.
+
+%% TODO - temp to make eunit happy. Update eunit tests.
 process_frame(Nodes, DownNodes, State, SvcConfig) ->
+    process_frame(Nodes, DownNodes, State, SvcConfig, []).
+process_frame(Nodes, DownNodes, State, SvcConfig, DownSG) ->
     SortedNodes = ordsets:from_list(Nodes),
     SortedDownNodes = ordsets:from_list(DownNodes),
 
@@ -198,12 +264,15 @@ process_frame(Nodes, DownNodes, State, SvcConfig) ->
 
     UpStates = get_up_states(ordsets:subtract(SortedNodes, SortedDownNodes),
                              State#state.nodes_states),
-    DownStates = get_down_states(DownNodes, State, NodesChanged),
+    DownStates = get_down_states(SortedDownNodes, State, NodesChanged),
+    DownSGState = get_down_sg_state(DownStates, DownSG,
+                                    State#state.down_server_group_state),
 
-    {Actions, NewDownStates} = process_node_down(DownStates, State, SvcConfig),
+    {Actions, NewDownStates} = process_downs(DownStates, State, SvcConfig,
+                                             DownSGState),
 
     NodeStates = lists:umerge(UpStates, NewDownStates),
-    SvcS = update_services_state(Actions, State#state.services_state),
+    SvcS = update_multi_services_state(Actions, State#state.services_state),
 
     case Actions of
         [] ->
@@ -211,7 +280,35 @@ process_frame(Nodes, DownNodes, State, SvcConfig) ->
         _ ->
             ?log_debug("Decided on following actions: ~p", [Actions])
     end,
-    {Actions, State#state{nodes_states = NodeStates, services_state = SvcS}}.
+    {Actions, State#state{nodes_states = NodeStates, services_state = SvcS,
+                          down_server_group_state = DownSGState}}.
+
+process_downs(DownStates, State, SvcConfig, #down_group_state{name = nil}) ->
+    process_node_down(DownStates, State, SvcConfig);
+process_downs(DownStates, _, _, #down_group_state{state = nearly_down}) ->
+    {[], DownStates};
+process_downs(DownStates, State, SvcConfig,
+              #down_group_state{name = DownSG, state = failover}) ->
+    {process_group_down(DownSG, DownStates, State, SvcConfig), DownStates}.
+
+process_group_down(SG, DownStates, State, SvcConfig) ->
+    lists:foldl(
+      fun (#node_state{name = Node}, Actions) ->
+              case should_failover_node(State, Node, SvcConfig) of
+                  [{failover, Node}] ->
+                      case lists:keyfind(failover_group, 1, Actions) of
+                          false ->
+                              [{failover_group, SG, [Node]} | Actions];
+                          {failover_group, SG, Ns} ->
+                              lists:keystore(failover_group, 1, Actions,
+                                             {failover_group, SG, [Node | Ns]})
+                      end;
+                  [Action] ->
+                      [Action | Actions];
+                  [] ->
+                      Actions
+              end
+      end, [], DownStates).
 
 process_node_down([#node_state{state = failover, name = Node}] = DownStates,
                   State, SvcConfig) ->
@@ -241,9 +338,15 @@ process_multiple_nodes_down(DownStates) ->
           end, {[], []}, DownStates),
     {lists:reverse(Actions), lists:reverse(NewDownStates)}.
 
+update_multi_services_state([], ServicesState) ->
+    ServicesState;
+update_multi_services_state([Action | Rest], ServicesState) ->
+    NewServicesState = update_services_state(Action, ServicesState),
+    update_multi_services_state(Rest, NewServicesState).
+
 %% Update mailed_too_small_cluster state
 %% At any time, only one node can have mail_too_small Action.
-update_services_state([{mail_too_small, Svc, SvcNodes, _}], ServicesState) ->
+update_services_state({mail_too_small, Svc, SvcNodes, _}, ServicesState) ->
     MTSFun =
         fun (S) ->
                 S#service_state{mailed_too_small_cluster = SvcNodes}
@@ -252,7 +355,7 @@ update_services_state([{mail_too_small, Svc, SvcNodes, _}], ServicesState) ->
 
 %% Update mail_auto_failover_disabled state
 %% At any time, only one node can have mail_auto_failover_disabled Action.
-update_services_state([{mail_auto_failover_disabled, Svc, _}], ServicesState) ->
+update_services_state({mail_auto_failover_disabled, Svc, _}, ServicesState) ->
     LogAFOFun =
         fun (S) ->
                 S#service_state{logged_auto_failover_disabled = true}

@@ -61,6 +61,9 @@
 %% @doc Frequency (in milliseconds) at which to check for down nodes.
 -define(TICK_PERIOD, 1000).
 
+%% @doc Minimum number of active server groups needed for server group failover
+-define(MIN_ACTIVE_SERVER_GROUPS, 3).
+
 -record(state, {
           auto_failover_logic_state,
           %% Reference to the ns_tick_event. If it is nil, auto-failover is
@@ -267,9 +270,9 @@ handle_info(tick, State0) ->
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
 
     NodeStatuses = ns_doctor:get_nodes(),
-    DownNodes = get_down_nodes(NodeStatuses, NonPendingNodes, Config),
+    {DownNodes, DownSG} = get_down_nodes(NodeStatuses,
+                                         NonPendingNodes, Config),
     CurrentlyDown = [N || {N, _} <- DownNodes],
-
     NodeUUIDs = ns_config:get_node_uuid_map(Config),
 
     %% Extract service specfic information from the Config
@@ -279,7 +282,7 @@ handle_info(tick, State0) ->
         auto_failover_logic:process_frame(attach_node_uuids(NonPendingNodes, NodeUUIDs),
                                           attach_node_uuids(CurrentlyDown, NodeUUIDs),
                                           State#state.auto_failover_logic_state,
-                                          ServicesConfig),
+                                          ServicesConfig, DownSG),
     NewState = lists:foldl(
                  fun(Action, S) ->
                          process_action(Action, S, DownNodes, NodeStatuses)
@@ -318,18 +321,6 @@ process_action({mail_too_small, Service, SvcNodes, {Node, _UUID}}, S, _, _) ->
                length(SvcNodes),
                auto_failover_logic:service_failover_min_node_count(Service) + 1]),
     S;
-process_action({_, {Node, _UUID}}, #state{count = 1} = S, _, _) ->
-    case should_report(#state.reported_max_reached, S) of
-        true ->
-            ?user_log(?EVENT_MAX_REACHED,
-                      "Could not auto-failover more nodes (~p). "
-                      "Maximum number of nodes that will be "
-                      "automatically failovered (1) is reached.",
-                      [Node]),
-            note_reported(#state.reported_max_reached, S);
-        false ->
-            S
-    end;
 process_action({mail_down_warning, {Node, _UUID}}, S, _, _) ->
     ?user_log(?EVENT_OTHER_NODES_DOWN,
               "Could not auto-failover node (~p). "
@@ -342,7 +333,56 @@ process_action({mail_auto_failover_disabled, Service, {Node, _}}, S, _, _) ->
               "Auto-failover for ~s service is disabled.",
               [Node, ns_cluster_membership:user_friendly_service_name(Service)]),
     S;
+process_action({_, {Node, _UUID}}, #state{count = 1} = S, _, _) ->
+    case should_report(#state.reported_max_reached, S) of
+        true ->
+            ?user_log(?EVENT_MAX_REACHED,
+                      "Could not auto-failover more nodes (~p). "
+                      "Maximum number of nodes that will be "
+                      "automatically failovered (1) is reached.",
+                      [Node]),
+            note_reported(#state.reported_max_reached, S);
+        false ->
+            S
+    end;
+process_action({failover_group, SG, Nodes0}, #state{count = 1} = S, _, _) ->
+    case should_report(#state.reported_max_reached, S) of
+        true ->
+            Nodes = [N || {N, _} <- Nodes0],
+            ?user_log(?EVENT_MAX_REACHED,
+                      "Could not auto-failover server group (~p) "
+                      "with nodes (~p). Maximum number of auto-failover "
+                      "events has been reached.", [binary_to_list(SG), Nodes]),
+            note_reported(#state.reported_max_reached, S);
+        false ->
+            S
+    end;
+process_action({failover_group, SG, Nodes0}, OldState, DownNodes,
+               NodeStatuses) ->
+    Nodes = [N || {N, _} <- Nodes0],
+    %% TODO: Add new reported flag in the state for following message
+    %% so that this message is dispalyed only once for each unique
+    %% server group auto-failover event.
+    %% Otherwise it will spam the user log when failover of nodes in SG fails.
+    ale:info(?USER_LOGGER, "Attempting auto-failover of server group (~p) "
+             "with nodes (~p).", [binary_to_list(SG), Nodes]),
+    lists:foldl(
+      fun (Node, NewState) ->
+              %% Pass OldState instead of NewState for failover of each node.
+              %% This is so that any errors are reported for each of them
+              %% and also the count does not get incremented more than once.
+              NS = failover_node(Node, OldState, DownNodes, NodeStatuses),
+              case NS#state.count > OldState#state.count of
+                  true ->
+                      init_reported(NewState#state{count = NS#state.count});
+                  false ->
+                      update_reported_flags(NewState, NS)
+              end
+      end, OldState, Nodes);
 process_action({failover, {Node, _UUID}}, S, DownNodes, NodeStatuses) ->
+    failover_node(Node, S, DownNodes, NodeStatuses).
+
+failover_node(Node, S, DownNodes, NodeStatuses) ->
     case ns_orchestrator:try_autofailover(Node) of
         ok ->
             {_, DownInfo} = lists:keyfind(Node, 1, DownNodes),
@@ -400,17 +440,26 @@ get_tick_period() ->
         false ->
             ?HEART_BEAT_PERIOD
     end.
+
 %% Returns list of nodes that are down/unhealthy along with the reason
 %% why the node is considered unhealthy.
+%% Also, returns name of the down server group if all nodes in that group
+%% are down and all other requirements for server group auto-failover are
+%% satisfied.
 get_down_nodes(NodeStatuses, NonPendingNodes, Config) ->
     case cluster_compat_mode:is_cluster_50() of
         true ->
             %% Find down nodes using the new failure detector.
-            fastfo_down_nodes(NonPendingNodes);
+            DownNodesInfo0 = fastfo_down_nodes(NonPendingNodes),
+            DownSG = get_down_server_group(DownNodesInfo0, Config,
+                                           NonPendingNodes),
+            DownNodesInfo = [{N, Info} || {N, Info, _} <- DownNodesInfo0],
+            {DownNodesInfo, DownSG};
         false ->
             DownNodes = actual_down_nodes(NodeStatuses, NonPendingNodes,
                                           Config),
-            lists:zip(DownNodes, lists:duplicate(length(DownNodes), unknown))
+            {lists:zip(DownNodes, lists:duplicate(length(DownNodes), unknown)),
+             []}
     end.
 
 fastfo_down_nodes(NonPendingNodes) ->
@@ -425,7 +474,9 @@ fastfo_down_nodes(NonPendingNodes) ->
                           false ->
                               Acc;
                           {true, DownInfo} ->
-                              [{Node, DownInfo} | Acc]
+                              [{Node, DownInfo, false} | Acc];
+                          {true, DownInfo, AllMonitorsDown} ->
+                              [{Node, DownInfo, AllMonitorsDown} | Acc]
                       end
               end
       end, [], NonPendingNodes).
@@ -436,12 +487,17 @@ is_node_down(Node, {unhealthy, _}) ->
     %% This is currently true for all non-KV nodes.
     %% For such nodes, display ns-server down message as it is
     %% applicable during both conditions.
+    %%
+    %% The node is down because all monitors on the node report it as
+    %% unhealthy. This is one of the requirements for server group
+    %% auto-failover.
     case health_monitor:node_monitors(Node) of
         [ns_server] = Monitor ->
-            is_node_down(Monitor);
+            {true, Res} = is_node_down(Monitor),
+            {true, Res, true};
         _ ->
             {true, {"All monitors report node is unhealthy.",
-                    [unhealthy_node]}}
+                    [unhealthy_node]}, true}
     end;
 is_node_down(_, {{needs_attention, MonitorStatuses}, _}) ->
     %% Different monitors are reporting different status for the node.
@@ -471,6 +527,113 @@ is_node_down(MonitorStatuses) ->
             false;
         _ ->
             {true, Down}
+    end.
+
+%%
+%% Requirements for server group auto-failover:
+%%  - User has enabled auto-failover of server groups.
+%%  - There are 3 or more active server groups in the cluster
+%%    at the time of the failure.
+%%      - If there are only two server groups and there is a network
+%%      partition between them, then both groups may try to fail each other
+%%      over. This requirement prevents such a scenario.
+%%  - All nodes in the server group are down.
+%%  - All down nodes belong to the same server group.
+%%      - This prevents a network partition from causing two or more
+%%      partitions of a cluster from failing each other over.
+%%  - All monitors report the down nodes are unhealthy.
+%%      - When all monitors report all nodes in the server group are
+%%        down then it is taken as an indication of a correlated failure.
+%%      - Scenario #1: Say a server group has two nodes, node1 and node2.
+%%        node1 is reported as down by KV monitor due to say memcached issues
+%%        and node2 is reported as down by ns_server monitor.
+%%        This scenario does not meet the requirement for server group
+%%        failover.
+%%      - Scenario #2: Both ns-server & KV monitor on node1 and node2
+%%        report those nodes are down. This meets the requirement for
+%%        server group failover.
+%%
+get_down_server_group([], _, _) ->
+    [];
+get_down_server_group([_], _, _) ->
+    %% Only one node is down. Skip the checks for server group failover.
+    [];
+get_down_server_group(DownNodesInfo, Config, NonPendingNodes) ->
+    %% TODO: Temporary. Save the failoverServerGroup setting in
+    %% the auto_failover gen_server state to avoid this lookup.
+    {value, AFOConfig} = ns_config:search(Config, auto_failover_cfg),
+    case proplists:get_value(failoverServerGroup, AFOConfig, false) of
+        true ->
+            case length(DownNodesInfo) > (length(NonPendingNodes)/2) of
+                true ->
+                    DownNodes = [N || {N, _, _} <- DownNodesInfo],
+                    ?log_debug("Skipping checks for server group autofailover "
+                               "because majority of nodes are down. "
+                               "Down nodes:~p", [DownNodes]),
+                    [];
+                false ->
+                    get_down_server_group_inner(DownNodesInfo, Config)
+            end;
+        false ->
+            []
+    end.
+
+get_down_server_group_inner(DownNodesInfo, Config) ->
+    %% Do all monitors on all down nodes report them as unhealthy?
+    Pred = fun ({_, _, true}) -> true; (_) -> false end,
+    case lists:all(Pred, DownNodesInfo) of
+        true ->
+            case enough_active_server_groups(Config) of
+                false ->
+                    [];
+                SGs ->
+                    DownNodes = lists:sort([N || {N, _, _} <- DownNodesInfo]),
+                    case all_nodes_down_in_same_group(SGs, DownNodes) of
+                        false ->
+                            [];
+                        DownSG ->
+                            DownSG
+                    end
+            end;
+        false ->
+            []
+    end.
+
+enough_active_server_groups(Config) ->
+    ActiveSGs = active_server_groups(Config),
+    case length(ActiveSGs) < ?MIN_ACTIVE_SERVER_GROUPS of
+        true ->
+            false;
+        false ->
+            ActiveSGs
+    end.
+
+active_server_groups(Config) ->
+    {value, Groups} = ns_config:search(Config, server_groups),
+    AllSGs = [{proplists:get_value(name, SG),
+               proplists:get_value(nodes, SG)} || SG <- Groups],
+    lists:filtermap(
+      fun ({SG, Ns}) ->
+              NMs = ns_cluster_membership:get_nodes_cluster_membership(Ns),
+              ActiveNodes = [N || {N, active} <- NMs],
+              case ActiveNodes of
+                  [] ->
+                      false;
+                  _ ->
+                      {true, {SG, ActiveNodes}}
+              end
+      end, AllSGs).
+
+%% All nodes in the server group are down.
+%% All down nodes belong to the same server group.
+all_nodes_down_in_same_group([], _) ->
+    false;
+all_nodes_down_in_same_group([{SG, Nodes} | Rest], DownNodes) ->
+    case lists:sort(Nodes) =:= DownNodes of
+        true ->
+            SG;
+        false ->
+            all_nodes_down_in_same_group(Rest, DownNodes)
     end.
 
 %% @doc Returns a list of nodes that should be active, but are not running.
@@ -542,8 +705,23 @@ init_reported(State) ->
                 reported_rebalance_running=false,
                 reported_in_recovery=false}.
 
+update_reported_flags(NewState0, UpdatedState) ->
+    Flags = [#state.reported_autofailover_unsafe,
+             #state.reported_rebalance_running,
+             #state.reported_in_recovery],
+    lists:foldl(
+      fun (Flag, NewState) ->
+              case element(Flag, UpdatedState) of
+                  true ->
+                      setelement(Flag, NewState, true);
+                  false ->
+                      NewState
+              end
+      end, NewState0, Flags).
+
 update_reported_flags_by_actions(Actions, State) ->
-    case lists:keymember(failover, 1, Actions) of
+    case lists:keymember(failover, 1, Actions) orelse
+        lists:keymember(failover_group, 1, Actions) of
         false ->
             init_reported(State);
         true ->
