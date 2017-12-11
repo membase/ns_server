@@ -25,7 +25,10 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--record(state, {cbauth_info = undefined, rpc_processes = [], cert_version}).
+-record(state, {cbauth_info = undefined,
+                rpc_processes = [],
+                cert_version,
+                client_cert_auth_version}).
 
 -include("ns_common.hrl").
 
@@ -39,7 +42,8 @@ init([]) ->
     ns_pubsub:subscribe_link(user_storage_events, fun user_storage_event/1),
     ns_pubsub:subscribe_link(ssl_service_events, fun ssl_service_event/1),
     json_rpc_connection_sup:reannounce(),
-    {ok, #state{cert_version = new_cert_version()}}.
+    {ok, #state{cert_version = new_cert_version(),
+                client_cert_auth_version = client_cert_auth_version()}}.
 
 new_cert_version() ->
     crypto:rand_uniform(0, 16#100000000).
@@ -55,6 +59,8 @@ json_rpc_event({_, Label, _} = Event) ->
 node_disco_event(_Event) ->
     ?MODULE ! maybe_notify_cbauth.
 
+ns_config_event({client_cert_auth, _}) ->
+    ?MODULE ! client_cert_auth_event;
 ns_config_event(Event) ->
     case is_interesting(Event) of
         true ->
@@ -117,6 +123,10 @@ handle_cast({Msg, Label, Pid}, #state{rpc_processes = Processes,
 handle_info(ssl_service_event, State) ->
     self() ! maybe_notify_cbauth,
     {noreply, State#state{cert_version = new_cert_version()}};
+handle_info(client_cert_auth_event, State) ->
+    self() ! maybe_notify_cbauth,
+    {noreply, State#state{client_cert_auth_version =
+                              client_cert_auth_version()}};
 handle_info(maybe_notify_cbauth, State) ->
     misc:flush(maybe_notify_cbauth),
     {noreply, maybe_notify_cbauth(State)};
@@ -216,7 +226,8 @@ build_node_info(N, User, Config) ->
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
       {ports, Ports}] ++ Local}.
 
-build_auth_info(#state{cert_version = CertVersion}) ->
+build_auth_info(#state{cert_version = CertVersion,
+                       client_cert_auth_version = ClientCertAuthVersion}) ->
     Config = ns_config:get(),
     Nodes = lists:foldl(fun (Node, Acc) ->
                                 case build_node_info(Node, Config) of
@@ -227,21 +238,30 @@ build_auth_info(#state{cert_version = CertVersion}) ->
                                 end
                         end, [], ns_node_disco:nodes_wanted(Config)),
 
+    CcaState = proplists:get_value(state,
+                                   ns_ssl_services_setup:client_cert_auth()),
     Port = misc:node_rest_port(Config, node()),
     AuthCheckURL = misc:local_url(Port, "/_cbauth", []),
     PermissionCheckURL = misc:local_url(Port, "/_cbauth/checkPermission", []),
+    PermissionsVersion = menelaus_web_rbac:check_permissions_url_version(Config),
 
     [{nodes, Nodes},
      {authCheckURL, list_to_binary(AuthCheckURL)},
      {permissionCheckURL, list_to_binary(PermissionCheckURL)},
-     {permissionsVersion, menelaus_web_rbac:check_permissions_url_version(Config)},
+     {permissionsVersion, PermissionsVersion},
      {authVersion, auth_version(Config)},
-     {certVersion, CertVersion}].
+     {certVersion, CertVersion},
+     {clientCertAuthState, list_to_binary(CcaState)},
+     {clientCertAuthVersion, ClientCertAuthVersion}].
 
 auth_version(Config) ->
     B = term_to_binary(
           [ns_config_auth:get_creds(Config, admin),
            menelaus_users:get_auth_version()]),
+    base64:encode(crypto:hash(sha, B)).
+
+client_cert_auth_version() ->
+    B = term_to_binary(ns_ssl_services_setup:client_cert_auth()),
     base64:encode(crypto:hash(sha, B)).
 
 handle_cbauth_post(Req) ->
