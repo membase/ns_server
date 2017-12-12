@@ -23,6 +23,12 @@
       }
     });
 
+    angular.element($window).on("storage", function (storage) {
+      if (storage.key === "mnLogIn") {
+        $state.go("app.admin.overview");
+      }
+    });
+
     var originalOnerror = $window.onerror;
     $window.onerror = onError;
     function onError(message, url, lineNumber, columnNumber, exception) {

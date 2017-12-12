@@ -138,7 +138,7 @@
       to: "app.admin.**"
     }, function (trans) {
       var mnPools = trans.injector().get('mnPools');
-      return mnPools.get().then(function (pools) {
+      return mnPools.getFresh().then(function (pools) {
         return pools.isInitialized;
       });
     });
