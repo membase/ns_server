@@ -1437,11 +1437,10 @@ is_good_address(Address) ->
 is_good_address(Address, false) ->
     check_short_name(Address, ".");
 is_good_address(Address, true) ->
-    case inet:getaddr(Address, inet) of
-        {ok, _} ->
-            Msg = io_lib:format("~s seems to be an IPv4 address or a name that resolves to "
-                                "an IPv4 address. Please use an IPv6 address or a Fully Qualified "
-                                "Domain Name mapped to an IPv6 address.", [Address]),
+    case inet:getaddr(Address, inet6) of
+        {error, Err} ->
+            Msg = io_lib:format("~s doesn't look to refer to a valid IPv6 address as it doesn't "
+                                "resolve. (Posix error code: '~p')", [Address, Err]),
             {address_not_allowed, Msg};
         _ ->
             check_short_name(Address, ".:")
