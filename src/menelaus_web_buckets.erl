@@ -526,7 +526,7 @@ extract_bucket_props(BucketId, Props) ->
                                                                      drift_behind_threshold_ms,
                                                                      storage_mode]],
                            X =/= false],
-    case not cluster_compat_mode:is_cluster_spock() andalso
+    case not cluster_compat_mode:is_cluster_50() andalso
         BucketId =:= "default" of
         true ->
             lists:keyreplace(
