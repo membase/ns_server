@@ -520,11 +520,15 @@ extract_bucket_props(BucketId, Props) ->
                                                                      drift_behind_threshold_ms,
                                                                      storage_mode]],
                            X =/= false],
-    case BucketId of
-        "default" -> lists:keyreplace(auth_type, 1,
-                                      [{sasl_password, ""} | lists:keydelete(sasl_password, 1, ImportantProps)],
-                                      {auth_type, sasl});
-        _ -> ImportantProps
+    case not cluster_compat_mode:is_cluster_spock() andalso
+        BucketId =:= "default" of
+        true ->
+            lists:keyreplace(
+              auth_type, 1,
+              [{sasl_password, ""} | lists:keydelete(sasl_password, 1, ImportantProps)],
+              {auth_type, sasl});
+        _ ->
+            ImportantProps
     end.
 
 -record(bv_ctx, {
