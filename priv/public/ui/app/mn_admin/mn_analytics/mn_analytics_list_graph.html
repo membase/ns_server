@@ -2,7 +2,15 @@
   <div
      min-height="100px"
      mn-spinner="!analyticsListGraphCtl.selectedStat || analyticsCtl.viewLoading">
-    <h4 class="initialcaps width-12 text-center margin-top-1 margin-bottom-half">{{analyticsListGraphCtl.selectedStat.title}}&nbsp;
+    <h4 class="initialcaps width-12 text-center margin-top-1 margin-bottom-half">
+      <span ng-show="!analyticsCtl.isSpecificStats">
+        {{analyticsCtl.state.selectedStat.config.value}}
+      </span>
+      {{analyticsListGraphCtl.selectedStat.title}}
+      <span ng-show="analyticsCtl.state.selectedStat.column && !analyticsCtl.isSpecificStats">
+        ({{analyticsCtl.state.selectedStat.column}})
+      </span>
+      &nbsp;
       <span
          ng-show="analyticsListGraphCtl.selectedStat.visiblePeriod"
          class="text-smaller defaultcaps">

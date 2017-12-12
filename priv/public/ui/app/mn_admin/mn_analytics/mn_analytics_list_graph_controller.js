@@ -33,6 +33,8 @@
         return;
       }
 
+      selectedStat.column = $state.params.columnName;
+
       // notify plot of small graphs about selection
       selectedStat.config.isSelected = true;
 
@@ -51,6 +53,7 @@
           isBytes: selectedStat.config.isBytes
         }
       };
+      analyticsState.selectedStat = selectedStat;
       vm.selectedStat = selectedStat;
     }
   }

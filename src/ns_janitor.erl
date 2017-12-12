@@ -34,6 +34,10 @@ cleanup(Bucket, Options) ->
         not_present ->
             ok;
         {ok, BucketConfig} ->
+            %% temporary fix for possible consequence of MB-27160
+            %% to be removed in 5.1 and reimplemented in cluster config upgrade
+            ns_bucket:default_sasl_password_fixup(Bucket, BucketConfig),
+
             case ns_bucket:bucket_type(BucketConfig) of
                 membase ->
                     dcp = ns_bucket:replication_type(BucketConfig),

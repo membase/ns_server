@@ -299,7 +299,7 @@
         }
       })
       .state(parent + '.analytics.list', {
-        url: '?openedStatsBlock&openedSpecificStatsBlock',
+        url: '?openedStatsBlock&openedSpecificStatsBlock&columnName',
         params: {
           openedStatsBlock: {
             array: true,
@@ -314,7 +314,8 @@
           },
           transGraph: {
             dynamic: true
-          }
+          },
+          columnName: null
         },
         data: {
           title: "Statistics",

@@ -14,7 +14,13 @@
   <div class="row flex-center">
     <h4 class="initialcaps inline"
         ng-show="analyticsCtl.isSpecificStats"
-        >{{analyticsCtl.state.origTitle}} &nbsp;</h4>
+        >
+      {{analyticsCtl.state.selectedStat.config.value}}
+      {{analyticsCtl.state.origTitle}}
+      <span ng-show="analyticsCtl.state.selectedStat.column">
+        ({{analyticsCtl.state.selectedStat.column}})
+      </span>
+    </h4> &nbsp;
     <ui-select
        class="cbui-select"
        ng-model="analyticsCtl.currentBucket"
