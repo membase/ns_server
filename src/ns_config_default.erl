@@ -369,7 +369,7 @@ default() ->
         {ssl_minimum_protocol, {memcached_config_mgr, ssl_minimum_protocol, []}},
 
         {connection_idle_time, connection_idle_time},
-	{privilege_debug, privilege_debug},
+        {privilege_debug, privilege_debug},
 
         {breakpad,
          {[{enabled, breakpad_enabled},
