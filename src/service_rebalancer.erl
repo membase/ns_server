@@ -95,14 +95,13 @@ rebalance(Rebalancer, Service, Type,
           AllNodes, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback) ->
     erlang:register(worker_name(Service), self()),
 
-    ?log_debug("Rebalancing service ~p.~nKeepNodes: ~p~nEjectNodes: ~p~nDeltaNodes: ~p",
-               [Service, KeepNodes, EjectNodes, DeltaNodes]),
+    Id = couch_uuids:random(),
+    ?rebalance_info("Rebalancing service ~p with id ~p."
+                    "~nKeepNodes: ~p~nEjectNodes: ~p~nDeltaNodes: ~p",
+                    [Service, Id, KeepNodes, EjectNodes, DeltaNodes]),
 
     {ok, NodeInfos} = service_agent:get_node_infos(Service, AllNodes, Rebalancer),
     ?log_debug("Got node infos:~n~p", [NodeInfos]),
-
-    Id = couch_uuids:random(),
-    ?log_debug("Rebalance id is ~p", [Id]),
 
     {KeepNodesArg, EjectNodesArg} = build_rebalance_args(KeepNodes, EjectNodes,
                                                          DeltaNodes, NodeInfos),
