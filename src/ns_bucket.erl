@@ -85,7 +85,8 @@
          can_have_views/1,
          bucket_view_nodes/1,
          bucket_config_view_nodes/1,
-         config_upgrade_to_spock/1]).
+         config_upgrade_to_spock/1,
+         default_sasl_password_fixup/2]).
 
 
 %%%===================================================================
@@ -729,6 +730,23 @@ generate_sasl_password(Props) ->
     [{auth_type, sasl} |
      lists:keystore(sasl_password, 1, Props,
                     {sasl_password, generate_sasl_password()})].
+
+default_sasl_password_fixup("default", BucketConfig) ->
+    case cluster_compat_mode:is_cluster_spock() andalso
+        sasl_password(BucketConfig) =:= "" of
+        true ->
+            ?log_debug("Fixing sasl_password for default bucket"),
+            update_bucket_config(
+              "default",
+              fun (OldConfig) ->
+                      lists:keystore(sasl_password, 1, OldConfig,
+                                     {sasl_password, generate_sasl_password()})
+              end);
+        false ->
+            ok
+    end;
+default_sasl_password_fixup(_, _BucketConfig) ->
+    ok.
 
 create_bucket(BucketType, BucketName, NewConfig) ->
     case validate_bucket_config(BucketName, NewConfig) of
