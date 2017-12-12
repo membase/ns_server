@@ -16,6 +16,7 @@
 -module(cluster_compat_mode).
 
 -include("ns_common.hrl").
+-include_lib("eunit/include/eunit.hrl").
 
 -export([get_compat_version/0,
          get_compat_version/1,
@@ -75,7 +76,7 @@ min_supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    ?LATEST_VERSION_NUM ++ [1].
+    ?MASTER_ADVERTISED_VERSION.
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
@@ -345,3 +346,6 @@ have_non_dcp_buckets(Config) ->
         _ ->
             {true, BadBuckets}
     end.
+
+mb_master_advertised_version_test() ->
+    ?assert(mb_master_advertised_version() >= ?LATEST_VERSION_NUM ++ [0]).

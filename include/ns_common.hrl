@@ -227,6 +227,7 @@
 
 %% Points to latest release
 -define(LATEST_VERSION_NUM, ?VULCAN_VERSION_NUM).
+-define(MASTER_ADVERTISED_VERSION, [5, 1, 0]).
 
 -define(DEFAULT_UI_COMPAT_VERSION, ?VERSION_45).
 
