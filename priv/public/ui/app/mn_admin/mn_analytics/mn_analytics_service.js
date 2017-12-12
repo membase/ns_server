@@ -144,12 +144,23 @@
       var breakInterval = stats.interval * 2.5;
       var timeOffset = stats.clientDate - stats.serverDate;
       var zoomMillis = timeUnitToSeconds[params.$stateParams.zoom] * 1000;
+      var columnIndex = 0;
 
       angular.forEach(statDesc.blocks, function (block, index) {
         block.withTotal = block.columns && block.columns[block.columns.length - 1] === "Total";
         angular.forEach(block.stats, function (info) {
           var sample = samples[info.name];
           statsByName[info.name] = info;
+          if (block.columns) {
+            info.column = block.columns[columnIndex];
+            if (columnIndex === (block.columns.length - 1)) {
+              columnIndex = 0;
+            } else {
+              columnIndex ++;
+            }
+          } else {
+            info.column = null;
+          }
           info.config = {
             data: sample || [],
             breakInterval: breakInterval,
