@@ -337,12 +337,7 @@ default() ->
           {[{module, list_to_binary(
                        path_config:component_path(lib,
                                                   "memcached/stdin_term_handler.so"))},
-            {config, <<"">>}]},
-
-          {[{module, list_to_binary(
-                       path_config:component_path(lib, "memcached/file_logger.so"))},
-            {config, {"cyclesize=~B;sleeptime=~B;filename=~s/~s",
-                      [log_cyclesize, log_sleeptime, log_path, log_prefix]}}]}
+            {config, <<"">>}]}
          ]},
 
         {admin, {"~s", [admin_user]}},
@@ -351,7 +346,12 @@ default() ->
         {audit_file, {"~s", [audit_file]}},
         {rbac_file, {"~s", [rbac_file]}},
         {dedupe_nmvb_maps, dedupe_nmvb_maps},
-        {xattr_enabled, {memcached_config_mgr, is_enabled, [?VERSION_50]}}
+        {xattr_enabled, {memcached_config_mgr, is_enabled, [?VERSION_50]}},
+
+        {logger,
+         {[{filename, {"~s/~s", [log_path, log_prefix]}},
+           {cyclesize, log_cyclesize},
+           {sleeptime, log_sleeptime}]}}
        ]}},
 
      {memory_quota, KvQuota},
@@ -472,8 +472,11 @@ upgrade_config(Config) ->
             [{set, {node, node(), config_version}, {4,5}} |
              upgrade_config_from_4_1_1_to_4_5()];
         {value, {4,5}} ->
-            [{set, {node, node(), config_version}, CurrentVersion} |
+            [{set, {node, node(), config_version}, {5,0}} |
              upgrade_config_from_4_5_to_5_0(Config)];
+        {value, {5,0}} ->
+            [{set, {node, node(), config_version}, CurrentVersion} |
+             upgrade_config_from_5_0_to_vulcan()];
         V0 ->
             OldVersion =
                 case V0 of
@@ -585,6 +588,13 @@ do_upgrade_config_from_4_5_to_5_0(Config, DefaultConfig) ->
     [upgrade_sub_keys(memcached, [rbac_file], Config, DefaultConfig),
      upgrade_key(memcached_defaults, DefaultConfig),
      upgrade_key(memcached_config, DefaultConfig)].
+
+upgrade_config_from_5_0_to_vulcan() ->
+    DefaultConfig = default(),
+    do_upgrade_config_from_5_0_to_vulcan(DefaultConfig).
+
+do_upgrade_config_from_5_0_to_vulcan(DefaultConfig) ->
+    [upgrade_key(memcached_config, DefaultConfig)].
 
 encrypt_config_val(Val) ->
     {ok, Encrypted} = encryption_service:encrypt(term_to_binary(Val)),
@@ -738,6 +748,11 @@ upgrade_4_5_to_5_0_test() ->
                                                {new_field, enable}]},
                   {set, {node, _, memcached_config}, new_memcached_config}],
                  do_upgrade_config_from_4_5_to_5_0(Cfg, Default)).
+
+upgrade_5_0_to_vulcan_test() ->
+    Default = [{{node, node(), memcached_config}, new_memcached_config}],
+    ?assertMatch([{set, {node, _, memcached_config}, new_memcached_config}],
+                 do_upgrade_config_from_5_0_to_vulcan(Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
