@@ -348,4 +348,4 @@ have_non_dcp_buckets(Config) ->
     end.
 
 mb_master_advertised_version_test() ->
-    ?assert(mb_master_advertised_version() >= ?LATEST_VERSION_NUM ++ [0]).
+    true = mb_master_advertised_version() >= ?LATEST_VERSION_NUM ++ [0].
