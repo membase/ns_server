@@ -46,7 +46,11 @@
               return resp;
             }
           });
-        });
+        }).then(function (resp) {
+          localStorage.setItem("mnLogIn",
+                               Number(localStorage.getItem("mnLogIn") || "0") + 1);
+          return resp;
+        })
       });
     }
     function logout() {
