@@ -927,10 +927,10 @@ update_bucket_config(Bucket, Fun) ->
                    lists:keyreplace(configs, 1, List, {configs, NewBuckets})
            end).
 
-%% returns true iff bucket with given names is membase bucket.
 is_persistent(BucketName) ->
     {ok, BucketConfig} = get_bucket(BucketName),
-    bucket_type(BucketConfig) =:= membase.
+    bucket_type(BucketConfig) =:= membase andalso
+        storage_mode(BucketConfig) =:= couchstore.
 
 names_conflict(BucketNameA, BucketNameB) ->
     string:to_lower(BucketNameA) =:= string:to_lower(BucketNameB).
