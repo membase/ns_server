@@ -129,20 +129,19 @@
     }
     function onDocValueUpdate(json) {
       vm.state.errors = null;
-      vm.state.editorWarnings = {
-        documentLimitError: mnDocumentsEditingService.isJsonOverLimited(json)
-      };
 
-      if (!vm.state.editorWarnings.documentLimitError) {
-        try {
-          var parsedJSON = JSON.parse(json);
-        } catch (error) {
-          vm.state.errors = {
-            reason: error.message,
-            error: "Invalid document"
-          };
-          return false;
-        }
+      try {
+        var parsedJSON = JSON.parse(json);
+        vm.state.editorWarnings = {
+          documentLimitError: mnDocumentsEditingService.isJsonOverLimited(
+            JSON.stringify(parsedJSON))
+        };
+      } catch (error) {
+        vm.state.errors = {
+          reason: error.message,
+          error: "Invalid document"
+        };
+        return false;
       }
 
       return areThereWarnings() ? false : parsedJSON;
