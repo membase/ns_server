@@ -51,7 +51,7 @@
 -type dcp_conn_name() :: nonempty_string().
 -type dcp_conn_type() :: consumer | producer | notifier.
 
--type service() :: kv | index | n1ql | fts | example.
+-type service() :: kv | index | n1ql | fts | eventing | example.
 
 -define(MULTICALL_DEFAULT_TIMEOUT, 30000).
 
