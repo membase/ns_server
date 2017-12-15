@@ -222,9 +222,11 @@
 -define(VERSION_46, [4, 6]).
 
 -define(SPOCK_VERSION_NUM, [5, 0]).
+-define(VERSION_51, [5, 1]).
 
 %% Points to latest release
--define(LATEST_VERSION_NUM, ?SPOCK_VERSION_NUM).
+-define(LATEST_VERSION_NUM, ?VERSION_51).
+-define(MASTER_ADVERTISED_VERSION, [5, 1, 0]).
 
 -define(DEFAULT_UI_COMPAT_VERSION, ?VERSION_45).
 
