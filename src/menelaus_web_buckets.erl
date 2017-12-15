@@ -497,6 +497,7 @@ handle_bucket_info_streaming(_PoolId, Id, Req) ->
 handle_bucket_delete(_PoolId, BucketId, Req) ->
     menelaus_web_rbac:assert_no_users_upgrade(),
 
+    ?log_debug("Received request to delete bucket \"~s\"; will attempt to delete", [BucketId]),
     case ns_orchestrator:delete_bucket(BucketId) of
         ok ->
             ns_audit:delete_bucket(Req, BucketId),
