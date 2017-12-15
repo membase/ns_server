@@ -274,7 +274,7 @@ default() ->
                       _ -> undefined
                   end},
        {admin_user, "@ns_server"},
-       {other_users, ["@cbq-engine", "@projector", "@goxdcr", "@index", "@fts"]},
+       {other_users, ["@cbq-engine", "@projector", "@goxdcr", "@index", "@fts", "@eventing"]},
        {admin_pass, binary_to_list(couch_uuids:random())},
        {engines,
         [{membase,
@@ -476,7 +476,7 @@ upgrade_config(Config) ->
              upgrade_config_from_4_5_to_5_0(Config)];
         {value, {5,0}} ->
             [{set, {node, node(), config_version}, CurrentVersion} |
-             upgrade_config_from_5_0_to_vulcan()];
+             upgrade_config_from_5_0_to_vulcan(Config)];
         V0 ->
             OldVersion =
                 case V0 of
@@ -589,12 +589,13 @@ do_upgrade_config_from_4_5_to_5_0(Config, DefaultConfig) ->
      upgrade_key(memcached_defaults, DefaultConfig),
      upgrade_key(memcached_config, DefaultConfig)].
 
-upgrade_config_from_5_0_to_vulcan() ->
+upgrade_config_from_5_0_to_vulcan(Config) ->
     DefaultConfig = default(),
-    do_upgrade_config_from_5_0_to_vulcan(DefaultConfig).
+    do_upgrade_config_from_5_0_to_vulcan(Config, DefaultConfig).
 
-do_upgrade_config_from_5_0_to_vulcan(DefaultConfig) ->
-    [upgrade_key(memcached_config, DefaultConfig)].
+do_upgrade_config_from_5_0_to_vulcan(Config, DefaultConfig) ->
+    [upgrade_key(memcached_config, DefaultConfig),
+     upgrade_sub_keys(memcached, [other_users], Config, DefaultConfig)].
 
 encrypt_config_val(Val) ->
     {ok, Encrypted} = encryption_service:encrypt(term_to_binary(Val)),
@@ -750,9 +751,14 @@ upgrade_4_5_to_5_0_test() ->
                  do_upgrade_config_from_4_5_to_5_0(Cfg, Default)).
 
 upgrade_5_0_to_vulcan_test() ->
-    Default = [{{node, node(), memcached_config}, new_memcached_config}],
-    ?assertMatch([{set, {node, _, memcached_config}, new_memcached_config}],
-                 do_upgrade_config_from_5_0_to_vulcan(Default)).
+    Cfg = [[{some_key, some_value},
+            {{node, node(), memcached}, [{old, info}, {other_users, old}]},
+            {{node, node(), memcached_config}, old_memcached_config}]],
+    Default = [{{node, node(), memcached}, [{some, stuff}, {other_users, new}]},
+               {{node, node(), memcached_config}, new_memcached_config}],
+    ?assertMatch([{set, {node, _, memcached_config}, new_memcached_config},
+                  {set, {node, _, memcached}, [{old, info}, {other_users, new}]}],
+                 do_upgrade_config_from_5_0_to_vulcan(Cfg, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).
