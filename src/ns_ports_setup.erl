@@ -276,6 +276,7 @@ do_dynamic_children(normal, Config) ->
      maybe_create_ssl_proxy_spec(Config),
      fts_spec(Config),
      eventing_spec(Config),
+     cbas_spec(Config),
      example_service_spec(Config)].
 
 expand_specs(Specs, Config) ->
@@ -692,6 +693,56 @@ eventing_spec(Config) ->
             []
     end.
 
+cbas_spec(Config) ->
+    Cmd = find_executable("cbas"),
+    NodeUUID = ns_config:search(Config, {node, node(), uuid}, false),
+    case Cmd =/= false andalso
+        NodeUUID =/= false andalso
+        ns_cluster_membership:should_run_service(Config, cbas, node()) of
+        false ->
+            [];
+        _ ->
+            NsRestPort = misc:node_rest_port(Config, node()),
+            HttpPort = ns_config:search(Config, {node, node(), cbas_http_port}, 8095),
+            CCHttpPort = ns_config:search(Config, {node, node(), cbas_cc_http_port}, 9111),
+            AuthPort = ns_config:search(Config, {node, node(), cbas_auth_port}, 9119),
+            AdminPort = ns_config:search(Config, {node, node(), cbas_admin_port}, 9110),
+            DebugPort = ns_config:search(Config, {node, node(), cbas_debug_port}, -1),
+
+            {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
+
+            {ok, LogDir} = application:get_env(ns_server, error_logger_mf_dir),
+            {_, Host} = misc:node_name_host(node()),
+            HttpsOptions = case ns_config:search(Config, {node, node(), cbas_ssl_port}, undefined) of
+                            undefined ->
+                                [];
+                            Port ->
+                                ["-bindHttpsPort=" ++ integer_to_list(Port),
+                                 "-tlsCertFile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
+                                 "-tlsKeyFile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
+                        end,
+            MemoryQuota = 250,
+            Spec = {cbas, Cmd,
+                    [
+                     "-uuid=" ++ binary_to_list(NodeUUID),
+                     "-serverAddress=" ++ misc:localhost(),
+                     "-serverPort=" ++ integer_to_list(NsRestPort),
+                     "-bindHttpAddress=" ++ Host,
+                     "-bindHttpPort=" ++ integer_to_list(HttpPort),
+                     "-bindAdminPort=" ++ integer_to_list(AdminPort),
+                     "-dataDirs=" ++ filename:join(IdxDir, "@analytics"),
+                     "-cbasExecutable=" ++ Cmd,
+                     "-debugPort=" ++ integer_to_list(DebugPort),
+                     "-ccHttpPort=" ++ integer_to_list(CCHttpPort),
+                     "-memoryQuotaMb=" ++ integer_to_list(MemoryQuota),
+                     "-authPort=" ++ integer_to_list(AuthPort),
+                     "-logDir=" ++ LogDir
+                    ] ++ HttpsOptions,
+                    [via_goport, exit_status, stderr_to_stdout,
+                     {log, ?CBAS_LOG_FILENAME},
+                     {env, build_go_env_vars(Config, cbas)}]},
+            [Spec]
+    end.
 
 example_service_spec(Config) ->
     CacheCmd = find_executable("cache-service"),

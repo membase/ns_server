@@ -212,6 +212,48 @@ default() ->
           _ -> undefined
       end},
 
+     {{node, node(), cbas_http_port},
+      misc:get_env_default(cbas_http_port, 8095)},
+
+     {{node, node(), cbas_admin_port},
+      misc:get_env_default(cbas_admin_port, 9110)},
+
+     {{node, node(), cbas_cc_http_port},
+      misc:get_env_default(cbas_cc_http_port, 9111)},
+
+     {{node, node(), cbas_cc_cluster_port},
+      misc:get_env_default(cbas_cc_cluster_port, 9112)},
+
+     {{node, node(), cbas_cc_client_port},
+      misc:get_env_default(cbas_cc_client_port, 9113)},
+
+     {{node, node(), cbas_hyracks_console_port},
+      misc:get_env_default(cbas_hyracks_console_port, 9114)},
+
+     {{node, node(), cbas_cluster_port},
+      misc:get_env_default(cbas_cluster_port, 9115)},
+
+     {{node, node(), cbas_data_port},
+      misc:get_env_default(cbas_data_port, 9116)},
+
+     {{node, node(), cbas_result_port},
+      misc:get_env_default(cbas_result_port, 9117)},
+
+     {{node, node(), cbas_messaging_port},
+      misc:get_env_default(cbas_messaging_port, 9118)},
+
+     {{node, node(), cbas_debug_port},
+      misc:get_env_default(cbas_debug_port, -1)},
+
+     {{node, node(), cbas_auth_port},
+      misc:get_env_default(cbas_auth_port, 9119)},
+
+     {{node, node(), cbas_ssl_port},
+      case IsEnterprise of
+          true -> misc:get_env_default(cbas_ssl_port, 18095);
+          _ -> undefined
+      end},
+
      {{node, node(), eventing_http_port},
       misc:get_env_default(eventing_http_port, 8096)},
 
@@ -274,7 +316,7 @@ default() ->
                       _ -> undefined
                   end},
        {admin_user, "@ns_server"},
-       {other_users, ["@cbq-engine", "@projector", "@goxdcr", "@index", "@fts", "@eventing"]},
+       {other_users, ["@cbq-engine", "@projector", "@goxdcr", "@index", "@fts", "@eventing", "@cbas"]},
        {admin_pass, binary_to_list(couch_uuids:random())},
        {engines,
         [{membase,

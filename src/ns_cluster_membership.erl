@@ -233,12 +233,14 @@ services_by_version() ->
      {?VERSION_40, n1ql},
      {?VERSION_40, index},
      {?VERSION_45, fts},
+     {?VULCAN_VERSION_NUM, cbas},
      {?VULCAN_VERSION_NUM, eventing}] ++
         maybe_example_service().
 
 topology_aware_services_by_version() ->
     [{?VERSION_45, fts},
      {?VERSION_50, index},
+     {?VULCAN_VERSION_NUM, cbas},
      {?VULCAN_VERSION_NUM, eventing}] ++
         maybe_example_service().
 
@@ -380,5 +382,7 @@ user_friendly_service_name(n1ql) ->
     "query";
 user_friendly_service_name(fts) ->
     "full text search";
+user_friendly_service_name(cbas) ->
+    "analytics";
 user_friendly_service_name(Service) ->
     atom_to_list(Service).
