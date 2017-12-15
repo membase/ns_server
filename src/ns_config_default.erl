@@ -499,18 +499,34 @@ assert_no_tap_buckets(Config) ->
             misc:halt(1)
     end.
 
+upgrade_key(Key, DefaultConfig) ->
+    WholeKey = {node, node(), Key},
+    {value, Value} = ns_config:search([DefaultConfig], WholeKey),
+    {set, WholeKey, Value}.
+
+upgrade_sub_keys(Key, SubKeys, Config, DefaultConfig) ->
+    WholeKey = {node, node(), Key},
+    {value, DefaultVal} = ns_config:search([DefaultConfig], WholeKey),
+    {value, CurrentVal} = ns_config:search(Config, WholeKey),
+    {set, WholeKey, do_upgrade_sub_keys(SubKeys, CurrentVal, DefaultVal)}.
+
+do_upgrade_sub_keys(SubKeys, {Json}, {DefaultJson}) ->
+    {do_upgrade_sub_keys(SubKeys, Json, DefaultJson)};
+do_upgrade_sub_keys(SubKeys, Props, DefaultProps) ->
+    lists:foldl(
+      fun ({delete, SubKey}, Acc) ->
+              lists:keydelete(SubKey, 1, Acc);
+          (SubKey, Acc) ->
+              Val = {SubKey, _} = lists:keyfind(SubKey, 1, DefaultProps),
+              lists:keystore(SubKey, 1, Acc, Val)
+      end, Props, SubKeys).
+
 upgrade_config_from_3_0_to_3_0_2(Config) ->
     ?log_info("Upgrading config from 3.0 to 3.0.2"),
     DefaultConfig = default(),
     do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig).
 
 do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig) ->
-    McdKey = {node, node(), memcached},
-    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
-    {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
-    EnginesTuple = {engines, _} = lists:keyfind(engines, 1, DefaultMcdConfig),
-    NewMcdConfig = lists:keystore(engines, 1, CurrentMcdConfig, EnginesTuple),
-
     %% MB-12655: we 'upgrade' all per node keys of this node to include vclock.
     %%
     %% NOTE: that on brand new installations of 3.0+ we already force
@@ -523,7 +539,7 @@ do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig) ->
                               KN =/= config_version,
                               KN =/= memcached],
 
-    [{set, McdKey, NewMcdConfig} | PerNodeKeyTouchings].
+    [upgrade_sub_keys(memcached, [engines], Config, DefaultConfig) | PerNodeKeyTouchings].
 
 upgrade_config_from_3_0_2_to_3_1_5(Config) ->
     ?log_info("Upgrading config from 3.0.2 to 3.1.5"),
@@ -531,103 +547,44 @@ upgrade_config_from_3_0_2_to_3_1_5(Config) ->
     do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig).
 
 do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig) ->
-    MCDefaultsK = {node, node(), memcached_defaults},
-    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
-
-    JTKey = {node, node(), memcached_config},
-    {value, {DefaultJsonTemplateConfig}} = ns_config:search([DefaultConfig], JTKey),
-    DedupMaps = {dedupe_nmvb_maps, _} =
-        lists:keyfind(dedupe_nmvb_maps, 1, DefaultJsonTemplateConfig),
-    {value, {CurrentJsonTemplateConfig}} = ns_config:search(Config, JTKey),
-    NewJsonTemplateConfig =
-        lists:keystore(dedupe_nmvb_maps, 1, CurrentJsonTemplateConfig, DedupMaps),
-
-    [{set, MCDefaultsK, NewMCDefaults},
-     {set, JTKey, {NewJsonTemplateConfig}}].
+    [upgrade_key(memcached_defaults, DefaultConfig),
+     upgrade_sub_keys(memcached_config, [dedupe_nmvb_maps], Config, DefaultConfig)].
 
 upgrade_config_from_3_1_5_to_4_0(Config) ->
     ?log_info("Upgrading config from 3.1.5 to 4.0"),
     do_upgrade_config_from_3_1_5_to_4_0(Config, default()).
 
 do_upgrade_config_from_3_1_5_to_4_0(Config, DefaultConfig) ->
-    MCDefaultsK = {node, node(), memcached_defaults},
-    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
-
-    PortServersK = {node, node(), port_servers},
-    {value, NewPSDefaults} = ns_config:search([DefaultConfig], PortServersK),
-
-    McdKey = {node, node(), memcached},
-    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
-    AuditFileTupleMcd = {audit_file, _} = lists:keyfind(audit_file, 1, DefaultMcdConfig),
-    EnginesTuple = {engines, _} = lists:keyfind(engines, 1, DefaultMcdConfig),
-    ConfigPathTuple = {config_path, _} = lists:keyfind(config_path, 1, DefaultMcdConfig),
-
-    {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
-    NewMcdConfig0 = lists:keystore(audit_file, 1, CurrentMcdConfig, AuditFileTupleMcd),
-    NewMcdConfig1 = lists:keystore(engines, 1, NewMcdConfig0, EnginesTuple),
-    NewMcdConfig2 = lists:keystore(config_path, 1, NewMcdConfig1, ConfigPathTuple),
-    NewMcdConfig3 = lists:keydelete(verbosity, 1, NewMcdConfig2),
-
-    JTKey = {node, node(), memcached_config},
-    {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
-
-    [{set, MCDefaultsK, NewMCDefaults},
-     {set, PortServersK, NewPSDefaults},
-     {set, McdKey, NewMcdConfig3},
-     {set, JTKey, DefaultJsonTemplateConfig}].
+    [upgrade_key(memcached_defaults, DefaultConfig),
+     upgrade_key(port_servers, DefaultConfig),
+     upgrade_sub_keys(memcached, [audit_file, engines, config_path, {delete, verbosity}],
+                      Config, DefaultConfig),
+     upgrade_key(memcached_config, DefaultConfig)].
 
 upgrade_config_from_4_0_to_4_1_1(Config) ->
     ?log_info("Upgrading config from 4.0 to 4.1.1"),
     do_upgrade_config_from_4_0_to_4_1_1(Config, default()).
 
 do_upgrade_config_from_4_0_to_4_1_1(_Config, DefaultConfig) ->
-    MCDefaultsK = {node, node(), memcached_defaults},
-    {value, NewMCDefaults} = ns_config:search([DefaultConfig], MCDefaultsK),
-
-    JTKey = {node, node(), memcached_config},
-    {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
-    [{set, MCDefaultsK, NewMCDefaults},
-     {set, JTKey, DefaultJsonTemplateConfig}].
+    [upgrade_key(memcached_defaults, DefaultConfig),
+     upgrade_key(memcached_config, DefaultConfig)].
 
 upgrade_config_from_4_1_1_to_4_5() ->
     DefaultConfig = default(),
     do_upgrade_config_from_4_1_1_to_4_5(DefaultConfig).
 
 do_upgrade_config_from_4_1_1_to_4_5(DefaultConfig) ->
-    ConfKey = {node, node(), memcached_config},
-    {value, McdConfig} = ns_config:search([DefaultConfig], ConfKey),
-
-    DefaultsKey = {node, node(), memcached_defaults},
-    {value, McdDefaults} = ns_config:search([DefaultConfig], DefaultsKey),
-
-    CompactionDaemonKey = {node, node(), compaction_daemon},
-    {value, CompactionDaemonCfg} = ns_config:search([DefaultConfig], CompactionDaemonKey),
-
-    [{set, ConfKey, McdConfig},
-     {set, DefaultsKey, McdDefaults},
-     {set, CompactionDaemonKey, CompactionDaemonCfg}].
+    [upgrade_key(memcached_config, DefaultConfig),
+     upgrade_key(memcached_defaults, DefaultConfig),
+     upgrade_key(compaction_daemon, DefaultConfig)].
 
 upgrade_config_from_4_5_to_5_0(Config) ->
     do_upgrade_config_from_4_5_to_5_0(Config, default()).
 
 do_upgrade_config_from_4_5_to_5_0(Config, DefaultConfig) ->
-    McdKey = {node, node(), memcached},
-    {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
-    {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
-    RBACFileTupleMcd = {rbac_file, _} = lists:keyfind(rbac_file, 1, DefaultMcdConfig),
-
-    NewMcdConfig = lists:keystore(rbac_file, 1, CurrentMcdConfig, RBACFileTupleMcd),
-
-    DefaultsKey = {node, node(), memcached_defaults},
-    {value, McdDefaults} = ns_config:search([DefaultConfig], DefaultsKey),
-
-    JTKey = {node, node(), memcached_config},
-    {value, DefaultJsonTemplateConfig} = ns_config:search([DefaultConfig], JTKey),
-
-
-    [{set, McdKey, NewMcdConfig},
-     {set, DefaultsKey, McdDefaults},
-     {set, JTKey, DefaultJsonTemplateConfig}].
+    [upgrade_sub_keys(memcached, [rbac_file], Config, DefaultConfig),
+     upgrade_key(memcached_defaults, DefaultConfig),
+     upgrade_key(memcached_config, DefaultConfig)].
 
 encrypt_config_val(Val) ->
     {ok, Encrypted} = encryption_service:encrypt(term_to_binary(Val)),
