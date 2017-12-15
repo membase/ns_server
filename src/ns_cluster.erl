@@ -990,38 +990,25 @@ do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied, Services) ->
             check_can_join_to(NodeKVList, Services)
     end.
 
-check_memory_size(NodeKVList, Services) ->
-    KvQuota = expect_json_property_integer(<<"memoryQuota">>, NodeKVList),
-    IndexQuota =
-        case lists:keyfind(<<"indexMemoryQuota">>, 1, NodeKVList) of
-            {_, V} ->
-                expect_integer(<<"indexMemoryQuota">>, V);
-            false ->
-                undefined
-        end,
-    FTSQuota =
-        case lists:keyfind(<<"ftsMemoryQuota">>, 1, NodeKVList) of
-            {_, V2} ->
-                expect_integer(<<"ftsMemoryQuota">>, V2);
-            false ->
-                undefined
-        end,
+quotas() ->
+    [{kv, <<"memoryQuota">>},
+     {index, <<"indexMemoryQuota">>},
+     {fts, <<"ftsMemoryQuota">>}].
 
-    Quotas1 = [{kv, KvQuota}],
-    Quotas0 =
-        case IndexQuota of
-            undefined ->
-                Quotas1;
-            _ ->
-                [{index, IndexQuota} | Quotas1]
-        end,
+check_memory_size(NodeKVList, Services) ->
     Quotas =
-        case FTSQuota of
-            undefined ->
-                Quotas0;
-            _ ->
-                [{fts, FTSQuota} | Quotas0]
-        end,
+        lists:foldl(
+          fun({kv, JSONField}, Acc) ->
+                  Quota = expect_json_property_integer(JSONField, NodeKVList),
+                  [{kv, Quota} | Acc];
+             ({Service, JSONField}, Acc) ->
+                  case lists:keyfind(JSONField, 1, NodeKVList) of
+                      {_, Quota} ->
+                          [{Service, expect_integer(JSONField, Quota)} | Acc];
+                      false ->
+                          Acc
+                  end
+          end, [], quotas()),
 
     case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
         ok ->

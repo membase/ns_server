@@ -550,40 +550,26 @@ check_service_quotas([{Service, Quota} | Rest], Config) ->
     end.
 
 -define(MIN_BUCKET_QUOTA, 256).
--define(MIN_INDEX_QUOTA, 256).
--define(MIN_FTS_QUOTA, 256).
 -define(MAX_DEFAULT_FTS_QUOTA, 512).
+
+min_quota(index) ->
+    256;
+min_quota(fts) ->
+    256.
 
 check_service_quota(kv, Quota, Config) ->
     MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
 
     BucketsQuota = get_total_buckets_ram_quota(Config) div ?MIB,
     MinMemoryMB = erlang:max(MinMemoryMB0, BucketsQuota),
+    check_min_quota(kv, MinMemoryMB, Quota);
+check_service_quota(Service, Quota, _) ->
+    check_min_quota(Service, min_quota(Service), Quota).
 
-    case Quota >= MinMemoryMB of
-        true ->
-            ok;
-        false ->
-            {error, {service_quota_too_low, kv, Quota, MinMemoryMB}}
-    end;
-check_service_quota(index, Quota, _) ->
-    MinQuota = ?MIN_INDEX_QUOTA,
-
-    case Quota >= MinQuota of
-        true ->
-            ok;
-        false ->
-            {error, {service_quota_too_low, index, Quota, MinQuota}}
-    end;
-check_service_quota(fts, Quota, _) ->
-    MinQuota = ?MIN_FTS_QUOTA,
-
-    case Quota >= MinQuota of
-        true ->
-            ok;
-        false ->
-            {error, {service_quota_too_low, fts, Quota, MinQuota}}
-    end.
+check_min_quota(_Service, MinQuota, Quota) when Quota >= MinQuota ->
+    ok;
+check_min_quota(Service, MinQuota, Quota) ->
+    {error, {service_quota_too_low, Service, Quota, MinQuota}}.
 
 %% check that the node has enough memory for the quotas; note that we do not
 %% validate service quota values because we expect them to be validated by the
@@ -599,13 +585,11 @@ check_this_node_quotas(Services, Quotas0) ->
 get_memory_quota(Service) ->
     get_memory_quota(ns_config:latest(), Service).
 
-get_memory_quota(Config, kv) ->
-    case ns_config:search(Config, memory_quota) of
-        {value, Quota} ->
-            {ok, Quota};
-        false ->
-            not_found
-    end;
+service_to_quota_key(kv) ->
+    memory_quota;
+service_to_quota_key(fts) ->
+    fts_memory_quota.
+
 get_memory_quota(Config, index) ->
     NotFound = make_ref(),
     case index_settings_manager:get_from_config(Config, memoryQuota, NotFound) of
@@ -614,8 +598,8 @@ get_memory_quota(Config, index) ->
         Quota ->
             {ok, Quota}
     end;
-get_memory_quota(Config, fts) ->
-    case ns_config:search(Config, fts_memory_quota) of
+get_memory_quota(Config, Service) ->
+    case ns_config:search(Config, service_to_quota_key(Service)) of
         {value, Quota} ->
             {ok, Quota};
         false ->
@@ -649,15 +633,13 @@ set_quotas(Config, Quotas) ->
             retry_needed
     end.
 
-do_set_memory_quota(kv, Quota, Cfg, SetFn) ->
-    SetFn(memory_quota, Quota, Cfg);
 do_set_memory_quota(index, Quota, Cfg, SetFn) ->
     Txn = index_settings_manager:update_txn([{memoryQuota, Quota}]),
 
     {commit, NewCfg, _} = Txn(Cfg, SetFn),
     NewCfg;
-do_set_memory_quota(fts, Quota, Cfg, SetFn) ->
-    SetFn(fts_memory_quota, Quota, Cfg).
+do_set_memory_quota(Service, Quota, Cfg, SetFn) ->
+    SetFn(service_to_quota_key(Service), Quota, Cfg).
 
 default_quota(Service, Memory, Max) ->
     {Min, Quota} = do_default_quota(Service, Memory),
@@ -678,10 +660,10 @@ do_default_quota(kv, Memory) ->
     {?MIN_BUCKET_QUOTA, KvQuota};
 do_default_quota(index, Memory) ->
     IndexQuota = (Memory * 3) div 5,
-    {?MIN_INDEX_QUOTA, IndexQuota};
+    {min_quota(index), IndexQuota};
 do_default_quota(fts, Memory) ->
     FTSQuota = min(Memory div 5, ?MAX_DEFAULT_FTS_QUOTA),
-    {?MIN_FTS_QUOTA, FTSQuota}.
+    {min_quota(fts), FTSQuota}.
 
 services_ranking() ->
     [kv, index, fts].
