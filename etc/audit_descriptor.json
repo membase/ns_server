@@ -300,6 +300,7 @@
               "real_userid" : {"source" : "", "user" : ""},
               "memory_quota" : 1,
               "index_memory_quota" : 1,
+              "fts_memory_quota" : 1,
               "cluster_name" : "",
               "remote" : {"ip" : "", "port" : 1}
           },
