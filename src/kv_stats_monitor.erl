@@ -201,17 +201,9 @@ reset_bucket_info() ->
               dict:store(Bucket, {active, []}, Acc)
       end, dict:new(), Buckets).
 
-%% TODO:
-%% Checking ep_item_commit_failed for now till EP engine starts returning
-%% ep_data_read_failed & ep_data_write_failed.
-%% These two stats will encompass all types of disk read/write failures.
-%%
-%% failure_stats() ->
-%%      [{ep_data_read_failed, read_failed},
-%%       {ep_data_write_failed, write_failed}].
-%%
 failure_stats() ->
-    [{ep_item_commit_failed, write_failed}].
+    [{ep_data_read_failed, read_failed},
+     {ep_data_write_failed, write_failed}].
 
 get_latest_stats(Bucket, Stats) ->
     try stats_reader:latest_specific_stats(minute, node(), Bucket, Stats) of

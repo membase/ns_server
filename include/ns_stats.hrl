@@ -115,7 +115,11 @@
 
         %% used by alerts
         ep_item_commit_failed,
-        ep_clock_cas_drift_threshold_exceeded
+        ep_clock_cas_drift_threshold_exceeded,
+
+        %% Number of data disk read and write failures
+        ep_data_read_failed,
+        ep_data_write_failed
 ).
 
 -define(STAT_COUNTERS,
