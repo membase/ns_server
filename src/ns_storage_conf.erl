@@ -501,7 +501,7 @@ check_quotas(NodeInfos, Config, UpdatedQuotas) ->
 
 quota_aware_services(CompatVersion) ->
     [S || S <- ns_cluster_membership:supported_services_for_version(CompatVersion),
-          lists:member(S, [kv, index, fts])].
+          lists:member(S, [kv, index, fts, cbas])].
 
 get_all_quotas(Config, UpdatedQuotas) ->
     CompatVersion = cluster_compat_mode:get_compat_version(Config),
@@ -555,7 +555,9 @@ check_service_quotas([{Service, Quota} | Rest], Config) ->
 min_quota(index) ->
     256;
 min_quota(fts) ->
-    256.
+    256;
+min_quota(cbas) ->
+    1024.
 
 check_service_quota(kv, Quota, Config) ->
     MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
@@ -588,7 +590,9 @@ get_memory_quota(Service) ->
 service_to_quota_key(kv) ->
     memory_quota;
 service_to_quota_key(fts) ->
-    fts_memory_quota.
+    fts_memory_quota;
+service_to_quota_key(cbas) ->
+    cbas_memory_quota.
 
 get_memory_quota(Config, index) ->
     NotFound = make_ref(),
@@ -663,10 +667,13 @@ do_default_quota(index, Memory) ->
     {min_quota(index), IndexQuota};
 do_default_quota(fts, Memory) ->
     FTSQuota = min(Memory div 5, ?MAX_DEFAULT_FTS_QUOTA),
-    {min_quota(fts), FTSQuota}.
+    {min_quota(fts), FTSQuota};
+do_default_quota(cbas, Memory) ->
+    CBASQuota = Memory div 5,
+    {min_quota(cbas), CBASQuota}.
 
 services_ranking() ->
-    [kv, index, fts].
+    [kv, cbas, index, fts].
 
 default_quotas(Services) ->
     %% this is actually bogus, because nodes can be heterogeneous; but that's

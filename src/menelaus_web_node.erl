@@ -109,7 +109,13 @@ build_memory_quota_info(Config) ->
         false ->
             Props1
     end,
-    Props2.
+    case cluster_compat_mode:is_cluster_vulcan() of
+        true ->
+            {ok, CBASQuota} = ns_storage_conf:get_memory_quota(Config, cbas),
+            [{cbasMemoryQuota, CBASQuota} | Props2];
+        false ->
+            Props2
+    end.
 
 build_nodes_info(CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
     F = build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr),

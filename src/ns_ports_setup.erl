@@ -721,7 +721,7 @@ cbas_spec(Config) ->
                                  "-tlsCertFile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
                                  "-tlsKeyFile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
                         end,
-            MemoryQuota = 250,
+            {ok, MemoryQuota} = ns_storage_conf:get_memory_quota(Config, cbas),
             Spec = {cbas, Cmd,
                     [
                      "-uuid=" ++ binary_to_list(NodeUUID),

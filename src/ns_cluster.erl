@@ -993,7 +993,8 @@ do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied, Services) ->
 quotas() ->
     [{kv, <<"memoryQuota">>},
      {index, <<"indexMemoryQuota">>},
-     {fts, <<"ftsMemoryQuota">>}].
+     {fts, <<"ftsMemoryQuota">>},
+     {cbas, <<"cbasMemoryQuota">>}].
 
 check_memory_size(NodeKVList, Services) ->
     Quotas =

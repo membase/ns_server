@@ -461,7 +461,8 @@ setup_services_check_quota(Services, Params) ->
                      {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
                      {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
                      {ok, FTSQuota} = ns_storage_conf:get_memory_quota(fts),
-                     [{kv, KvQuota}, {index, IndexQuota}, {fts, FTSQuota}];
+                     {ok, CBASQuota} = ns_storage_conf:get_memory_quota(cbas),
+                     [{kv, KvQuota}, {index, IndexQuota}, {fts, FTSQuota}, {cbas, CBASQuota}];
                  "true" ->
                      do_update_with_default_quotas(ns_storage_conf:default_quotas(Services))
              end,

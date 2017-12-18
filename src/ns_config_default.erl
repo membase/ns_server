@@ -84,9 +84,10 @@ default() ->
     ensure_data_dir(),
     DataDir = get_data_dir(),
 
-    DefaultQuotas = ns_storage_conf:default_quotas([kv, fts]),
+    DefaultQuotas = ns_storage_conf:default_quotas([kv, cbas, fts]),
     {_, KvQuota} = lists:keyfind(kv, 1, DefaultQuotas),
     {_, FTSQuota} = lists:keyfind(fts, 1, DefaultQuotas),
+    {_, CBASQuota} = lists:keyfind(cbas, 1, DefaultQuotas),
 
     PortMeta = case application:get_env(rest_port) of
                    {ok, _Port} -> local;
@@ -398,6 +399,7 @@ default() ->
 
      {memory_quota, KvQuota},
      {fts_memory_quota, FTSQuota},
+     {cbas_memory_quota, CBASQuota},
 
      {buckets, [{configs, []}]},
 
