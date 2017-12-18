@@ -100,6 +100,38 @@
   </div>
 </div>
 
+<div ng-if="config.displayedServices.cbas">
+  <div class="row formrow">
+    <div class="width-6">
+      <input
+         ng-if="config.services"
+         ng-model="config.services.model.cbas"
+         ng-disabled="config.services.disabled.cbas"
+         type="checkbox"
+         id="cbas_ram_quota">
+      <label
+         for="cbas_ram_quota"
+         class="checkbox">
+        Analytics Service
+      </label>
+    </div>
+    <div class="form-inline width-6 text-right">
+      <input
+         type="number"
+         mn-focus="config.services.model.kv === false && config.services.model.index  === false"
+         ng-disabled="config.services && !config.services.model.cbas || (rbac && !rbac.cluster.pools.write)"
+         ng-model="config.cbasMemoryQuota">
+      <small>MB</small>
+    </div>
+  </div>
+
+  <div
+     class="error"
+     ng-show="errors.cbasMemoryQuota">
+    {{errors.cbasMemoryQuota}}
+  </div>
+</div>
+
 <div ng-if="config.displayedServices.n1ql">
   <div class="row formrow">
     <div class="width-6">
@@ -158,8 +190,9 @@
    ng-if="config.calculateTotal"
    class="text-small text-right nowrap margin-right-1">
   <strong>TOTAL QUOTA</strong> &nbsp; {{ ((!config.displayedServices.kv || (config.services && !config.services.model.kv)) ? 0 : config.memoryQuota) +
-       ((!config.displayedServices.index || (config.services && !config.services.model.index)) ? 0 : config.indexMemoryQuota) +
-      ((!config.displayedServices.fts || (config.services && !config.services.model.fts)) ? 0 : config.ftsMemoryQuota) }}MB
+      ((!config.displayedServices.index || (config.services && !config.services.model.index)) ? 0 : config.indexMemoryQuota) +
+      ((!config.displayedServices.fts || (config.services && !config.services.model.fts)) ? 0 : config.ftsMemoryQuota) +
+      ((!config.displayedServices.cbas || (config.services && !config.services.model.cbas)) ? 0 : config.cbasMemoryQuota) }}MB
 </div>
 
 <div

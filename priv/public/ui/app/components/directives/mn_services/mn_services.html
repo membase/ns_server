@@ -57,3 +57,15 @@
     Eventing Service
   </label>
 </div>
+<div class="checkbox-service">
+  <input
+     type="checkbox"
+     value="cbas"
+     id="for-cbas-service"
+     ng-change="onChange(config.services.model.cbas, 'cbas')"
+     ng-model="config.services.model.cbas"
+     ng-disabled="config.services.disabled.cbas">
+  <label for="for-cbas-service">
+    Analytics Service
+  </label>
+</div>

@@ -36,6 +36,9 @@
       if (currentPool.compat.atLeast45) {
         rv.ftsMemoryQuota = currentPool.ftsMemoryQuota || 256;
       }
+      if (currentPool.compat.atLeast55) {
+        rv.cbasMemoryQuota = currentPool.cbasMemoryQuota || 256;
+      }
       if (calculateMaxMemory) {
         rv.maxMemorySize = mnHelper.calculateMaxMemorySize(ram.total / IEC.Mi);
       } else {

@@ -72,6 +72,7 @@
           n1ql: getNodesByService("n1ql", nodes),
           fts: getNodesByService("fts", nodes),
           eventing: getNodesByService("eventing", nodes),
+          cbas: getNodesByService("cbas", nodes),
           all: nodes
         };
       });

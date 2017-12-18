@@ -102,6 +102,7 @@
         kv: true,
         index: mnPoolDefault.export.compat.atLeast40,
         fts: mnPoolDefault.export.compat.atLeast45,
+        cbas: mnPoolDefault.export.compat.atLeast55,
         n1ql: mnPoolDefault.export.compat.atLeast40,
         eventing: mnPoolDefault.export.compat.atLeast55
       }, false, false))

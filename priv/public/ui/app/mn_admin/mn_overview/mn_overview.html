@@ -76,6 +76,20 @@
       </div>
     </div>
     <div
+       class="service-widget"
+       ng-class="['dynamic_' + overviewCtl.nodes.cbas.statusClass]">
+      <h4>Analytics Service</h4>
+      <a ui-sref="app.admin.servers.list">
+        {{overviewCtl.nodes.cbas.length || '0'}}
+        node{{overviewCtl.getEndings(overviewCtl.nodes.cbas.length)}}
+      </a>
+      <div
+         class="error"
+         ng-repeat="(nodeStatuses, count) in overviewCtl.nodes.cbas.nodesByStatuses">
+        {{count + ' node' + overviewCtl.getEndings(count) + ' ' + nodeStatuses}}
+      </div>
+    </div>
+    <div
        ng-show="rbac.cluster.xdcr.remote_clusters.read"
        class="service-widget"
        ng-class="['dynamic_' + (adminCtl.tasks.tasksXDCR.length ? 'healthy' : 'inactive')]">

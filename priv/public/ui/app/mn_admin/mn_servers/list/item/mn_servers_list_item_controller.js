@@ -45,6 +45,9 @@
     function isKVNode(node) {
       return node.services.indexOf("kv") > -1;
     }
+    function isCBASNode(node) {
+      return node.services.indexOf("cbas") > -1;
+    }
     function getRamUsageConf(node) {
       var total = node.memoryTotal;
       var free = node.memoryFree;
@@ -69,7 +72,8 @@
       return cpuUsageConf;
     }
     function isFailOverDisabled(node) {
-      return isLastActiveData(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode);
+      return isLastActiveData(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode)
+          || isCBASNode(node);  // MB-25552 - [CX] Failover not supported for CBAS nodes in DP3
     }
     function disableRemoveBtn(node) {
       return isLastActiveData(node) || isActiveUnhealthy(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode);
@@ -114,6 +118,7 @@
           isLastIndex: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'index', true),
           isLastQuery: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'n1ql', true),
           isLastFts: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'fts', true),
+          isLastCBAS: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'cbas', true),
           isKv: _.indexOf(node.services, 'kv') > -1
         };
         return mnPoolDefault.export.compat.atLeast40 && mnPermissions.export.cluster.indexes.read ? mnGsiService.getIndexesState().then(function (indexStatus) {

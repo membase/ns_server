@@ -8,7 +8,13 @@
      ng-submit="serversMemoryQuotaDialogCtl.onSubmit()">
     <div class="panel-content">
       <div class="formrow">
-        The <span class="semi-bold" ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index">GSI Index</span><span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.count > 1"> and </span><span class="semi-bold" ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.fts">Full Text</span><span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.count > 1"> services have</span><span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.count == 1"> service has</span> been added to the cluster for the first time. Please review and set the following service-specific settings.
+        The <span class="semi-bold" ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.index">GSI Index</span>
+        <span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.count > 1"> and </span>
+        <span class="semi-bold" ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.fts">Full Text</span>
+        <span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.count > 1"> and </span>
+        <span class="semi-bold" ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.cbas">Analytics</span>
+        <span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.count > 1"> services have</span>
+        <span ng-show="serversMemoryQuotaDialogCtl.firstTimeAddedServices.count == 1"> service has</span> been added to the cluster for the first time. Please review and set the following service-specific settings.
       </div>
       <div class="formrow">
         <h4>RAM Quotas <small>in megabytes per server node</small></h4>

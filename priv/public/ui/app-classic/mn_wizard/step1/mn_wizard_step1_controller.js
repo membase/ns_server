@@ -58,6 +58,7 @@
       var data = _.clone(vm.config.startNewClusterConfig);
       !vm.config.startNewClusterConfig.services.model.index && (delete data.indexMemoryQuota);
       !vm.config.startNewClusterConfig.services.model.fts && (delete data.ftsMemoryQuota);
+      !vm.config.startNewClusterConfig.services.model.cbas && (delete data.cbasMemoryQuota);
       return addErrorHandler(mnSettingsClusterService.postPoolsDefault(data), "postMemory");
     }
     function validateIndexSettings() {
@@ -139,7 +140,7 @@
           return postJoinCluster().then(function () {
             return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
               return mnPoolDefault.get().then(function (poolsDefault) {
-                var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts"], vm.joinClusterConfig.services.model, poolsDefault.nodes);
+                var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts", "cbas"], vm.joinClusterConfig.services.model, poolsDefault.nodes);
                 vm.joinClusterConfig.firstTimeAddedServices = firstTimeAddedServices;
                 if (firstTimeAddedServices.count) {
                   $state.go('app.wizard.step6');

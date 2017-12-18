@@ -32,6 +32,7 @@
         maybeSetQuota(data, memoryQuotaConfig, "kv", "memoryQuota");
         maybeSetQuota(data, memoryQuotaConfig, "index", "indexMemoryQuota");
         maybeSetQuota(data, memoryQuotaConfig, "fts", "ftsMemoryQuota");
+        maybeSetQuota(data, memoryQuotaConfig, "cbas", "cbasMemoryQuota");
       }
 
       var config = {

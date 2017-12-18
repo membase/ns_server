@@ -549,6 +549,7 @@
         case 'index': return 'Index';
         case 'fts': return 'Full Text';
         case 'eventing': return 'Eventing';
+        case 'cbas': return 'Analytics';
       }
     }
   }
