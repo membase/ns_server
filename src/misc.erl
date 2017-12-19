@@ -1531,6 +1531,17 @@ read_marker(Path) ->
             exit({failed_to_read_marker, Path, Other})
     end.
 
+take_marker(Path) ->
+    Result = read_marker(Path),
+    case Result of
+        {ok, _} ->
+            remove_marker(Path);
+        false ->
+            ok
+    end,
+
+    Result.
+
 is_free_nodename(ShortName) ->
     {ok, Names} = erl_epmd:names({127,0,0,1}),
     not lists:keymember(ShortName, 1, Names).
