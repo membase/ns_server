@@ -507,6 +507,8 @@ handle_node_settings_post(Node, Req) when is_atom(Node) ->
         case Results0 of
             [ok] ->
                 case ns_storage_conf:setup_disk_storage_conf(DbPath, IxPath) of
+                    not_changed ->
+                        ok;
                     ok ->
                         ns_audit:disk_storage_conf(Req, Node, DbPath, IxPath),
                         %% NOTE: due to required restart we need to protect
@@ -518,15 +520,18 @@ handle_node_settings_post(Node, Req) when is_atom(Node) ->
                         {ok, _} = ns_server_cluster_sup:restart_ns_server(),
                         reply(Req, 200),
                         erlang:exit(normal);
-                    {errors, Msgs} -> Msgs
+                    {errors, Msgs} ->
+                        Msgs
                 end;
-            _ -> Results0
+            _ ->
+                Results0
         end,
 
-
-    case lists:filter(fun(ok) -> false;
-                         (_) -> true
-                      end, Results1) of
-        [] -> exit(cannot_happen);
-        Errs -> reply_json(Req, Errs, 400)
+    case Results1 of
+        ok ->
+            reply(Req, 200);
+        Errs ->
+            ErrsFiltered = [E || E <- Errs, E =/= ok],
+            true = ErrsFiltered =/= [],
+            reply_json(Req, ErrsFiltered, 400)
     end.

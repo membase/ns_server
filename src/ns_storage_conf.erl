@@ -112,49 +112,50 @@ read_path_from_conf(Config, Node, Key, SubKey) ->
 %% @doc sets db and index path of this node.
 %%
 %% NOTE: ns_server restart is required to make this fully effective.
--spec setup_disk_storage_conf(DbPath::string(), IxDir::string()) -> ok | {errors, [Msg :: binary()]}.
+-spec setup_disk_storage_conf(DbPath::string(), IxDir::string()) ->
+                                     ok | not_changed | {errors, [Msg :: binary()]}.
 setup_disk_storage_conf(DbPath, IxPath) ->
-    [{db_path, CurrentDbDir},
-     {index_path, CurrentIxDir}] = lists:sort(ns_couchdb_api:get_db_and_ix_paths()),
-
     NewDbDir = misc:absname(DbPath),
     NewIxDir = misc:absname(IxPath),
+
+    case prepare_db_ix_dirs(NewDbDir, NewIxDir) of
+        ok ->
+            ns_couchdb_api:set_db_and_ix_paths(NewDbDir, NewIxDir),
+            setup_db_and_ix_paths([{db_path, NewDbDir},
+                                   {index_path, NewIxDir}]);
+        RV ->
+            RV
+    end.
+
+prepare_db_ix_dirs(NewDbDir, NewIxDir) ->
+    [{db_path, CurrentDbDir},
+     {index_path, CurrentIxDir}] = lists:sort(ns_couchdb_api:get_db_and_ix_paths()),
 
     case NewDbDir =/= CurrentDbDir orelse NewIxDir =/= CurrentIxDir of
         true ->
             ale:info(?USER_LOGGER, "Setting database directory path to ~s and index directory path to ~s", [NewDbDir, NewIxDir]),
             case misc:ensure_writable_dirs([NewDbDir, NewIxDir]) of
                 ok ->
-                    RV =
-                        case NewDbDir =:= CurrentDbDir of
-                            true ->
-                                ok;
-                            false ->
-                                ?log_info("Removing all unused database files"),
-                                case delete_unused_buckets_db_files() of
-                                    ok ->
-                                        ok;
-                                    Error ->
-                                        Msg = iolist_to_binary(
-                                                io_lib:format("Could not delete unused database files: ~p",
-                                                              [Error])),
-                                        {errors, [Msg]}
-                                end
-                        end,
-
-                    case RV of
-                        ok ->
-                            ns_couchdb_api:set_db_and_ix_paths(NewDbDir, NewIxDir),
-                            setup_db_and_ix_paths([{db_path, NewDbDir},
-                                                   {index_path, NewIxDir}]);
-                        _ ->
-                            RV
+                    case NewDbDir =:= CurrentDbDir of
+                        true ->
+                            ok;
+                        false ->
+                            ?log_info("Removing all unused database files"),
+                            case delete_unused_buckets_db_files() of
+                                ok ->
+                                    ok;
+                                Error ->
+                                    Msg = iolist_to_binary(
+                                            io_lib:format("Could not delete unused database files: ~p",
+                                                          [Error])),
+                                    {errors, [Msg]}
+                            end
                     end;
                 error ->
                     {errors, [<<"Could not set the storage path. It must be a directory writable by 'couchbase' user.">>]}
             end;
-        _ ->
-            ok
+        false ->
+            not_changed
     end.
 
 % Returns a proplist of lists of proplists.
