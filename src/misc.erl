@@ -1498,11 +1498,13 @@ mkdir_p(Path) ->
             Error
     end.
 
-create_marker(Path, Data) when is_list(Data) ->
-    ok = misc:write_file(Path, list_to_binary(Data)).
+create_marker(Path, Data)
+  when is_list(Data);
+       is_binary(Data) ->
+    ok = atomic_write_file(Path, Data).
 
 create_marker(Path) ->
-    ok = misc:write_file(Path, <<"">>).
+    create_marker(Path, <<"">>).
 
 remove_marker(Path) ->
     ok = file:delete(Path).
