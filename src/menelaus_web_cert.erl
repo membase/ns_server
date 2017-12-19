@@ -27,6 +27,8 @@
          handle_client_cert_auth_settings/1,
          handle_client_cert_auth_settings_post/1]).
 
+-define(MAX_CLIENT_CERT_PREFIXES, ns_config:read_key_fast(client_cert_auth_max_prefixes, 10)).
+
 handle_cluster_certificate(Req) ->
     menelaus_web:assert_is_enterprise(),
 
@@ -153,18 +155,169 @@ handle_get_node_certificate(NodeId, Req) ->
 
 allowed_values(Key) ->
     Values = [{"state", ["enable", "disable", "mandatory"]},
-             {"path", ["subject.cn", "san.uri", "san.dnsname", "san.email"]},
-             {"prefix", any},
-             {"delimiter", any}],
+              {"path", ["subject.cn", "san.uri", "san.dnsname", "san.email"]},
+              {"prefix", any},
+              {"delimiter", any}],
     proplists:get_value(Key, Values, none).
 
 handle_client_cert_auth_settings(Req) ->
-    Val = ns_ssl_services_setup:client_cert_auth(),
-    menelaus_util:reply_json(Req, {[{K, list_to_binary(V)} || {K,V} <- Val]}).
+    Cca = ns_ssl_services_setup:client_cert_auth(),
+    Out = case cluster_compat_mode:is_cluster_51() of
+              true ->
+                  State = list_to_binary(proplists:get_value(state, Cca)),
+                  Prefixes = [begin
+                                  {struct, [{list_to_binary(atom_to_list(K)), list_to_binary(V)}
+                                            || {K, V} <- Triple]}
+                              end || Triple <- proplists:get_value(prefixes, Cca, [])],
+
+                  {struct, [{<<"state">>, State}, {<<"prefixes">>, Prefixes}]};
+              false ->
+                  {[{K, list_to_binary(V)} || {K,V} <- Cca]}
+          end,
+    menelaus_util:reply_json(Req, Out).
+
+validate_client_cert_auth_param(Key, Val) ->
+    Values = allowed_values(Key),
+    case Values == any orelse lists:member(Val, Values) of
+        true ->
+            {ok, {list_to_atom(Key), Val}};
+        false ->
+            {error, io_lib:format("Invalid value '~s' for key '~s'", [Val, Key])}
+    end.
+
+validate_client_cert_auth_state(StateVal, Prefixes, Cfg, Errors) ->
+    case validate_client_cert_auth_param("state", StateVal) of
+        {ok, CfgPair} ->
+            case StateVal =/= "disable" andalso Prefixes =:= [] of
+                true ->
+                    E = {error, io_lib:format("'prefixes' cannot be empty when the "
+                                              "'state' is '~s'", [StateVal])},
+                    {Cfg, [E | Errors]};
+                false ->
+                    {[CfgPair | Cfg], Errors}
+            end;
+        Err ->
+            {Cfg, [Err | Errors]}
+    end.
+
+validate_triple(Triple) ->
+    Triple1 = lists:sort(Triple),
+    case [K || {K, _V} <- Triple1] =:= ["delimiter", "path", "prefix"] of
+        true ->
+            case validate_client_cert_auth_param("path", proplists:get_value("path", Triple1)) of
+                {ok, _} ->
+                    {[{list_to_atom(K), V} || {K, V} <- Triple1], []};
+                E ->
+                    {[], [E]}
+            end;
+        false ->
+            E = {error, io_lib:format("Invalid prefixes entry (~p). Must contain "
+                                      "'path', 'prefix' & 'delimiter' fields.",
+                                      [Triple1])},
+            {[], [E]}
+    end.
+
+check_for_duplicate_prefixes(_PrefixCfg, Errors) when Errors =/= [] ->
+    Errors;
+check_for_duplicate_prefixes(PrefixCfg, Errors) ->
+    {_, NewErrors} =
+        lists:foldl(
+          fun(Triple, {Set, EAcc}) ->
+                  Path = proplists:get_value(path, Triple),
+                  Prefix = proplists:get_value(prefix, Triple),
+
+                  case sets:is_element({Path, Prefix}, Set) of
+                      true ->
+                          E = {error,
+                               io_lib:format("Multiple entries with same path & prefix "
+                                             "(~p) are not allowed", [{Path, Prefix}])},
+                          {Set, [E | EAcc]};
+                      false ->
+                          {sets:add_element({Path, Prefix}, Set), EAcc}
+                  end
+          end, {sets:new(), Errors}, PrefixCfg),
+
+    NewErrors.
+
+validate_client_cert_auth_prefixes(Prefixes, Cfg, Errors) ->
+    %% Prefixes are represented as a list of lists. Each list contains
+    %% tuples representing the path, prefix and delimiter.
+    {PCfg, PErrs0} = lists:foldr(
+                      fun({C, E}, {CAcc, EAcc}) ->
+                              {[C | CAcc], E ++ EAcc}
+                      end, {[], []}, [validate_triple(Triple) || Triple <- Prefixes]),
+
+    PErrs = check_for_duplicate_prefixes(PCfg, PErrs0),
+    {Cfg ++ [{prefixes, PCfg}], PErrs ++ Errors}.
 
 handle_client_cert_auth_settings_post(Req) ->
     menelaus_web:assert_is_enterprise(),
     menelaus_web:assert_is_50(),
+
+    case cluster_compat_mode:is_cluster_51() of
+        true ->
+            try menelaus_util:parse_json(Req) of
+                JSON ->
+                    do_handle_client_cert_auth_settings_5_1_post(Req, JSON)
+            catch _:_ ->
+                    menelaus_util:reply_json(Req, <<"Invalid JSON">>, 400)
+            end;
+        false ->
+            do_handle_client_cert_auth_settings_5_0_post(Req)
+    end.
+
+%% The client_cert_auth settings will be a JSON payload 5.1 onwards and it'll look like
+%% the following:
+%%
+%% {
+%%     "state": "enable",
+%%     "prefixes": [
+%%       {
+%%         "path": "san.uri",
+%%         "prefix": "www.cb-",
+%%         "delimiter": ".,;"
+%%       },
+%%       {
+%%         "path": "san.email",
+%%         "prefix": "a",
+%%         "delimiter": "@"
+%%       }
+%%     ]
+%% }
+do_handle_client_cert_auth_settings_5_1_post(Req, JSON) ->
+    {struct, Data} = JSON,
+    State = binary_to_list(proplists:get_value(<<"state">>, Data, <<"disable">>)),
+    PrefixesRaw = proplists:get_value(<<"prefixes">>, Data, []),
+
+    case length(PrefixesRaw) > ?MAX_CLIENT_CERT_PREFIXES of
+        true ->
+            Err = io_lib:format("Maximum number of prefixes supported is ~p",
+                                [?MAX_CLIENT_CERT_PREFIXES]),
+            menelaus_util:reply_json(Req, list_to_binary(Err), 400);
+        false ->
+            Prefixes = [[{binary_to_list(K), binary_to_list(V)} || {K, V} <- Triple]
+                        || {struct, Triple} <- PrefixesRaw],
+
+            {Cfg0, Errors0} = validate_client_cert_auth_state(State, Prefixes, [], []),
+            {Cfg, Errors} = validate_client_cert_auth_prefixes(Prefixes, Cfg0, Errors0),
+
+            case Errors of
+                [] ->
+                    case ns_ssl_services_setup:client_cert_auth() of
+                        Cfg ->
+                            menelaus_util:reply(Req, 200);
+                        _ ->
+                            ns_config:set(client_cert_auth, Cfg),
+                            ns_audit:client_cert_auth(Req, Cfg),
+                            menelaus_util:reply(Req, 202)
+                    end;
+                _ ->
+                    Out = [list_to_binary(Msg) || {error, Msg} <- Errors],
+                    menelaus_util:reply_json(Req, Out, 400)
+            end
+    end.
+
+do_handle_client_cert_auth_settings_5_0_post(Req) ->
     Params = Req:parse_post(),
     OldVal = ns_ssl_services_setup:client_cert_auth(),
     AccumulateChanges =
@@ -183,10 +336,10 @@ handle_client_cert_auth_settings_post(Req) ->
                                     _Else ->
                                         Acc
                                 end;
-                            Invalid ->
+                            false ->
                                 [{error, {400, io_lib:format("Invalid value '~s' "
                                                              "for key '~s'",
-                                                             [Invalid, Key])
+                                                             [Val, Key])
                                          }
                                  }] ++ Acc
                         end

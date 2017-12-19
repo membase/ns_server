@@ -762,6 +762,27 @@
           }
       },
       {
+          "id" : 8236,
+          "name" : "client cert auth",
+          "description" : "Client certificate authentication settings changed",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "identity" : {"source" : "", "user" : ""}
+          },
+          "optional_fields" : {
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "sessionid" : "",
+              "state": "",
+              "path": "",
+              "prefix": "",
+              "delimiter": "",
+              "prefixes": ""
+          }
+      },
+      {
           "id" : 8237,
           "name" : "security settings",
           "description" : "Security Settings",

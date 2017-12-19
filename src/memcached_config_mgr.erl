@@ -320,7 +320,16 @@ ssl_minimum_protocol([], _Params) ->
 
 client_cert_auth([], _Params) ->
     Val = ns_ssl_services_setup:client_cert_auth(),
-    {[{K, list_to_binary(V)} || {K,V} <- Val]}.
+
+    case cluster_compat_mode:is_cluster_51() of
+        true ->
+            State = proplists:get_value(state, Val),
+            Prefixes = [{[{K, list_to_binary(V)} || {K, V} <- Triple]} ||
+                           Triple <- proplists:get_value(prefixes, Val, [])],
+            {[{state, list_to_binary(State)}, {prefixes, Prefixes}]};
+        false ->
+            {[{K, list_to_binary(V)} || {K,V} <- Val]}
+    end.
 
 is_enabled([FeatureVersion], _Params) ->
     cluster_compat_mode:is_enabled(FeatureVersion).

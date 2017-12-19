@@ -207,7 +207,10 @@ ssl_minimum_protocol(Config) ->
     ns_config:search(Config, ssl_minimum_protocol, 'tlsv1').
 
 client_cert_auth() ->
-    DefaultValue = [{state, "disable"}],
+    DefaultValue = case cluster_compat_mode:is_cluster_51() of
+                       true -> [{state, "disable"}, {prefixes, []}];
+                       false -> [{state, "disable"}]
+                   end,
     ns_config:search(ns_config:latest(), client_cert_auth, DefaultValue).
 
 %% The list is obtained by running the following openssl command:
