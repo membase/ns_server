@@ -123,8 +123,8 @@ roles_45() ->
        {[admin], none},
        {[], [read]}]}].
 
--spec roles_spock() -> [rbac_role_def(), ...].
-roles_spock() ->
+-spec roles_50() -> [rbac_role_def(), ...].
+roles_50() ->
     [{admin, [],
       [{name, <<"Admin">>},
        {desc, <<"Can manage ALL cluster features including security.">>},
@@ -321,9 +321,9 @@ get_definitions() ->
 
 -spec get_definitions(ns_config()) -> [rbac_role_def(), ...].
 get_definitions(Config) ->
-    case cluster_compat_mode:is_cluster_spock(Config) of
+    case cluster_compat_mode:is_cluster_50(Config) of
         true ->
-            roles_spock();
+            roles_50();
         false ->
             roles_45()
     end.

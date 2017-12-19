@@ -115,7 +115,7 @@ handle_event({rest_creds, _}, State) ->
     {changed, State#state{cluster_admin = undefined}}.
 
 producer(State) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             make_producer(State);
         false ->

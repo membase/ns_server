@@ -256,7 +256,7 @@ topology_aware_services_for_version(Version) ->
     case cluster_compat_mode:is_version_45(Version) of
         true ->
             Services = [fts | maybe_example_service()],
-            case cluster_compat_mode:is_version_spock(Version) of
+            case cluster_compat_mode:is_version_50(Version) of
                 true ->
                     [index | Services];
                 false ->

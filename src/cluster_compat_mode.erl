@@ -36,9 +36,9 @@
          is_version_45/1,
          is_cluster_46/0,
          is_version_46/1,
-         is_cluster_spock/0,
-         is_cluster_spock/1,
-         is_version_spock/1,
+         is_cluster_50/0,
+         is_cluster_50/1,
+         is_version_50/1,
          is_enterprise/0,
          is_goxdcr_enabled/0,
          is_goxdcr_enabled/1,
@@ -113,14 +113,14 @@ is_version_46(ClusterVersion) ->
 is_cluster_46() ->
     is_enabled(?VERSION_46).
 
-is_version_spock(ClusterVersion) ->
-    is_enabled_at(ClusterVersion, ?SPOCK_VERSION_NUM).
+is_version_50(ClusterVersion) ->
+    is_enabled_at(ClusterVersion, ?VERSION_50).
 
-is_cluster_spock() ->
-    is_cluster_spock(ns_config:latest()).
+is_cluster_50() ->
+    is_cluster_50(ns_config:latest()).
 
-is_cluster_spock(Config) ->
-    is_enabled(Config, ?SPOCK_VERSION_NUM).
+is_cluster_50(Config) ->
+    is_enabled(Config, ?VERSION_50).
 
 is_index_aware_rebalance_on() ->
     not ns_config:read_key_fast(index_aware_rebalance_disabled, false).
@@ -194,7 +194,7 @@ consider_switching_compat_mode() ->
 
 upgrades() ->
     [{?VERSION_40, goxdcr, goxdcr_upgrade, upgrade},
-     {?SPOCK_VERSION_NUM, users, menelaus_users, upgrade_to_spock}].
+     {?VERSION_50, users, menelaus_users, upgrade_to_50}].
 
 do_upgrades(undefined, _, _, _) ->
     %% this happens during the cluster initialization. no upgrade needed

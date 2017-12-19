@@ -116,7 +116,7 @@ is_storage_mode_acceptable(Value) ->
 
     case Value of
         ?INDEX_STORAGE_MODE_FORESTDB ->
-            case cluster_compat_mode:is_cluster_spock() andalso
+            case cluster_compat_mode:is_cluster_50() andalso
                 cluster_compat_mode:is_enterprise() of
                 true ->
                     ReportError("Storage mode cannot be set to 'forestdb' in Spock enterprise edition.");
@@ -132,7 +132,7 @@ is_storage_mode_acceptable(Value) ->
                                 "are not available in the community edition.")
             end;
         ?INDEX_STORAGE_MODE_PLASMA ->
-            case cluster_compat_mode:is_cluster_spock() andalso
+            case cluster_compat_mode:is_cluster_50() andalso
                 cluster_compat_mode:is_enterprise() of
                 true ->
                     ok;

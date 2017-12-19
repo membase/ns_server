@@ -26,7 +26,7 @@
 -define(NS_LOG, "ns_log").
 
 get_current_version() ->
-    list_to_tuple(?SPOCK_VERSION_NUM).
+    list_to_tuple(?VERSION_50).
 
 ensure_data_dir() ->
     RawDir = path_config:component_path(data),
@@ -342,7 +342,7 @@ default() ->
         {audit_file, {"~s", [audit_file]}},
         {rbac_file, {"~s", [rbac_file]}},
         {dedupe_nmvb_maps, dedupe_nmvb_maps},
-        {xattr_enabled, {memcached_config_mgr, is_enabled, [?SPOCK_VERSION_NUM]}}
+        {xattr_enabled, {memcached_config_mgr, is_enabled, [?VERSION_50]}}
        ]}},
 
      {memory_quota, KvQuota},
@@ -464,7 +464,7 @@ upgrade_config(Config) ->
              upgrade_config_from_4_1_1_to_4_5()];
         {value, {4,5}} ->
             [{set, {node, node(), config_version}, CurrentVersion} |
-             upgrade_config_from_4_5_to_spock(Config)];
+             upgrade_config_from_4_5_to_5_0(Config)];
         V0 ->
             OldVersion =
                 case V0 of
@@ -598,10 +598,10 @@ do_upgrade_config_from_4_1_1_to_4_5(DefaultConfig) ->
      {set, DefaultsKey, McdDefaults},
      {set, CompactionDaemonKey, CompactionDaemonCfg}].
 
-upgrade_config_from_4_5_to_spock(Config) ->
-    do_upgrade_config_from_4_5_to_spock(Config, default()).
+upgrade_config_from_4_5_to_5_0(Config) ->
+    do_upgrade_config_from_4_5_to_5_0(Config, default()).
 
-do_upgrade_config_from_4_5_to_spock(Config, DefaultConfig) ->
+do_upgrade_config_from_4_5_to_5_0(Config, DefaultConfig) ->
     McdKey = {node, node(), memcached},
     {value, CurrentMcdConfig} = ns_config:search(Config, McdKey),
     {value, DefaultMcdConfig} = ns_config:search([DefaultConfig], McdKey),
@@ -754,7 +754,7 @@ upgrade_4_1_1_to_4_5_test() ->
                   {set, {node, _, compaction_daemon}, compaction_daemon_config}],
                  do_upgrade_config_from_4_1_1_to_4_5(Default)).
 
-upgrade_4_5_to_spock_test() ->
+upgrade_4_5_to_5_0_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached},
              [{old, info}]},
@@ -771,7 +771,7 @@ upgrade_4_5_to_spock_test() ->
                   {set, {node, _, memcached_defaults}, [{some, stuff},
                                                {new_field, enable}]},
                   {set, {node, _, memcached_config}, new_memcached_config}],
-                 do_upgrade_config_from_4_5_to_spock(Cfg, Default)).
+                 do_upgrade_config_from_4_5_to_5_0(Cfg, Default)).
 
 no_upgrade_on_current_version_test() ->
     ?assertEqual([], upgrade_config([[{{node, node(), config_version}, get_current_version()}]])).

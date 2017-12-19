@@ -387,7 +387,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
               | Suffix5]}.
 
 build_bucket_capabilities(BucketConfig) ->
-    MaybeXattr = case cluster_compat_mode:is_cluster_spock() of
+    MaybeXattr = case cluster_compat_mode:is_cluster_50() of
                      true ->
                          [xattr];
                      false ->
@@ -520,7 +520,7 @@ extract_bucket_props(BucketId, Props) ->
                                                                      drift_behind_threshold_ms,
                                                                      storage_mode]],
                            X =/= false],
-    case not cluster_compat_mode:is_cluster_spock() andalso
+    case not cluster_compat_mode:is_cluster_50() andalso
         BucketId =:= "default" of
         true ->
             lists:keyreplace(
@@ -867,7 +867,7 @@ parse_bucket_params_without_warnings(Ctx, Params) ->
 basic_bucket_params_screening(#bv_ctx{bucket_config = false, new = false}, _Params) ->
     {[], [{name, <<"Bucket with given name doesn't exist">>}]};
 basic_bucket_params_screening(#bv_ctx{cluster_version = Version} = Ctx, Params) ->
-    case cluster_compat_mode:is_version_spock(Version) of
+    case cluster_compat_mode:is_version_50(Version) of
         true ->
             basic_bucket_params_screening_tail(Ctx, Params);
         false ->
@@ -916,7 +916,7 @@ validate_common_params(#bv_ctx{bucket_name = BucketName,
      parse_validate_other_buckets_ram_quota(Params)].
 
 validate_version_specific_params(#bv_ctx{cluster_version = Version} = Ctx, Params) ->
-    case cluster_compat_mode:is_version_spock(Version) of
+    case cluster_compat_mode:is_version_50(Version) of
         true ->
             [validate_moxi_port(Ctx, Params)];
         false ->
@@ -1152,7 +1152,7 @@ get_storage_mode(Params, _BucketConfig, true = _IsNew) ->
         "couchbase" ->
             {ok, storage_mode, couchstore};
         "ephemeral" ->
-            case cluster_compat_mode:is_cluster_spock() of
+            case cluster_compat_mode:is_cluster_50() of
                 true ->
                     {ok, storage_mode, ephemeral};
                 false ->

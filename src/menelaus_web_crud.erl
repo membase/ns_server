@@ -196,7 +196,7 @@ do_mutate(BucketId, DocId, BodyOrUndefined, Flags) ->
                     BinaryDocId,
                     capi_crud, delete, [BinaryBucketId, BinaryDocId]);
         _ ->
-            Args = case cluster_compat_mode:is_cluster_spock() of
+            Args = case cluster_compat_mode:is_cluster_50() of
                        true ->
                            [BinaryBucketId, BinaryDocId, BodyOrUndefined, Flags];
                        false ->

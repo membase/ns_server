@@ -56,7 +56,7 @@ init() ->
            users = [AU | Users],
            admin_pass = AP}.
 
-filter_event({cluster_compat_version, ?SPOCK_VERSION_NUM}) ->
+filter_event({cluster_compat_version, ?VERSION_50}) ->
     true;
 filter_event({buckets, _V}) ->
     true;
@@ -84,7 +84,7 @@ handle_event({rest_creds, Creds}, State) ->
     {changed, State#state{rest_creds = Creds}}.
 
 producer(State) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             make_producer(State);
         false ->

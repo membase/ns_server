@@ -56,7 +56,7 @@
          assert_is_enterprise/0,
          assert_is_40/0,
          assert_is_45/0,
-         assert_is_spock/0]).
+         assert_is_50/0]).
 
 -export([ns_log_cat/1, ns_log_code_string/1, alert_key/1]).
 
@@ -440,7 +440,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["index.html"] ->
                     {done, redirect_permanently("/ui/index.html", Req)};
                 ["ui", "index.html"] ->
-                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?SPOCK_VERSION_NUM,
+                    {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_50,
                                                        Plugins]};
                 ["ui", "classic-index.html"] ->
                     {ui, IsSSL, fun handle_ui_root/5, [AppRoot, Path, ?VERSION_45,
@@ -876,11 +876,11 @@ serve_ui_env(Req) ->
 
 handle_ui_root(AppRoot, Path, UiCompatVersion, Plugins, Req)
   when UiCompatVersion =:= ?VERSION_45;
-       UiCompatVersion =:= ?SPOCK_VERSION_NUM ->
+       UiCompatVersion =:= ?VERSION_50 ->
     Filename = case use_minified(Req) of
                    true ->
                        IndexFileName =
-                           case UiCompatVersion =:= ?SPOCK_VERSION_NUM of
+                           case UiCompatVersion =:= ?VERSION_50 of
                                true -> "index.min.html";
                                false -> "classic-index.min.html"
                            end,
@@ -1292,8 +1292,8 @@ assert_is_40() ->
 assert_is_45() ->
     assert_cluster_version(fun cluster_compat_mode:is_cluster_45/0).
 
-assert_is_spock() ->
-    assert_cluster_version(fun cluster_compat_mode:is_cluster_spock/0).
+assert_is_50() ->
+    assert_cluster_version(fun cluster_compat_mode:is_cluster_50/0).
 
 assert_cluster_version(Fun) ->
     case Fun() of
@@ -2453,7 +2453,7 @@ validate_settings_auto_failover(Enabled, Timeout, MaxNodes) ->
     end,
     case Enabled2 of
         true ->
-            MinTimeout = case cluster_compat_mode:is_cluster_spock() andalso
+            MinTimeout = case cluster_compat_mode:is_cluster_50() andalso
                              cluster_compat_mode:is_enterprise() of
                              true ->
                                  ?AUTO_FAILLOVER_MIN_TIMEOUT;
@@ -2485,7 +2485,7 @@ handle_settings_auto_failover_reset_count(Req) ->
     reply(Req, 200).
 
 maybe_handle_auto_reprovision_request(Req, Body) ->
-    case cluster_compat_mode:is_cluster_spock() of
+    case cluster_compat_mode:is_cluster_50() of
         true ->
             Body();
         false ->

@@ -220,8 +220,8 @@
 -define(VERSION_41, [4, 1]).
 -define(VERSION_45, [4, 5]).
 -define(VERSION_46, [4, 6]).
+-define(VERSION_50, [5, 0]).
 
--define(SPOCK_VERSION_NUM, [5, 0]).
 -define(VERSION_51, [5, 1]).
 
 %% Points to latest release

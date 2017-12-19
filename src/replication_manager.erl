@@ -103,7 +103,7 @@ handle_call({set_desired_replications, DesiredReps}, _From,
     %% DCP replication modules to drop the existing connections and recreate
     %% them. This could mean that the ongoing rebalance can fail and we are
     %% ok with that as it can be restarted.
-    XAttr = cluster_compat_mode:is_cluster_spock(),
+    XAttr = cluster_compat_mode:is_cluster_50(),
 
     RV = dcp_replication_manager:set_desired_replications(Bucket, DesiredReps, XAttr),
     {reply, RV, State#state{desired_replications = DesiredReps}};
