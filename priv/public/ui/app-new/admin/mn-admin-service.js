@@ -9,7 +9,7 @@ mn.services.MnAdmin = (function () {
   var version45 = encodeCompatVersion(4, 5);
   var version46 = encodeCompatVersion(4, 6);
   var version50 = encodeCompatVersion(5, 0);
-  var version51 = encodeCompatVersion(5, 1);
+  var version55 = encodeCompatVersion(5, 5);
 
   // counterpart of ns_heart:effective_cluster_compat_version/0
   function encodeCompatVersion(major, minor) {
@@ -89,7 +89,7 @@ mn.services.MnAdmin = (function () {
           atLeast45: compat >= version45,
           atLeast46: compat >= version46,
           atLeast50: compat >= version50,
-          atLeast51: compat >= version51
+          atLeast55: compat >= version55
         };
       });
 
