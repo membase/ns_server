@@ -40,6 +40,7 @@
 -include("triq.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+-include("cut.hrl").
 -include("generic.hrl").
 
 -compile(export_all).
@@ -1994,3 +1995,32 @@ convert_time_unit(Time, TargetUnit) ->
 
 update_field(Field, Record, Fun) ->
     setelement(Field, Record, Fun(element(Field, Record))).
+
+dump_term(Term) ->
+    true = can_recover_term(Term),
+
+    [io_lib:write(Term), $.].
+
+can_recover_term(Term) ->
+    generic:query(fun erlang:'and'/2,
+                  ?cut(not (is_pid(_1) orelse is_reference(_1) orelse is_port(_1))),
+                  Term).
+
+parse_term(Term) when is_binary(Term) ->
+    do_parse_term(binary_to_list(Term));
+parse_term(Term) when is_list(Term) ->
+    do_parse_term(lists:flatten(Term)).
+
+do_parse_term(Term) ->
+    {ok, Tokens, _} = erl_scan:string(Term),
+    {ok, Parsed} = erl_parse:parse_term(Tokens),
+    Parsed.
+
+forall_recoverable_terms(Body) ->
+    ?FORALL(T, ?SUCHTHAT(T1, any(), can_recover_term(T1)), Body(T)).
+
+prop_dump_parse_term() ->
+    forall_recoverable_terms(?cut(_1 =:= parse_term(dump_term(_1)))).
+
+prop_dump_parse_term_binary() ->
+    forall_recoverable_terms(?cut(_1 =:= parse_term(iolist_to_binary(dump_term(_1))))).
