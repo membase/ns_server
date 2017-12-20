@@ -413,7 +413,7 @@ get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window
 %% List of different types of stats
 kinds_list(BucketName) ->
     ["@system", BucketName, "@query", "@index-" ++ BucketName,
-     "@fts-" ++ BucketName, "@xdcr-" ++ BucketName, "@index", "@fts"].
+     "@fts-" ++ BucketName, "@xdcr-" ++ BucketName, "@index", "@fts", "@cbas", "@cbas-" ++ BucketName].
 
 %% For many stats, their kind can be identified by their prefix.
 get_possible_kind(StatName, BucketName) ->
@@ -434,6 +434,8 @@ get_possible_kind(StatName, BucketName) ->
             BucketName;
         "ep_" ++ _Rest ->
             BucketName;
+        "cbas" ++ _Rest ->
+            "@cbas-" ++ BucketName;
         _ ->
             kind_not_found
     end.
@@ -542,6 +544,10 @@ section_nodes("@query") ->
     ns_cluster_membership:service_actual_nodes(ns_config:latest(), n1ql);
 section_nodes("@index-"++_) ->
     ns_cluster_membership:service_actual_nodes(ns_config:latest(), index);
+section_nodes("@cbas-"++_) ->
+    ns_cluster_membership:service_actual_nodes(ns_config:latest(), cbas);
+section_nodes("@cbas") ->
+    ns_cluster_membership:service_actual_nodes(ns_config:latest(), cbas);
 section_nodes("@fts-"++_) ->
     ns_cluster_membership:service_actual_nodes(ns_config:latest(), fts);
 section_nodes("@fts") ->
@@ -576,6 +582,8 @@ section_exists("@index-"++Bucket) ->
 section_exists("@fts-"++Bucket) ->
     bucket_exists(Bucket);
 section_exists("@xdcr-"++Bucket) ->
+    bucket_exists(Bucket);
+section_exists("@cbas-"++Bucket) ->
     bucket_exists(Bucket);
 section_exists(Bucket) ->
     bucket_exists(Bucket).
@@ -633,6 +641,9 @@ global_fts_stat(StatName) ->
 
 per_fts_stat(Index, Metric) ->
     indexer_fts:per_index_stat(Index, Metric).
+
+per_bucket_cbas_stat(StatName) ->
+    indexer_cbas:global_index_stat(StatName).
 
 computed_stats_lazy_proplist("@system") ->
     [];
@@ -1535,6 +1546,30 @@ do_couchbase_index_stats_descriptions(BucketId, IndexNodes) ->
                            {desc, <<"Average time to serve a scan request (nanoseconds)">>}]}]}]}
      || Id <- AllIndexes].
 
+couchbase_analytics_stats_descriptions(_, []) ->
+    [];
+couchbase_analytics_stats_descriptions(BucketId, _CbasNodes) ->
+    simple_memoize({stats_directory_analytics, BucketId},
+                   fun () ->
+                           do_couchbase_analytics_stats_descriptions(BucketId)
+                   end, 5000).
+
+do_couchbase_analytics_stats_descriptions(BucketId) ->
+    BlockName = "Analytics Stats - " ++ BucketId,
+    [{struct, [{blockName, list_to_binary(BlockName)},
+               {extraCSSClasses, <<"dynamic_closed">>},
+               {stats,
+                [{struct, [{title, <<"ops/sec.">>},
+                           {name, per_bucket_cbas_stat("incoming-records-count")},
+                           {desc, <<"Operations (gets + sets + deletes) per second processed by Analytics for this bucket">>}]},
+                 {struct, [{title, <<"sync failed records">>},
+                           {name, per_bucket_cbas_stat("failed-at-parser-records-count-total")},
+                           {desc, <<"Failed to parse records during bucket synchronization">>}]},
+                 {struct, [{title, <<"total ops since bucket connect">>},
+                           {name, per_bucket_cbas_stat("incoming-records-count-total")},
+                           {desc, <<"Operations (gets + sets + deletes) processed by Analytics for this bucket since last connected">>}]}
+                ]}]}].
+
 couchbase_fts_stats_descriptions(_, []) ->
     [];
 couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
@@ -2142,13 +2177,14 @@ ephemeral_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
         ++ membase_incoming_xdcr_operations_stats_description().
 
 
-membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes) ->
+membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, CBASNode) ->
     membase_summary_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, false)
         ++ membase_vbucket_resources_stats_description()
         ++ membase_disk_queues_stats_description()
         ++ membase_dcp_queues_stats_description()
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_index_stats_descriptions(BucketId, IndexNodes)
+        ++ couchbase_analytics_stats_descriptions(BucketId, CBASNode)
         ++ couchbase_fts_stats_descriptions(BucketId, FtsNodes)
         ++ couchbase_replication_stats_descriptions(BucketId)
         ++ couchbase_goxdcr_stats_descriptions(BucketId)
@@ -2245,7 +2281,33 @@ fts_server_resources_stats_description(_FtsNodes) ->
               {title,<<"fts RAM used">>},
               {desc,<<"Amount of RAM used by FTS on this server">>}]}].
 
-server_resources_stats_description(IndexNodes, FtsNodes) ->
+cbas_server_resources_stats_description([]) ->
+    [];
+cbas_server_resources_stats_description(_CbasNodes) ->
+    [{struct, [{isBytes, true},
+               {name, <<"cbas_heap-used">>},
+               {title, <<"analytics heap used">>},
+               {desc, <<"Amount of JVM heap used by Analytics on this server">>}]},
+     {struct, [{name, <<"cbas_system-load-average">>},
+               {title, <<"analytics system load">>},
+               {desc, <<"System load for Analytics node">>}]},
+     {struct, [{name, <<"cbas_thread-count">>},
+               {title, <<"analytics thread count">>},
+               {desc, <<"Number of threads for Analytics node">>}]},
+     {struct, [{name, <<"cbas_gc-count">>},
+               {title, <<"analytics gc count/sec">>},
+               {desc, <<"Number of JVM garbage collections for Analytics node">>}]},
+     {struct, [{name, <<"cbas_gc-time">>},
+               {title, <<"analytics gc time (ms.)/sec">>},
+               {desc, <<"The amount of time in milliseconds spent performing JVM garbage collections for Analytics node">>}]},
+     {struct, [{name, <<"cbas_io-reads">>},
+               {title, <<"analytics bytes read/sec">>},
+               {desc, <<"Number of disk bytes read on Analytics node per second">>}]},
+     {struct, [{name, <<"cbas_io-writes">>},
+               {title, <<"analytics bytes written/sec">>},
+               {desc, <<"Number of disk bytes written on Analytics node per second">>}]}].
+
+server_resources_stats_description(IndexNodes, FtsNodes, CbasNodes) ->
     [{blockName,<<"Server Resources">>},
      {serverResources, true},
      {stats,
@@ -2277,16 +2339,17 @@ server_resources_stats_description(IndexNodes, FtsNodes) ->
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}
        | index_server_resources_stats_description(IndexNodes) ++
-           fts_server_resources_stats_description(FtsNodes)]}].
+           fts_server_resources_stats_description(FtsNodes) ++
+           cbas_server_resources_stats_description(CbasNodes)]}].
 
-base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes) ->
+base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes, CbasNodes) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
     Base = case menelaus_web_buckets:external_bucket_type(BucketConfig) of
-               membase -> membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes);
+               membase -> membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, CbasNodes);
                memcached -> memcached_stats_description();
                ephemeral -> ephemeral_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes)
            end,
-    [{struct, server_resources_stats_description(IndexNodes, FtsNodes)} | Base].
+    [{struct, server_resources_stats_description(IndexNodes, FtsNodes, CbasNodes)} | Base].
 
 parse_add_index_param(Param, Params) ->
     case proplists:get_value(Param, Params) of
@@ -2306,8 +2369,9 @@ serve_stats_directory(_PoolId, BucketId, Req) ->
     AddQuery = proplists:get_value("addq", Params, "") =/= "",
     IndexNodes = parse_add_index_param("addi", Params),
     FtsNodes = parse_add_index_param("addf", Params),
+    CbasNodes = parse_add_index_param("adda", Params),
 
-    BaseDescription = base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes),
+    BaseDescription = base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes, CbasNodes),
     Prefix = menelaus_util:concat_url_path(["pools", "default", "buckets", BucketId, "stats"]),
     Desc = [{struct, add_specific_stats_url(BD, Prefix)} || {struct, BD} <- BaseDescription],
     menelaus_util:reply_json(Req, {struct, [{blocks, Desc}]}).
@@ -2454,8 +2518,14 @@ serve_aggregated_ui_stats(Req, Params) ->
     {_, _, IndexerStats} =
         maybe_grab_stats("@index", Nodes, HaveStamp, Wnd, IStats),
 
+    {_, CbasNodes, ABStats} =
+        maybe_grab_stats("@cbas-" ++ Bucket, Nodes, HaveStamp, Wnd, IndexerStats),
+
+    {_, CbasNodes, AStats} =
+        maybe_grab_stats("@cbas", Nodes, HaveStamp, Wnd, ABStats),
+
     {_, FtsNodes, FStats} =
-        maybe_grab_stats("@fts-" ++ Bucket, Nodes, HaveStamp, Wnd, IndexerStats),
+        maybe_grab_stats("@fts-" ++ Bucket, Nodes, HaveStamp, Wnd, AStats),
 
     {_, _, FullStats} =
         maybe_grab_stats("@fts", Nodes, HaveStamp, Wnd, FStats),
@@ -2467,7 +2537,7 @@ serve_aggregated_ui_stats(Req, Params) ->
                         [] -> {Name, 0};
                         L -> {Name, lists:last(L)}
                     end || {Name, {S}} <- Stats],
-    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery, IndexNodes, FtsNodes)),
+    StatsDirectoryV = erlang:phash2(base_stats_directory(Bucket, HaveQuery, IndexNodes, FtsNodes, CbasNodes)),
     DirAddQ = case HaveQuery of
                   true ->
                       [{addq, <<"1">>}];
@@ -2479,10 +2549,17 @@ serve_aggregated_ui_stats(Req, Params) ->
                   _ ->
                       [{addi, iolist_to_binary(ejson:encode(IndexNodes))} | DirAddQ]
               end,
+
+    DirAddA = case CbasNodes of
+              [] -> DirAddI;
+              _ ->
+                [{adda, iolist_to_binary(ejson:encode(CbasNodes))} | DirAddI]
+            end,
+
     DirAddF = case FtsNodes of
-                  [] -> DirAddI;
+                  [] -> DirAddA;
                   _ ->
-                      [{addf, iolist_to_binary(ejson:encode(FtsNodes))} | DirAddI]
+                      [{addf, iolist_to_binary(ejson:encode(FtsNodes))} | DirAddA]
               end,
     DirQS = [{v, integer_to_list(StatsDirectoryV)} | DirAddF],
     DirURL = "/pools/default/buckets/" ++ menelaus_util:concat_url_path([Bucket, "statsDirectory"], DirQS),
@@ -2506,7 +2583,7 @@ serve_specific_ui_stats(Req, StatName, Params) ->
     {Bucket, HaveStamp, Wnd} = extract_ui_stats_params(Params),
     ClientTStamp = proplists:get_value(<<"perNode">>, HaveStamp),
 
-    FullDirectory = base_stats_directory(Bucket, true, all, all),
+    FullDirectory = base_stats_directory(Bucket, true, all, all, all),
     StatNameB = list_to_binary(StatName),
     MaybeStatDesc = [Desc
                      || Block <- FullDirectory,

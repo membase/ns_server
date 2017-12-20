@@ -274,6 +274,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["pools", "default", "buckets", "@fts-" ++ _ = Id, "nodes", NodeId, "stats"] ->
                     {{[stats], read}, fun menelaus_stats:handle_stats_section_for_node/4,
                      ["default", Id, NodeId]};
+                ["pools", "default", "buckets", "@cbas-" ++ _ = Id, "nodes", NodeId, "stats"] ->
+                    {{[stats], read}, fun menelaus_stats:handle_stats_section_for_node/4,
+                        ["default", Id, NodeId]};
                 ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
                     {{[{bucket, Id}, stats], read},
                      fun menelaus_stats:handle_bucket_node_stats/4,

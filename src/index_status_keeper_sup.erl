@@ -32,6 +32,8 @@ init([]) ->
          {index_status_keeper, {indexer_gsi, start_keeper, []},
           permanent, 1000, worker, []},
          {index_status_keeper_fts, {indexer_fts, start_keeper, []},
+          permanent, 1000, worker, []},
+         {index_status_keeper_cbas, {indexer_cbas, start_keeper, []},
           permanent, 1000, worker, []}],
     {ok, {{one_for_all,
            misc:get_env_default(max_r, 3),

@@ -87,7 +87,8 @@ refresh_children() ->
     RunningChildren = lists:sort(RunningChildren0),
     Config = ns_config:get(),
     WantedChildren0 = compute_wanted_children(indexer_fts, Config) ++
-        compute_wanted_children(indexer_gsi, Config),
+        compute_wanted_children(indexer_gsi, Config) ++
+        compute_wanted_children(indexer_cbas, Config),
     WantedChildren = lists:sort(WantedChildren0),
     ToStart = ordsets:subtract(WantedChildren, RunningChildren),
     ToStop = ordsets:subtract(RunningChildren, WantedChildren),
@@ -95,7 +96,7 @@ refresh_children() ->
     lists:foreach(fun start_child/1, ToStart),
     ok.
 
-child_spec({Indexer, Mod, Name}) when Name =:= "@index" orelse Name =:= "@fts" ->
+child_spec({Indexer, Mod, Name}) when Name =:= "@index" orelse Name =:= "@fts" orelse Name =:= "@cbas" ->
     {{Indexer, Mod, Name}, {Mod, start_link, [Name]},
      permanent, 1000, worker, []};
 child_spec({Indexer, Mod, Name}) when Mod =:= stats_archiver; Mod =:= stats_reader ->
