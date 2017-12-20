@@ -24,7 +24,7 @@
 -include("ns_config.hrl").
 
 -export([setup_disk_storage_conf/3,
-         storage_conf/1, storage_conf_from_node_status/1,
+         storage_conf_from_node_status/1,
          query_storage_conf/0,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
@@ -236,19 +236,6 @@ this_node_cbas_dirs() ->
 %  {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
 %         [{path", /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}]
 %
-storage_conf(Node) ->
-    NodeStatus = ns_doctor:get_node(Node),
-    storage_conf_from_node_status(NodeStatus).
-
-query_storage_conf() ->
-    StorageConf = get_db_and_ix_paths(),
-    lists:map(
-      fun ({Key, Path}) ->
-              %% db_path and index_path are guaranteed to be absolute
-              {ok, RealPath} = misc:realpath(Path, "/"),
-              {Key, RealPath}
-      end, StorageConf).
-
 storage_conf_from_node_status(NodeStatus) ->
     StorageConf = proplists:get_value(node_storage_conf, NodeStatus, []),
     HDDInfo = case proplists:get_value(db_path, StorageConf) of
@@ -261,6 +248,15 @@ storage_conf_from_node_status(NodeStatus) ->
               end,
     [{ssd, []},
      {hdd, [HDDInfo]}].
+
+query_storage_conf() ->
+    StorageConf = get_db_and_ix_paths(),
+    lists:map(
+      fun ({Key, Path}) ->
+              %% db_path and index_path are guaranteed to be absolute
+              {ok, RealPath} = misc:realpath(Path, "/"),
+              {Key, RealPath}
+      end, StorageConf).
 
 extract_node_storage_info(NodeInfo) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
