@@ -315,6 +315,23 @@ roles_50() ->
        {[{bucket, bucket_name}, stats], [read]},
        {[pools], [read]}]}].
 
+-spec roles_vulcan() -> [rbac_role_def(), ...].
+roles_vulcan() ->
+    roles_50() ++
+        [{analytics_manager, [bucket_name],
+          [{name, <<"Analytics Manager">>},
+           {desc, <<"Can manage Analytics buckets and shadow datasets on which they have bucket data read permission">>}],
+          [{[{bucket, bucket_name}, analytics], [manage]},
+           {[analytics], [read]},
+           {[ui], [read]},
+           {[pools], [read]}]},
+         {analytics_reader, [],
+          [{name, <<"Analytics Reader">>},
+           {desc, <<"Can query shadow datasets">>}],
+          [{[analytics], [read]},
+           {[ui], [read]},
+           {[pools], [read]}]}].
+
 -spec get_definitions() -> [rbac_role_def(), ...].
 get_definitions() ->
     get_definitions(ns_config:latest()).
@@ -323,7 +340,12 @@ get_definitions() ->
 get_definitions(Config) ->
     case cluster_compat_mode:is_cluster_50(Config) of
         true ->
-            roles_50();
+            case cluster_compat_mode:is_cluster_vulcan(Config) of
+                true ->
+                    roles_vulcan();
+                false ->
+                    roles_50()
+            end;
         false ->
             roles_45()
     end.
