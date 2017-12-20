@@ -22,8 +22,8 @@
 -export([get_type/0, get_remote_indexes/1, get_local_status/0, restart/0, get_status_mapping/0,
          get_gauges/0, get_counters/0, get_computed/0, grab_stats/0, prefix/0,
          per_index_stat/2, global_index_stat/1, compute_gauges/1,
-         get_service_stats/0, service_stat_prefix/0, service_event_name/0,
-         compute_service_stats/1]).
+         get_service_gauges/0, service_stat_prefix/0, service_event_name/0,
+         compute_service_gauges/1, get_service_counters/0]).
 
 get_status(Timeout) ->
     index_status_keeper:get_status(?MODULE, Timeout).
@@ -78,8 +78,11 @@ get_counters() ->
     [num_requests, num_rows_returned, num_docs_indexed,
      scan_bytes_read, total_scan_duration].
 
-get_service_stats() ->
+get_service_gauges() ->
     [memory_quota, memory_used].
+
+get_service_counters() ->
+    [].
 
 get_computed() ->
     [disk_overhead_estimate].
@@ -101,8 +104,8 @@ per_index_stat(Index, Metric) ->
 global_index_stat(StatName) ->
     iolist_to_binary([atom_to_list(get_type()), <<"/">>, StatName]).
 
-compute_service_stats(Stats) ->
-    compute_index_ram_usage_stats(Stats).
+compute_service_gauges(Gauges) ->
+    compute_index_ram_usage_stats(Gauges).
 
 compute_index_ram_usage_stats(Stats) ->
     Quota = proplists:get_value(<<"index_memory_quota">>, Stats, undefined),
