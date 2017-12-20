@@ -24,7 +24,7 @@
 -include("ns_config.hrl").
 
 -export([setup_disk_storage_conf/3,
-         storage_conf_from_node_status/1,
+         storage_conf_from_node_status/2,
          query_storage_conf/0,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
@@ -243,13 +243,14 @@ node_cbas_dirs(Config, Node) ->
 %  {hdd, [[{path, /some/nice/disk/path}, {quotaMb, 1234}, {state, ok}],
 %         [{path", /another/good/disk/path}, {quotaMb, 5678}, {state, ok}]]}]
 %
-storage_conf_from_node_status(NodeStatus) ->
+storage_conf_from_node_status(Node, NodeStatus) ->
     StorageConf = proplists:get_value(node_storage_conf, NodeStatus, []),
     HDDInfo = case proplists:get_value(db_path, StorageConf) of
                   undefined -> [];
                   DBDir ->
                       [{path, DBDir},
                        {index_path, proplists:get_value(index_path, StorageConf, DBDir)},
+                       {cbas_dirs, node_cbas_dirs(ns_config:latest(), Node)},
                        {quotaMb, none},
                        {state, ok}]
               end,
