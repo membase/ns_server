@@ -39,6 +39,9 @@
          is_cluster_50/0,
          is_cluster_50/1,
          is_version_50/1,
+         is_cluster_51/0,
+         is_cluster_51/1,
+         is_version_51/1,
          is_cluster_vulcan/0,
          is_cluster_vulcan/1,
          is_version_vulcan/1,
@@ -121,6 +124,15 @@ is_cluster_50() ->
 
 is_cluster_50(Config) ->
     is_enabled(Config, ?VERSION_50).
+
+is_version_51(ClusterVersion) ->
+    is_enabled_at(ClusterVersion, ?VERSION_51).
+
+is_cluster_51() ->
+    is_cluster_51(ns_config:latest()).
+
+is_cluster_51(Config) ->
+    is_enabled(Config, ?VERSION_51).
 
 is_version_vulcan(ClusterVersion) ->
     is_enabled_at(ClusterVersion, ?VULCAN_VERSION_NUM).
