@@ -2226,30 +2226,26 @@ memcached_stats_description() ->
                          {title,<<"CAS misses per sec.">>},
                          {desc,<<"Number of CAS operations per second for data that this bucket does not contain (measured from cas_misses)">>}]}]}]}].
 
+
+index_server_resources_stats_description([]) ->
+    [];
+index_server_resources_stats_description(_IndexNodes) ->
+    [{struct,[{name,<<"index_ram_percent">>},
+              {title,<<"Max Index RAM Used %">>},
+              {desc,<<"Percentage of Index RAM in use across all indexes on this server">>}]},
+     {struct,[{name,<<"index_remaining_ram">>},
+              {title,<<"remaining index ram">>},
+              {desc,<<"Amount of index RAM available on this server">>}]}].
+
+fts_server_resources_stats_description([]) ->
+    [];
+fts_server_resources_stats_description(_FtsNodes) ->
+    [{struct,[{isBytes,true},
+              {name,<<"fts_num_bytes_used_ram">>},
+              {title,<<"fts RAM used">>},
+              {desc,<<"Amount of RAM used by FTS on this server">>}]}].
+
 server_resources_stats_description(IndexNodes, FtsNodes) ->
-    MaybeFts =
-        case FtsNodes of
-            [] ->
-                [];
-            _ ->
-                [{struct,[{isBytes,true},
-                          {name,<<"fts_num_bytes_used_ram">>},
-                          {title,<<"fts RAM used">>},
-                          {desc,<<"Amount of RAM used by FTS on this server">>}]}]
-        end,
-    MaybeIndexFts =
-        case IndexNodes of
-            [] ->
-                MaybeFts;
-            _ ->
-                [{struct,[{name,<<"index_ram_percent">>},
-                          {title,<<"Max Index RAM Used %">>},
-                          {desc,<<"Percentage of Index RAM in use across all indexes on this server">>}]},
-                 {struct,[{name,<<"index_remaining_ram">>},
-                          {title,<<"remaining index ram">>},
-                          {desc,<<"Amount of index RAM available on this server">>}]}
-                 | MaybeFts]
-        end,
     [{blockName,<<"Server Resources">>},
      {serverResources, true},
      {stats,
@@ -2280,7 +2276,8 @@ server_resources_stats_description(IndexNodes, FtsNodes) ->
        {struct,[{name,<<"hibernated_waked">>},
                 {title,<<"streaming wakeups/sec">>},
                 {desc,<<"Rate of streaming request wakeups on port 8091">>}]}
-       | MaybeIndexFts]}].
+       | index_server_resources_stats_description(IndexNodes) ++
+           fts_server_resources_stats_description(FtsNodes)]}].
 
 base_stats_directory(BucketId, AddQuery, IndexNodes, FtsNodes) ->
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketId),
