@@ -144,21 +144,21 @@ prepare_db_ix_dirs(NewDbDir, NewIxDir) ->
 
     case NewDbDir =/= CurrentDbDir orelse NewIxDir =/= CurrentIxDir of
         true ->
-            ale:info(?USER_LOGGER, "Setting database directory path to ~s and index directory path to ~s", [NewDbDir, NewIxDir]),
             case misc:ensure_writable_dirs([NewDbDir, NewIxDir]) of
                 ok ->
                     case NewDbDir =:= CurrentDbDir of
                         true ->
                             ok;
                         false ->
-                            ?log_info("Removing all unused database files"),
+                            ?log_info("Removing all unused database files in ~p", [CurrentDbDir]),
                             case delete_unused_buckets_db_files() of
                                 ok ->
                                     ok;
                                 Error ->
                                     Msg = iolist_to_binary(
-                                            io_lib:format("Could not delete unused database files: ~p",
-                                                          [Error])),
+                                            io_lib:format(
+                                              "Could not delete unused database files in ~p: ~p",
+                                              [CurrentDbDir, Error])),
                                     {errors, [Msg]}
                             end
                     end;
@@ -172,6 +172,10 @@ prepare_db_ix_dirs(NewDbDir, NewIxDir) ->
 update_db_ix_dirs(not_changed, _NewDbDir, _NewIxDir) ->
     not_changed;
 update_db_ix_dirs(ok, NewDbDir, NewIxDir) ->
+    ale:info(?USER_LOGGER,
+             "Setting database directory path to ~s and index directory path to ~s",
+             [NewDbDir, NewIxDir]),
+
     ns_couchdb_api:set_db_and_ix_paths(NewDbDir, NewIxDir),
     setup_db_and_ix_paths([{db_path, NewDbDir},
                            {index_path, NewIxDir}]),
