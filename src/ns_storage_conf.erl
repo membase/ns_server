@@ -23,14 +23,15 @@
 -include("ns_common.hrl").
 -include("ns_config.hrl").
 
--export([setup_disk_storage_conf/2,
+-export([setup_disk_storage_conf/3,
          storage_conf/1, storage_conf_from_node_status/1,
          query_storage_conf/0,
          this_node_dbdir/0, this_node_ixdir/0, this_node_logdir/0,
          this_node_bucket_dbdir/1,
          delete_unused_buckets_db_files/0,
          delete_old_2i_indexes/0,
-         setup_db_and_ix_paths/0]).
+         setup_db_and_ix_paths/0,
+         this_node_cbas_dirs/0]).
 
 -export([cluster_storage_info/0, nodes_storage_info/1]).
 
@@ -109,22 +110,32 @@ read_path_from_conf(Config, Node, Key, SubKey) ->
     end.
 
 
-%% @doc sets db and index path of this node.
-%%
-%% NOTE: ns_server restart is required to make this fully effective.
--spec setup_disk_storage_conf(DbPath::string(), IxDir::string()) ->
-                                     ok | not_changed | {errors, [Msg :: binary()]}.
-setup_disk_storage_conf(DbPath, IxPath) ->
+%% @doc sets db, index and analytics paths of this node.
+%% NOTE: ns_server restart is required to make db and index paths change fully effective.
+-spec setup_disk_storage_conf(DbPath::string(), IxDir::string(), CBASDirs::list()) ->
+                                     ok | restart | not_changed | {errors, [Msg :: binary()]}.
+setup_disk_storage_conf(DbPath, IxPath, CBASDirs) ->
     NewDbDir = misc:absname(DbPath),
     NewIxDir = misc:absname(IxPath),
 
-    case prepare_db_ix_dirs(NewDbDir, NewIxDir) of
-        ok ->
-            ns_couchdb_api:set_db_and_ix_paths(NewDbDir, NewIxDir),
-            setup_db_and_ix_paths([{db_path, NewDbDir},
-                                   {index_path, NewIxDir}]);
-        RV ->
-            RV
+    case {prepare_db_ix_dirs(NewDbDir, NewIxDir),
+          prepare_cbas_dirs(CBASDirs)} of
+        {{errors, Errors1}, {errors, Errors2}} ->
+            {errors, Errors1 ++ Errors2};
+        {{errors, Errors}, _} ->
+            {errors, Errors};
+        {_, {errors, Errors}} ->
+            {errors, Errors};
+        {OK1, OK2} ->
+            case {update_db_ix_dirs(OK1, NewDbDir, NewIxDir),
+                  update_cbas_dirs(OK2)} of
+                {restart, _} ->
+                    restart;
+                {_, ok} ->
+                    ok;
+                {not_changed, not_changed} ->
+                    not_changed
+            end
     end.
 
 prepare_db_ix_dirs(NewDbDir, NewIxDir) ->
@@ -156,6 +167,55 @@ prepare_db_ix_dirs(NewDbDir, NewIxDir) ->
             end;
         false ->
             not_changed
+    end.
+
+update_db_ix_dirs(not_changed, _NewDbDir, _NewIxDir) ->
+    not_changed;
+update_db_ix_dirs(ok, NewDbDir, NewIxDir) ->
+    ns_couchdb_api:set_db_and_ix_paths(NewDbDir, NewIxDir),
+    setup_db_and_ix_paths([{db_path, NewDbDir},
+                           {index_path, NewIxDir}]),
+    restart.
+
+prepare_cbas_dirs(CBASDirs) ->
+    case misc:ensure_writable_dirs(CBASDirs) of
+        ok ->
+            RealDirs =
+                lists:usort(
+                  lists:map(fun (Dir) ->
+                                    {ok, RealPath} = misc:realpath(Dir, "/"),
+                                    RealPath
+                            end, CBASDirs)),
+            case length(RealDirs) =:= length(CBASDirs) of
+                false ->
+                    {errors,
+                     [<<"Could not set analytics storage. Different directories should not resolve "
+                        "into the same physical location">>]};
+                true ->
+                    case this_node_cbas_dirs() of
+                        RealDirs ->
+                            not_changed;
+                        _ ->
+                            {ok, RealDirs}
+                    end
+            end;
+        error ->
+            {errors,
+             [<<"Could not set analytics storage. All directories must be writable by 'couchbase' user.">>]}
+    end.
+
+update_cbas_dirs(not_changed) ->
+    not_changed;
+update_cbas_dirs({ok, CBASDirs}) ->
+    ns_config:set({node, node(), cbas_dirs}, CBASDirs).
+
+this_node_cbas_dirs() ->
+    case ns_config:search_node(cbas_dirs) of
+        {value, V} ->
+            V;
+        false ->
+            {ok, Default} = this_node_ixdir(),
+            [Default]
     end.
 
 % Returns a proplist of lists of proplists.

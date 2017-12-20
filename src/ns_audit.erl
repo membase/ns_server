@@ -36,7 +36,7 @@
          delete_bucket/2,
          flush_bucket/2,
          start_loading_sample/2,
-         disk_storage_conf/4,
+         disk_storage_conf/5,
          rename_node/3,
          setup_node_services/3,
          cluster_settings/6,
@@ -483,10 +483,11 @@ flush_bucket(Req, Name) ->
 start_loading_sample(Req, Name) ->
     put(start_loading_sample, Req, [{bucket_name, Name}]).
 
-disk_storage_conf(Req, Node, DbPath, IxPath) ->
+disk_storage_conf(Req, Node, DbPath, IxPath, CBASDirs) ->
     put(disk_storage_conf, Req, [{node, Node},
                                  {db_path, DbPath},
-                                 {index_path, IxPath}]).
+                                 {index_path, IxPath},
+                                 {cbas_dirs, string:join(CBASDirs, ",")}]).
 
 rename_node(Req, Node, Hostname) ->
     put(rename_node, Req, [{node, Node},

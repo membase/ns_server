@@ -249,7 +249,8 @@
               "remote" : {"ip" : "", "port" : 1},
               "node" : "",
               "db_path" : "",
-              "index_path" : ""
+              "index_path" : "",
+              "cbas_dirs" : ""
           },
           "optional_fields" : {
               "sessionid" : ""

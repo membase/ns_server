@@ -709,7 +709,10 @@ cbas_spec(Config) ->
             AdminPort = ns_config:search(Config, {node, node(), cbas_admin_port}, 9110),
             DebugPort = ns_config:search(Config, {node, node(), cbas_debug_port}, -1),
 
-            {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
+            CBASDirs = [filename:join([Token], "@analytics") ||
+                           Token <- ns_storage_conf:this_node_cbas_dirs()],
+
+            ok = misc:ensure_writable_dirs(CBASDirs),
 
             {ok, LogDir} = application:get_env(ns_server, error_logger_mf_dir),
             {_, Host} = misc:node_name_host(node()),
@@ -730,7 +733,7 @@ cbas_spec(Config) ->
                      "-bindHttpAddress=" ++ Host,
                      "-bindHttpPort=" ++ integer_to_list(HttpPort),
                      "-bindAdminPort=" ++ integer_to_list(AdminPort),
-                     "-dataDirs=" ++ filename:join(IdxDir, "@analytics"),
+                     "-dataDirs=" ++ string:join(CBASDirs, ","),
                      "-cbasExecutable=" ++ Cmd,
                      "-debugPort=" ++ integer_to_list(DebugPort),
                      "-ccHttpPort=" ++ integer_to_list(CCHttpPort),
