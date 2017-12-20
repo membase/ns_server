@@ -226,6 +226,9 @@ node_address(Node) ->
 port_for(fts, Node) ->
     lookup_port(fts_http_port, Node);
 
+port_for(cbas, Node) ->
+    lookup_port(cbas_http_port, Node);
+
 port_for(n1ql, Node) ->
     lookup_port(query_port, Node);
 
