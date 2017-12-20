@@ -214,7 +214,10 @@ update_cbas_dirs({ok, CBASDirs}) ->
     ns_config:set({node, node(), cbas_dirs}, CBASDirs).
 
 this_node_cbas_dirs() ->
-    case ns_config:search_node(cbas_dirs) of
+    node_cbas_dirs(ns_config:latest(), node()).
+
+node_cbas_dirs(Config, Node) ->
+    case ns_config:search_node(Node, Config, cbas_dirs) of
         {value, V} ->
             V;
         false ->
@@ -262,12 +265,13 @@ query_storage_conf() ->
               {Key, RealPath}
       end, StorageConf).
 
-extract_node_storage_info(NodeInfo) ->
+extract_node_storage_info(Config, Node, NodeInfo) ->
     {RAMTotal, RAMUsed, _} = proplists:get_value(memory_data, NodeInfo),
     DiskStats = proplists:get_value(disk_data, NodeInfo),
     StorageConf = proplists:get_value(node_storage_conf, NodeInfo, []),
     DiskPaths = [X || {PropName, X} <- StorageConf,
-                      PropName =:= db_path orelse PropName =:= index_path],
+                      PropName =:= db_path orelse PropName =:= index_path] ++
+        node_cbas_dirs(Config, Node),
     {DiskTotal, DiskUsed} = extract_disk_totals(DiskPaths, DiskStats),
     [{ram, [{total, RAMTotal},
             {used, RAMUsed}
@@ -363,8 +367,8 @@ do_cluster_storage_info(NodeInfos) ->
                 0
         end,
 
-    StorageInfos = [extract_node_storage_info(NodeInfo)
-                    || {_Node, NodeInfo} <- NodeInfos],
+    StorageInfos = [extract_node_storage_info(Config, Node, NodeInfo)
+                    || {Node, NodeInfo} <- NodeInfos],
     HddTotals = extract_subprop(StorageInfos, hdd, total),
     HddUsed = extract_subprop(StorageInfos, hdd, used),
 
