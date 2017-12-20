@@ -691,7 +691,8 @@ do_handle_diag(Req, Extra) ->
             ?ACCESS_LOG_FILENAME, ?INT_ACCESS_LOG_FILENAME,
             ?QUERY_LOG_FILENAME, ?PROJECTOR_LOG_FILENAME,
             ?GOXDCR_LOG_FILENAME, ?INDEXER_LOG_FILENAME,
-            ?FTS_LOG_FILENAME, ?JSON_RPC_LOG_FILENAME,
+            ?FTS_LOG_FILENAME, ?CBAS_LOG_FILENAME,
+            ?JSON_RPC_LOG_FILENAME,
             ?EVENTING_LOG_FILENAME],
 
     lists:foreach(fun (Log) ->

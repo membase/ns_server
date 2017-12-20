@@ -788,6 +788,15 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                                     url=url,
                                     log_file="fts_diag.json", no_header=True)]
 
+    cbas_tasks = []
+    cbas_port = read_guts(guts, "cbas_admin_port")
+    if cbas_port:
+        url = 'http://127.0.0.1:%s/analytics/node/diagnostics' % cbas_port
+        cbas_tasks = [make_curl_task(name="CBAS /analytics/node/diagnostics: ",
+                                     user="@", password=memcached_pass,
+                                     url=url,
+                                     log_file="analytics_diag.json", no_header=True)]
+
     _tasks = [
         UnixTask("Directory structure",
                  ["ls", "-lRai", root]),
@@ -867,7 +876,8 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                       "reports.log", "xdcr_trace.log", "http_access.log",
                       "http_access_internal.log", "ns_couchdb.log",
                       "goxdcr.log", "query.log", "projector.log", "indexer.log",
-                      "fts.log", "metakv.log", "json_rpc.log", "eventing.log"]],
+                      "fts.log", "metakv.log", "json_rpc.log", "eventing.log",
+                      "analytics.log", "analytics_cbas.log", "analytics_shutdown.log", "analytics_trace.json"]],
 
         [make_cbstats_task(kind, memcached_pass, guts)
          for kind in ["all", "allocator", "checkpoint", "config",
@@ -953,7 +963,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                   artifacts=["kv_trace.json"]),
         ]
 
-    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, projector_tasks, fts_tasks, _tasks])
+    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, projector_tasks, fts_tasks, cbas_tasks, _tasks])
 
     return _tasks
 
