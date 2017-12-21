@@ -29,8 +29,6 @@
          validate_unsupported_params/1,
          execute_if_validated/3]).
 
--define(QUERY_TMP_SPACE_MIN_SIZE, 5).
-
 handle_settings_get(Req) ->
     assert_is_vulcan(),
 
@@ -55,7 +53,10 @@ validate_settings_post(Args) ->
                                              true ->
                                                  ok;
                                              false ->
-                                                 {error, "The value of \"queryTmpSpaceSize\" must be a positive integer >= 5"}
+                                                 Msg = io_lib:format("The value of \"queryTmpSpaceSize\" must"
+                                                                     " be a positive integer >= ~p",
+                                                                     [?QUERY_TMP_SPACE_MIN_SIZE]),
+                                                 {error, list_to_binary(Msg)}
                                          end
                                  end
                          end, queryTmpSpaceSize, R1),

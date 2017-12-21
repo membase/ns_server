@@ -210,6 +210,9 @@
 
 -define(DEFAULT_EPHEMERAL_PURGE_INTERVAL_DAYS, 3).
 
+%% Default quota is 5GiB but the unit is MiB.
+-define(QUERY_TMP_SPACE_MIN_SIZE, 5120).
+
 %% Index storage mode values.
 -define(INDEX_STORAGE_MODE_MEMORY_OPTIMIZED, <<"memory_optimized">>).
 -define(INDEX_STORAGE_MODE_FORESTDB, <<"forestdb">>).

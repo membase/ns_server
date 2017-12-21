@@ -69,7 +69,7 @@ general_settings_lens_props() ->
 
 general_settings_defaults() ->
     [{queryTmpSpaceDir, list_to_binary(path_config:component_path(tmp))},
-     {queryTmpSpaceSize, 5}].
+     {queryTmpSpaceSize, ?QUERY_TMP_SPACE_MIN_SIZE}].
 
 general_settings_lens_get(Dict) ->
     json_settings_manager:lens_get_many(general_settings_lens_props(), Dict).
