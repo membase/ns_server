@@ -34,14 +34,20 @@
       var exists = false;
       tasks.tasksWarmingUp.forEach(function (task) {
         if (task.bucket === bucket.name) {
-          var message = task.stats.ep_warmup_state;
           exists = true;
+          if (!Number(task.stats.ep_warmup_estimated_key_count) ||
+              !Number(task.stats.ep_warmup_estimated_value_count)) {
+            return;
+          }
+          var message = task.stats.ep_warmup_state;
           switch (message) {
           case "loading keys":
-            totalPercent += ((task.stats.ep_warmup_key_count || 1) / (task.stats.ep_warmup_estimated_key_count || 1)) * 100;
+            totalPercent += ((Number(task.stats.ep_warmup_key_count) || 1) /
+                             (Number(task.stats.ep_warmup_estimated_key_count) || 1)) * 100;
             break;
           case "loading data":
-            totalPercent += ((task.stats.ep_warmup_value_count || 1) / (task.stats.ep_warmup_estimated_value_count || 1)) * 100;
+            totalPercent += ((Number(task.stats.ep_warmup_value_count) || 1) /
+                             (Number(task.stats.ep_warmup_estimated_value_count) || 1)) * 100;
             break;
           default:
             return 100;
