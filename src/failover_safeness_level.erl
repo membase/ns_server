@@ -41,6 +41,10 @@
 -define(STALENESS_THRESHOLD, 5000).
 -define(TOO_SMALL_BACKLOG, 0.5).
 
+%% window in milliseconds of averaging of stats used in computation of
+%% failover safeness
+-define(AVERAGING_WINDOW, 7000).
+
 -export([start_link/1, get_value/1,
          build_local_safeness_info/1,
          extract_replication_uptodateness/4]).
@@ -50,15 +54,14 @@
          handle_info/2, terminate/2, code_change/3]).
 
 -record(safeness_info,
-        {backlog_size :: undefined | number(),
-         drain_rate :: undefined | number(),
+        {backlog_size :: moving_average:moving_average(),
+         drain_rate :: moving_average:moving_average(),
          safeness_level = unknown :: yellow | green | unknown
         }).
 
 -record(state,
         {bucket_name :: bucket_name(),
          dcp_info :: #safeness_info{},
-         last_ts :: undefined | non_neg_integer(),
          last_update_local_clock :: non_neg_integer()
         }).
 
@@ -79,8 +82,12 @@ get_value(BucketName) ->
     end.
 
 init([BucketName]) ->
+    MovingAvg = moving_average:new(?AVERAGING_WINDOW),
+    DcpInfo   = #safeness_info{backlog_size = MovingAvg,
+                               drain_rate   = MovingAvg},
+
     {ok, #state{bucket_name = BucketName,
-                dcp_info = #safeness_info{},
+                dcp_info = DcpInfo,
                 last_update_local_clock = time_compat:monotonic_time()}}.
 
 terminate(_Reason, _State)     -> ok.
@@ -88,38 +95,19 @@ code_change(_OldVsn, State, _) -> {ok, State}.
 
 handle_event({stats, StatsBucket, #stat_entry{timestamp = TS, values = Values}},
              #state{bucket_name = StatsBucket,
-                    dcp_info = DcpInfo,
-                    last_ts = LastTS} = State) ->
+                    dcp_info = DcpInfo} = State) ->
     NewDcpInfo =
          new_safeness_info(orddict:find(ep_dcp_replica_items_remaining, Values),
                            orddict:find(ep_dcp_replica_items_sent, Values),
                            TS,
-                           LastTS,
                            DcpInfo),
 
-    {ok, State#state{last_ts = TS,
-                     dcp_info = NewDcpInfo,
+    {ok, State#state{dcp_info = NewDcpInfo,
                      last_update_local_clock = time_compat:monotonic_time()}};
 
 handle_event(_, State) ->
     {ok, State}.
 
-%% window in milliseconds of averaging of stats used in computation of
-%% failover safeness
--define(AVERAGING_WINDOW, 7000).
-
-%% this implements simple and cheap averaging method known as
-%% exponential averaging. See here:
-%% http://en.wikipedia.org/wiki/Moving_average#Application_to_measuring_computer_performance
-average_value(undefined, New, _LastTS, _TS) -> New;
-average_value(Old, New, LastTS, TS) ->
-    case LastTS < TS of
-        false -> New;
-        _ ->
-            Beta = math:exp((LastTS - TS) / ?AVERAGING_WINDOW),
-            Alpha = 1 - Beta,
-            New * Alpha + Beta * Old
-    end.
 
 new_safeness_level(Level, BacklogSize, DrainRate) when Level =/= green ->
     try BacklogSize < ?TOO_SMALL_BACKLOG orelse BacklogSize / DrainRate =< ?FROM_YELLOW_SECONDS of
@@ -152,20 +140,25 @@ new_safeness_level(green, BacklogSize, DrainRate) ->
             end
     end.
 
-new_safeness_info({ok, BacklogSize}, {ok, DrainRate}, TS, LastTS,
-                  #safeness_info{backlog_size = OldBacklogSize,
-                                 drain_rate = OldDrainRate,
+new_safeness_info({ok, BacklogSize}, {ok, DrainRate}, TS,
+                  #safeness_info{backlog_size   = BacklogSizeAvg,
+                                 drain_rate     = DrainRateAvg,
                                  safeness_level = SafenessLevel}) ->
-    NewBacklogSize = average_value(OldBacklogSize, BacklogSize,
-                                   LastTS, TS),
-    NewDrainRate = average_value(OldDrainRate, DrainRate,
-                                 LastTS, TS),
-    NewSafenessLevel = new_safeness_level(SafenessLevel, NewBacklogSize, NewDrainRate),
 
-    #safeness_info{backlog_size = NewBacklogSize,
-                   drain_rate = NewDrainRate,
+    NewBacklogSizeAvg   = moving_average:feed(BacklogSize, TS, BacklogSizeAvg),
+    NewBacklogSizeValue = moving_average:get_estimate(NewBacklogSizeAvg),
+
+    NewDrainRateAvg   = moving_average:feed(DrainRate, TS, DrainRateAvg),
+    NewDrainRateValue = moving_average:get_estimate(NewDrainRateAvg),
+
+    NewSafenessLevel = new_safeness_level(SafenessLevel,
+                                          NewBacklogSizeValue,
+                                          NewDrainRateValue),
+
+    #safeness_info{backlog_size   = NewBacklogSizeAvg,
+                   drain_rate     = NewDrainRateAvg,
                    safeness_level = NewSafenessLevel};
-new_safeness_info(_, _, _, _, Info) ->
+new_safeness_info(_, _, _, Info) ->
     Info.
 
 handle_call(get_level, #state{last_update_local_clock = UpdateTS,
