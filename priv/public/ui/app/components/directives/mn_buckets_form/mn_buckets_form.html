@@ -3,7 +3,7 @@
     <div class="row">
     <label>Name</label>
     <a
-       ng-if="bucketConf.isNew && rbac && rbac.cluster.admin.security.read"
+       ng-if="rbac && rbac.cluster.admin.security.read"
        class="cursor-pointer"
        uib-tooltip-html="users.join('<br>')"
        tooltip-append-to-body="true"
