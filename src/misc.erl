@@ -185,8 +185,7 @@ position(E, [E|_List], N) -> N;
 
 position(E, [_|List], N) -> position(E, List, N+1).
 
-now_int()   -> time_to_epoch_int(now()).
-now_float() -> time_to_epoch_float(now()).
+now_int() -> time_to_epoch_int(now()).
 
 time_to_epoch_int(Time) when is_integer(Time) or is_float(Time) ->
   Time;
