@@ -149,7 +149,7 @@
           status = addStatusMessagePart(status, "not responding");
         }
         if (node.status === 'warmup') {
-          status = addStatusMessagePart(status, "warmup");
+          status = addStatusMessagePart(status, "pending");
         }
         if (status != "") {
           nodesByStatuses[status] = ++nodesByStatuses[status] || 1;
