@@ -664,7 +664,7 @@ event_to_jsons({TS, dcp_set_vbucket_state, Bucket, ConnName, VBucket, State, Pid
 event_to_jsons({TS, set_service_map, Service, Nodes}) ->
     [[{nodes, Nodes} |
       format_simple_plist_as_json([{type, setServiceMap},
-                                   {ts, misc:time_to_epoch_int(TS)},
+                                   {ts, misc:time_to_epoch_float(TS)},
                                    {service, Service}])]];
 
 event_to_jsons({TS, autofailover_node_state_change, Node, PrevState,
