@@ -110,7 +110,7 @@ delete_token(Token) ->
     end.
 
 get_now() ->
-    misc:time_to_epoch_int(os:timestamp()).
+    time_compat:monotonic_time(second).
 
 -spec do_generate_token(auth_token_bin() | undefined, term()) -> auth_token_bin().
 do_generate_token(ReplacedToken, Memo) ->
