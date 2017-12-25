@@ -2071,3 +2071,13 @@ time_to_timestamp(Time, Unit) ->
 
 time_to_timestamp(Time) ->
     time_to_timestamp(Time, native).
+
+%% Convert traditional now()-like timestamp to OTP-18+ system time.
+%%
+%% Unit designates the unit to convert to.
+timestamp_to_time({MegaSec, Sec, MicroSec}, Unit) ->
+    Time = MicroSec + 1000000 * (Sec + 1000000 * MegaSec),
+    time_compat:convert_time_unit(Time, microsecond, Unit).
+
+timestamp_to_time(TimeStamp) ->
+    timestamp_to_time(TimeStamp, native).

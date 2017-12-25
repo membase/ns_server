@@ -460,7 +460,7 @@ handle_just_diag(Req, Extra) ->
                               S ->
                                   CodeString = ns_log:code_string(Module, Code),
                                   Type = menelaus_alert:category_bin(Cat),
-                                  TStampEpoch = misc:time_to_epoch_ms_int(TStamp),
+                                  TStampEpoch = misc:timestamp_to_time(TStamp, millisecond),
                                   Resp:write_chunk(iolist_to_binary(diag_format_log_entry(Type, Code, Module, Node, TStampEpoch, CodeString, S)))
                           catch _:_ -> ok
                           end

@@ -246,7 +246,7 @@ build_logs(Params) ->
 
 build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
     LogEntries = lists:filter(fun(#log_entry{tstamp = TStamp}) ->
-                                      misc:time_to_epoch_ms_int(TStamp) > MinTStamp
+                                      misc:timestamp_to_time(TStamp, millisecond) > MinTStamp
                               end,
                               LogEntriesIn),
     LogEntries2 = lists:reverse(lists:keysort(#log_entry.tstamp, LogEntries)),
@@ -268,7 +268,7 @@ build_log_structs(LogEntriesIn, MinTStamp, Limit) ->
                                      {type, category_bin(Cat)},
                                      {code, Code},
                                      {module, list_to_binary(atom_to_list(Module))},
-                                     {tstamp, misc:time_to_epoch_ms_int(TStamp)},
+                                     {tstamp, misc:timestamp_to_time(TStamp, millisecond)},
                                      {shortText, list_to_binary(CodeString)},
                                      {text, list_to_binary(S)},
                                      {serverTime, menelaus_util:format_server_time(
