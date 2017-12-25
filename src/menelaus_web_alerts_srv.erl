@@ -152,13 +152,19 @@ handle_call({consume_alerts, PassedCounter}, _From, #state{change_counter = Coun
                end,
     {reply, NewState =/= State, NewState};
 
-handle_call(fetch_alert, _From, #state{queue=Alerts, change_counter=Counter}=State) ->
+handle_call(fetch_alert, _From, #state{queue=Alerts0, change_counter=Counter}=State) ->
+    %% convert monotonic time to the system time
+    Alerts = [{Key, Msg, Offset + Time} || {Key, Msg, Time, Offset} <- Alerts0],
+
     {reply, {lists:reverse(Alerts), list_to_binary(integer_to_list(Counter))}, State};
 
 handle_call({add_alert, Key, Val}, _, #state{queue=Msgs, history=Hist, change_counter=Counter}=State) ->
     case lists:keyfind(Key, 1, Hist) of
         false ->
-            MsgTuple = {Key, Val, misc:now_int()},
+            Time   = time_compat:monotonic_time(),
+            Offset = time_compat:time_offset(),
+
+            MsgTuple = {Key, Val, Time, Offset},
             maybe_send_out_email_alert(Key, Val),
             {reply, ok, State#state{history=[MsgTuple | Hist],
                                     queue=[MsgTuple | lists:keydelete(Key, 1, Msgs)],
@@ -298,7 +304,9 @@ check(disk, Opaque, _History, _Stats) ->
                           {_Sname, Host} = misc:node_name_host(node()),
                           Err = fmt_to_bin(errors(disk), [Disk, Host, Used]),
                           global_alert(disk, Err),
-                          dict:store(Key, misc:now_int(), Acc);
+
+                          Time = time_compat:monotonic_time(),
+                          dict:store(Key, Time, Acc);
                       true ->
                           Acc
                   end
@@ -434,8 +442,13 @@ hit_rate_limit(Key, Dict) ->
     case dict:find(Key, Dict) of
         error ->
             false;
-        {ok, Value} ->
-            Value + ?DISK_USAGE_TIMEOUT > misc:now_int()
+        {ok, LastTime} ->
+            TimeNow    = time_compat:monotonic_time(),
+            TimePassed = time_compat:convert_time_unit(TimeNow - LastTime,
+                                                       native,
+                                                       second),
+
+            TimePassed < ?DISK_USAGE_TIMEOUT
     end.
 
 
@@ -547,9 +560,10 @@ fetch_bucket_stat(Stats, Bucket, StatName) ->
 %% the same message repeatedly
 -spec expire_history(list()) -> list().
 expire_history(Hist) ->
-    Now = misc:now_int(),
-    [ {Key, Msg, Time} ||
-        {Key, Msg, Time} <- Hist, Now - Time < ?ALERT_TIMEOUT ].
+    Now     = time_compat:monotonic_time(),
+    Timeout = time_compat:convert_time_unit(?ALERT_TIMEOUT, second, native),
+
+    [ Item || Item = {_Key, _Msg, Time, _Offset} <- Hist, Now - Time < Timeout ].
 
 
 %% @doc Lookup old value and test for increase

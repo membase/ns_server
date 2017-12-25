@@ -185,8 +185,6 @@ position(E, [E|_List], N) -> N;
 
 position(E, [_|List], N) -> position(E, List, N+1).
 
-now_int() -> time_to_epoch_int(now()).
-
 time_to_epoch_int(Time) when is_integer(Time) or is_float(Time) ->
   Time;
 
@@ -204,9 +202,6 @@ time_to_epoch_float({Mega,Sec,Micro}) ->
 
 time_to_epoch_float(_) ->
   undefined.
-
-now_int_to_now(Time) when is_integer(Time) ->
-    epoch_to_time(Time * 1000 * 1000000).
 
 epoch_to_time(Nano) ->
     Micro = Nano div 1000,
@@ -2066,3 +2061,19 @@ maybe_add_brackets(Address) ->
         true -> "[" ++ Address ++ "]";
         false -> Address
     end.
+
+%% Convert OTP-18+ style time to the traditional now()-like timestamp.
+%%
+%% Time should be the system time (as returned by time_compat:system_time/1)
+%% to be converted.
+%%
+%% Unit specifies the unit used.
+time_to_timestamp(Time, Unit) ->
+    Micro = time_compat:convert_time_unit(Time, Unit, microsecond),
+
+    Sec = Micro div 1000000,
+    Mega = Sec div 1000000,
+    {Mega, Sec - Mega * 1000000, Micro - Sec * 1000000}.
+
+time_to_timestamp(Time) ->
+    time_to_timestamp(Time, native).

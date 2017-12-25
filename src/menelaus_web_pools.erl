@@ -280,7 +280,7 @@ build_alerts(Alerts) ->
     [build_one_alert(Alert) || Alert <- Alerts].
 
 build_one_alert({_Key, Msg, Time}) ->
-    LocalTime = calendar:now_to_local_time(misc:now_int_to_now(Time)),
+    LocalTime = calendar:now_to_local_time(misc:time_to_timestamp(Time)),
     StrTime = format_server_time(LocalTime),
 
     {struct, [{msg, Msg},

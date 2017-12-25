@@ -473,13 +473,13 @@ get_histo_bin(Value) ->
 
 add_histo(Type, Value) ->
     BinV = get_histo_bin(Value),
-    Epoch = misc:now_int() div ?EPOCH_DURATION,
+    Epoch = time_compat:monotonic_time(second) div ?EPOCH_DURATION,
     K = {h, Type, Epoch, BinV},
     increment_counter(K, 1),
     increment_counter({hg, Type, BinV}, 1).
 
 cleanup_stale_epoch_histos() ->
-    NowEpoch = misc:now_int() div ?EPOCH_DURATION,
+    NowEpoch = time_compat:monotonic_time(second) div ?EPOCH_DURATION,
     FirstStaleEpoch = NowEpoch - ?EPOCH_PRESERVE_COUNT,
     RV = ets:select_delete(ns_server_system_stats,
                            [{{{h, '_', '$1', '_'}, '_'},
