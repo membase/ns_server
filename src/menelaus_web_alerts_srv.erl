@@ -401,7 +401,10 @@ check(communication_issue, Opaque, _History, _Stats) ->
       fun ({Node, Status}) ->
               case Status of
                   {{_, [{_,{potential_network_partition, Nodes}}]}, TS} ->
-                      TimeElapsed = timer:now_diff(erlang:now(), TS)/1000000,
+                      Now = time_compat:monotonic_time(),
+                      TimeElapsed = time_compat:convert_time_unit(Now - TS,
+                                                                  native, second),
+
                       case TimeElapsed > ?COMMUNICATION_ISSUE_TIMEOUT of
                           true ->
                               {_Sname, Host} = misc:node_name_host(Node),

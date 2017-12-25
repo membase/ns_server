@@ -116,7 +116,10 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% APIs
 is_active(LastHeard) ->
-    is_active_check(timer:now_diff(erlang:now(), LastHeard)).
+    Now = time_compat:monotonic_time(),
+    is_active_check(time_compat:convert_time_unit(Now - LastHeard,
+                                                  native,
+                                                  microsecond)).
 
 is_active_check(Diff) when Diff =< ?INACTIVE_TIME ->
     active;

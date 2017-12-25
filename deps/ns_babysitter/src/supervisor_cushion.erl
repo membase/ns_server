@@ -37,12 +37,14 @@ start_link(Name, Delay, ShutdownTimeout, M, F, A) ->
 init([Name, Delay, ShutdownTimeout, M, F, A]) ->
     process_flag(trap_exit, true),
     ?log_debug("starting ~p with delay of ~p", [M, Delay]),
+
+    Started = time_compat:monotonic_time(),
     case apply(M, F, A) of
         {ok, Pid} ->
-            {ok, #state{name=Name, delay=Delay, started=now(),
+            {ok, #state{name=Name, delay=Delay, started=Started,
                         child_pid=Pid, shutdown_timeout=ShutdownTimeout}};
         X ->
-            {ok, die_slowly(X, #state{name=Name, delay=Delay, started=now()})}
+            {ok, die_slowly(X, #state{name=Name, delay=Delay, started=Started})}
     end.
 
 handle_call(child_pid, _From, State) ->
@@ -71,14 +73,14 @@ handle_info(Info, State) ->
 
 die_slowly(Reason, State) ->
     %% How long (in microseconds) has this service been running?
-    Lifetime = timer:now_diff(now(), State#state.started),
-    %% now_diff returns microseconds, so let's do the same.
-    MinDelay = State#state.delay * 1000,
+    Lifetime0 = time_compat:monotonic_time() - State#state.started,
+    Lifetime  = time_compat:convert_time_unit(Lifetime0, native, millisecond),
+
     %% If the restart was too soon, slow down a bit.
-    case Lifetime < MinDelay of
+    case Lifetime < State#state.delay of
         true ->
             ?log_info("Service ~p exited on node ~p in ~.2fs~n",
-                      [State#state.name, node(), Lifetime / 1000000]),
+                      [State#state.name, node(), Lifetime / 1000]),
             timer:send_after(State#state.delay, {die, Reason});
         _ -> self() ! {die, Reason}
     end,

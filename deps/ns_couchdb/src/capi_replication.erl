@@ -37,8 +37,8 @@
 %% public functions
 get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
     {Bucket, VBucket} = capi_utils:split_dbname(DbName),
-    TimeStart = now(),
-    %% enumerate all keys and fetch meta data by getMeta for each of them to ep_engine
+    TimeStart = time_compat:monotonic_time(millisecond),
+    %% Enumerate All keys and fetch meta data by getMeta for each of them to ep_engine
     Results =
         lists:foldr(
           fun ({Id, Rev}, Acc) ->
@@ -54,7 +54,7 @@ get_missing_revs(#db{name = DbName}, JsonDocIdRevs) ->
 
     NumCandidates = length(JsonDocIdRevs),
     RemoteWinners = length(Results),
-    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
+    TimeSpent = time_compat:monotonic_time(millisecond) - TimeStart,
     AvgLatency = TimeSpent div NumCandidates,
     ?xdcr_debug("[Bucket:~p, Vb:~p]: after conflict resolution for ~p docs, num of remote winners is ~p and "
                 "number of local winners is ~p. (time spent in ms: ~p, avg latency in ms per doc: ~p)",
@@ -84,7 +84,7 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
             ok
     end,
 
-    TimeStart = now(),
+    TimeStart = time_compat:monotonic_time(millisecond),
     %% enumerate all docs and update them
     Errors =
         lists:foldr(
@@ -98,7 +98,7 @@ update_replicated_docs(#db{name = DbName}, Docs, Options) ->
           end,
           [], Docs),
 
-    TimeSpent = timer:now_diff(now(), TimeStart) div 1000,
+    TimeSpent = time_compat:monotonic_time(millisecond) - TimeStart,
     AvgLatency = TimeSpent div length(Docs),
 
     %% dump error msg if timeout
@@ -418,7 +418,7 @@ handle_commit_for_checkpoint(Req, Bucket, VB, VBOpaque, _) ->
     end.
 
 do_checkpoint_commit(Bucket, VB) ->
-    TimeBefore = erlang:now(),
+    TimeBefore = time_compat:monotonic_time(microsecond),
     system_stats_collector:increment_counter(xdcr_checkpoint_commits_enters, 1),
     try
         case ns_memcached:perform_checkpoint_commit_for_xdcr(Bucket, VB, ?XDCR_CHECKPOINT_TIMEOUT) of
@@ -430,8 +430,8 @@ do_checkpoint_commit(Bucket, VB) ->
         system_stats_collector:increment_counter(xdcr_checkpoint_commits_leaves, 1)
     end,
 
-    TimeAfter = erlang:now(),
-    system_stats_collector:add_histo(xdcr_checkpoint_commit_time, timer:now_diff(TimeAfter, TimeBefore)).
+    TimeAfter = time_compat:monotonic_time(microsecond),
+    system_stats_collector:add_histo(xdcr_checkpoint_commit_time, TimeAfter - TimeBefore).
 
 validate_commit(FailoverLog, CommitUUID, CommitSeq) ->
     {FailoverUUIDs, FailoverSeqs} = lists:unzip(FailoverLog),

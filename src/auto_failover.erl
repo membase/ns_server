@@ -478,7 +478,8 @@ is_node_down(MonitorStatuses) ->
 actual_down_nodes(NodesDict, NonPendingNodes, Config) ->
     %% Get all buckets
     BucketConfigs = ns_bucket:get_buckets(Config),
-    actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, erlang:now()).
+    actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict,
+                            time_compat:monotonic_time()).
 
 actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
     BucketsServers = [{Name, lists:sort(proplists:get_value(servers, BC, []))}
@@ -488,9 +489,12 @@ actual_down_nodes_inner(NonPendingNodes, BucketConfigs, NodesDict, Now) ->
       fun (Node) ->
               case dict:find(Node, NodesDict) of
                   {ok, Info} ->
-                      case proplists:get_value(last_heard, Info) of
-                          T -> timer:now_diff(Now, T) > (?HEART_BEAT_PERIOD + ?STATS_TIMEOUT) * 1000
-                      end orelse
+                      LastHeard = proplists:get_value(last_heard, Info),
+                      Diff      = time_compat:convert_time_unit(Now - LastHeard,
+                                                                native,
+                                                                millisecond),
+
+                      Diff > (?HEART_BEAT_PERIOD + ?STATS_TIMEOUT) orelse
                           begin
                               Ready = proplists:get_value(ready_buckets, Info, []),
                               ExpectedReady = [Name || {Name, Servers} <- BucketsServers,
@@ -588,10 +592,10 @@ actual_down_nodes_inner_test() ->
               {b, ["bucket1"]},
               {c, []}],
     NodesDict = dict:from_list([{N, [{ready_buckets, B},
-                                     {last_heard, {0, 0, 0}}]}
+                                     {last_heard, 0}]}
                                 || {N, B} <- PList0]),
     R = fun (Nodes, Buckets) ->
-                actual_down_nodes_inner(Nodes, Buckets, NodesDict, {0, 0, 0})
+                actual_down_nodes_inner(Nodes, Buckets, NodesDict, 0)
         end,
     ?assertEqual([], R([a, b, c], [])),
     ?assertEqual([], R([a, b, c],
@@ -602,7 +606,7 @@ actual_down_nodes_inner_test() ->
     ?assertEqual([a,b,c],
                  actual_down_nodes_inner([a,b,c],
                                          [{"bucket1", [{servers, [a, b]}]}],
-                                         NodesDict, {16#100000000, 0, 0})),
+                                         NodesDict, 16#100000000000)),
     ?assertEqual([c], R([a, b, c],
                         [{"bucket1", [{servers, [a, b, c]}]}])),
     ?assertEqual([b, c], R([a, b, c],

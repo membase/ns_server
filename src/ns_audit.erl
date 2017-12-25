@@ -360,7 +360,7 @@ prepare(Req, Params) ->
                  menelaus_auth:get_token(Req),
                  get_remote(Req)}
         end,
-    Body = [{timestamp, now_to_iso8601(now())},
+    Body = [{timestamp, now_to_iso8601(os:timestamp())},
             {remote, Remote},
             {sessionid, Token},
             {real_userid, User}] ++ Params,

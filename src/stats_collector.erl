@@ -389,7 +389,7 @@ parse_timings(TS, Timings, LastTS, LastTimingCounters) ->
 %% Tests
 
 parse_stats_test() ->
-    Now = misc:time_to_epoch_ms_int(now()),
+    Now = time_compat:monotonic_time(millisecond),
     Input =
         [{<<"conn_yields">>,<<"0">>},
          {<<"threads">>,<<"4">>},

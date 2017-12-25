@@ -248,8 +248,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 
 gc(State = #state{dedup=Dupes}) ->
-    DupesList = gc(erlang:now(), dict:to_list(Dupes),
-                   []),
+    DupesList = gc(time_compat:timestamp(), dict:to_list(Dupes), []),
     State#state{dedup=dict:from_list(DupesList)}.
 
 gc(_Now, [], DupesList) -> DupesList;

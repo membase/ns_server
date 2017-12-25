@@ -150,7 +150,7 @@ find_node_with_vbuckets(BucketBin) ->
         0 ->
             undefined;
         _ ->
-            random:seed(erlang:now()),
+            random:seed(os:timestamp()),
             lists:nth(random:uniform(Len), Nodes)
     end.
 

@@ -30,7 +30,7 @@
 
 %% rate of replicaiton stat maintained in bucket replicator
 -record(ratestat, {
-          timestamp = now(),
+          timestamp = time_compat:monotonic_time(),
           item_replicated = 0,
           data_replicated = 0,
           get_meta_batches = 0,
@@ -393,11 +393,8 @@ compute_rate_stat(#xdcr_stats_sample{docs_written = Written1,
                      docs_opt_repd = OldOptRepd,
                      work_time = OldWorkTime
                     } = RateStat) ->
-    T2 = os:timestamp(),
-    %% compute elapsed time in microsecond
-    Delta = timer:now_diff(T2, T1),
-    %% convert from us to secs
-    DeltaMilliSecs = Delta / 1000,
+    T2 = time_compat:monotonic_time(),
+    DeltaMilliSecs = time_compat:convert_time_unit(T2 - T1, native, millisecond),
     %% to smooth the stats, only compute rate when interval is big enough
     Interval = ns_config:read_key_fast(xdcr_rate_stat_interval_ms, ?XDCR_RATE_STAT_INTERVAL_MS),
     NewRateStat = case DeltaMilliSecs < Interval of

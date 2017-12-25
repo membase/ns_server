@@ -547,7 +547,10 @@ update_work_time(#rep_state{status = VbStatus} = State) ->
                                      %% timer not initalized yet
                                      0;
                                  _ ->
-                                     timer:now_diff(now(), State#rep_state.work_start_time)
+                                     Now  = time_compat:monotonic_time(),
+                                     Diff = Now - State#rep_state.work_start_time,
+
+                                     time_compat:convert_time_unit(Diff, native, microsecond)
                              end;
                          %% if not replicating (idling or waiting for turn), do not count the work time
                          _ ->
@@ -796,7 +799,7 @@ start_replication(#rep_state{
                      xmem_remote = Remote
                     } = State) ->
 
-    WorkStart = now(),
+    WorkStart = time_compat:monotonic_time(),
 
     NumWorkers = get_value(worker_processes, Options),
     BatchSizeItems = get_value(worker_batch_size, Options),

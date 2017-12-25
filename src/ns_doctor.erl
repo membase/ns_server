@@ -137,14 +137,16 @@ handle_call({get_node, Node}, _From, #state{nodes=Nodes} = State) ->
     RV = case dict:find(Node, Nodes) of
              {ok, Status} ->
                  LiveNodes = [node() | nodes()],
-                 annotate_status(Node, Status, now(), LiveNodes);
+                 annotate_status(Node, Status,
+                                 time_compat:monotonic_time(),
+                                 LiveNodes);
              _ ->
                  []
          end,
     {reply, RV, State};
 
 handle_call(get_nodes, _From, #state{nodes=Nodes} = State) ->
-    Now = erlang:now(),
+    Now = time_compat:monotonic_time(),
     LiveNodes = [node()|nodes()],
     Nodes1 = dict:map(
                fun (Node, Status) ->
@@ -289,7 +291,8 @@ is_significant_buckets_change(OldStatus, NewStatus) ->
         orelse OldReadyBuckets =/= NewReadyBuckets.
 
 update_status(Name, Status0, Dict) ->
-    Status = [{last_heard, erlang:now()} | Status0],
+    TS = time_compat:monotonic_time(),
+    Status = [{last_heard, TS} | Status0],
     PrevStatus = case dict:find(Name, Dict) of
                      {ok, V} -> V;
                      error -> []
@@ -323,10 +326,13 @@ update_status(Name, Status0, Dict) ->
 
 annotate_status(Node, Status, Now, LiveNodes) ->
     LastHeard = proplists:get_value(last_heard, Status),
-    Stale = case timer:now_diff(Now, LastHeard) of
-                T when T > ?STALE_TIME ->
+    Diff      = time_compat:convert_time_unit(Now - LastHeard, native, microsecond),
+
+    Stale = case Diff > ?STALE_TIME of
+                true ->
                     [ stale | Status];
-                _ -> Status
+                false ->
+                    Status
             end,
     case lists:member(Node, LiveNodes) of
         true ->

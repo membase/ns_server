@@ -33,7 +33,7 @@
           forced_beat_timer :: reference() | undefined,
           event_handler :: pid(),
           slow_status = [] :: term(),
-          slow_status_ts = {0, 0, 0} :: erlang:timestamp()
+          slow_status_ts = 0 :: integer()
          }).
 
 
@@ -182,14 +182,14 @@ eat_earlier_slow_updates(TS) ->
 
 update_current_status(#state{slow_status = []} = State) ->
     %% we don't have slow status at all; so compute it synchronously
-    TS = erlang:now(),
+    TS = time_compat:monotonic_time(),
     QuickStatus = current_status_quick(TS),
     SlowStatus = current_status_slow(TS),
     NewState = State#state{slow_status = SlowStatus,
                            slow_status_ts = TS},
     {QuickStatus ++ SlowStatus, NewState};
 update_current_status(State) ->
-    TS = erlang:now(),
+    TS = time_compat:monotonic_time(),
     ns_heart_slow_status_updater ! {req, TS, self()},
     QuickStatus = current_status_quick(TS),
 
@@ -248,7 +248,10 @@ slow_updater_loop() ->
 
 current_status_slow(TS) ->
     Status0 = current_status_slow_inner(),
-    Diff = timer:now_diff(erlang:now(), TS),
+
+    Now  = time_compat:monotonic_time(),
+    Diff = time_compat:convert_time_unit(Now - TS, native, microsecond),
+
     system_stats_collector:add_histo(status_latency, Diff),
     [{status_latency, Diff} | Status0].
 

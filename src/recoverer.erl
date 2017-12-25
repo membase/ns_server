@@ -205,7 +205,7 @@ compute_missing_vbuckets(Map) ->
 -define(MAX_NUM_SERVERS, 50).
 
 compute_recovery_map_test_() ->
-    random:seed(now()),
+    random:seed(os:timestamp()),
 
     {timeout, 100,
      {inparallel,

@@ -114,6 +114,8 @@ handle_info(check_liveliness, #state{connection_alive = false} = State) ->
 handle_info(check_liveliness,
             #state{connect_info = {_, _, Node, Bucket},
                    connection_alive = true} = State) ->
+    %% NOTE: The following comment only applies to pre-OTP18 Erlang.
+    %%
     %% We are not interested in the exact time of the last DCP traffic.
     %% We mainly want to know whether there was atleast one DCP message
     %% during the last LIVELINESS_UPDATE_INTERVAL.
@@ -125,8 +127,8 @@ handle_info(check_liveliness,
     %% Alternatively, we can also attach the timestamp in
     %% dcp_traffic_monitor:node_alive(). But, node_alive is an async operation
     %% so I prefer to attach the timestamp here.
-
-    dcp_traffic_monitor:node_alive(Node, {Bucket, erlang:now(), self()}),
+    Now = time_compat:monotonic_time(),
+    dcp_traffic_monitor:node_alive(Node, {Bucket, Now, self()}),
     erlang:send_after(?LIVELINESS_UPDATE_INTERVAL, self(), check_liveliness),
     {noreply, State#state{connection_alive = false}, ?HIBERNATE_TIMEOUT};
 

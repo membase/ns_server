@@ -57,9 +57,9 @@ component_path(NameAtom, SubPath) ->
     filename:join(component_path(NameAtom), SubPath).
 
 tempfile(Dir, Prefix, Suffix) ->
-    {_, _, MicroSecs} = erlang:now(),
+    Unique = time_compat:unique_integer(),
     Pid = os:getpid(),
-    Filename = Prefix ++ integer_to_list(MicroSecs) ++ "_" ++
+    Filename = Prefix ++ integer_to_list(Unique) ++ "_" ++
                Pid ++ Suffix,
     filename:join(Dir, Filename).
 

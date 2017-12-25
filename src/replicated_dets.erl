@@ -173,10 +173,9 @@ open(#state{path = Path, name = TableName}) ->
         ok ->
             ok;
         error ->
-            {A, B, C} = erlang:now(),
+            Time = time_compat:os_system_time(microsecond),
             Backup = lists:flatten(
-                       io_lib:format(
-                         "~s.~4..0b-~6..0b-~6..0b.bak", [Path, A, B, C])),
+                       io_lib:format("~s.~b.bak", [Path, Time])),
             ?log_error("Renaming possibly corrupted dets file ~p to ~p", [Path, Backup]),
             ok = file:rename(Path, Backup),
             ok = do_open(Path, TableName, 1)

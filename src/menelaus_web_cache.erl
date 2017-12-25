@@ -46,7 +46,7 @@ versions_response() ->
     Value.
 
 lookup_value_with_expiration(Key, Nothing, InvalidPred) ->
-    Now = misc:time_to_epoch_ms_int(erlang:now()),
+    Now = time_compat:monotonic_time(millisecond),
     case ets:lookup(menelaus_web_cache, Key) of
         [] ->
             {Nothing, Now};

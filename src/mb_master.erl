@@ -22,14 +22,14 @@
 
 %% Constants and definitions
 -define(HEARTBEAT_INTERVAL, 2000).
--define(TIMEOUT, ?HEARTBEAT_INTERVAL * 5000). % in microseconds
+-define(TIMEOUT, ?HEARTBEAT_INTERVAL * 5).
 
 -type node_info() :: {version(), node()}.
 
 -record(state, {child :: pid(),
                 master :: node(),
                 peers :: [node()],
-                last_heard :: {integer(), integer(), integer()}}).
+                last_heard :: integer()}).
 
 
 %% API
@@ -81,20 +81,21 @@ init([]) ->
       end, empty),
     erlang:process_flag(trap_exit, true),
     {ok, _} = timer2:send_interval(?HEARTBEAT_INTERVAL, send_heartbeat),
+    Now = time_compat:monotonic_time(),
     case ns_node_disco:nodes_wanted() of
         [N] = P when N == node() ->
             ale:info(?USER_LOGGER, "I'm the only node, so I'm the master.", []),
-            {ok, master, start_master(#state{last_heard=now(), peers=P})};
+            {ok, master, start_master(#state{last_heard=Now, peers=P})};
         Peers when is_list(Peers) ->
             case lists:member(node(), Peers) of
                 false ->
                     %% We're a worker, but don't know who the master is yet
                     ?log_debug("Starting as worker. Peers: ~p", [Peers]),
-                    {ok, worker, #state{last_heard=now()}};
+                    {ok, worker, #state{last_heard=Now}};
                 true ->
                     %% We're a candidate
                     ?log_debug("Starting as candidate. Peers: ~p", [Peers]),
-                    {ok, candidate, #state{last_heard=now(), peers=Peers}}
+                    {ok, candidate, #state{last_heard=Now, peers=Peers}}
             end
     end.
 
@@ -200,16 +201,21 @@ handle_info(send_heartbeat, candidate, #state{peers=Peers} = StateData) ->
             ?log_warning("Skipped ~p heartbeats~n", [Eaten])
     end,
 
-    StartTS = now(),
+    StartTS = time_compat:monotonic_time(),
 
-    MostOfTimeoutMicros = ?TIMEOUT * 4 div 5,
+    MostOfTimeout = ?TIMEOUT * 4 div 5,
 
-    Armed = diag_handler:arm_timeout(MostOfTimeoutMicros div 1000),
+    Armed = diag_handler:arm_timeout(MostOfTimeout),
     send_heartbeat_with_peers(Peers, candidate, Peers),
     diag_handler:disarm_timeout(Armed),
 
-    case (timer:now_diff(StartTS, StateData#state.last_heard) >= ?TIMEOUT
-          andalso timer:now_diff(now(), StartTS) < MostOfTimeoutMicros) of
+    SpentOnSending = time_compat:convert_time_unit(time_compat:monotonic_time() - StartTS,
+                                                   native, millisecond),
+
+    SinceHeard  = time_compat:convert_time_unit(StartTS - StateData#state.last_heard,
+                                                native, millisecond),
+
+    case SinceHeard >= ?TIMEOUT andalso SpentOnSending < MostOfTimeout of
         true ->
             %% Take over
             ale:info(?USER_LOGGER, "Haven't heard from a higher priority node or "
@@ -325,7 +331,7 @@ candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
             NewState =
                 case strongly_lower_priority_node(NodeInfo) of
                     false ->
-                        State#state{last_heard=now(), master=Node};
+                        State#state{last_heard=time_compat:monotonic_time(), master=Node};
                     true ->
                         case ns_config:search(rebalance_status) of
                             {value, running} ->
@@ -335,7 +341,7 @@ candidate({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
                                          "But I won't try to take over since "
                                          "rebalance seems to be running",
                                          [Node]),
-                                State#state{last_heard=now(), master=Node};
+                                State#state{last_heard=time_compat:monotonic_time(), master=Node};
                             _ ->
                                 ale:info(?USER_LOGGER,
                                          "Candidate got master heartbeat from "
@@ -367,7 +373,7 @@ candidate({heartbeat, NodeInfo, candidate, _H}, #state{peers=Peers} = State) ->
             case higher_priority_node(NodeInfo) of
                 true ->
                     %% Higher priority node
-                    {next_state, candidate, State#state{last_heard=now()}};
+                    {next_state, candidate, State#state{last_heard=time_compat:monotonic_time()}};
                 false ->
                     %% Lower priority, so ignore it
                     {next_state, candidate, State}
@@ -389,15 +395,17 @@ master({heartbeat, NodeInfo, master, _H}, #state{peers=Peers} = State) ->
 
     case lists:member(Node, Peers) of
         true ->
+            Now = time_compat:monotonic_time(),
+
             case higher_priority_node(NodeInfo) of
                 true ->
                     ?log_info("Surrendering mastership to ~p", [Node]),
                     NewState = shutdown_master_sup(State),
-                    {next_state, candidate, NewState#state{last_heard=now()}};
+                    {next_state, candidate, NewState#state{last_heard=Now}};
                 false ->
                     ?log_info("Got master heartbeat from ~p when I'm master",
                               [Node]),
-                    {next_state, master, State#state{last_heard=now()}}
+                    {next_state, master, State#state{last_heard=Now}}
             end;
         false ->
             ?log_warning("Master got master heartbeat from node ~p which is "
@@ -415,7 +423,7 @@ master({heartbeat, NodeInfo, candidate, _H}, #state{peers=Peers} = State) ->
             ?log_warning("Master got candidate heartbeat from node ~p which is "
                          "not in peers ~p", [Node, Peers])
     end,
-    {next_state, master, State#state{last_heard=now()}};
+    {next_state, master, State#state{last_heard=time_compat:monotonic_time()}};
 
 master(Event, State) ->
     ?log_warning("Got unexpected event ~p as master with state ~p",
@@ -426,12 +434,13 @@ master(Event, State) ->
 worker({heartbeat, NodeInfo, master, _H}, State) ->
     Node = node_info_to_node(NodeInfo),
 
+    Now = time_compat:monotonic_time(),
     case State#state.master of
         Node ->
-            {next_state, worker, State#state{last_heard=now()}};
+            {next_state, worker, State#state{last_heard=Now}};
         N ->
             ?log_info("Saw master change from ~p to ~p", [N, Node]),
-            {next_state, worker, State#state{last_heard=now(), master=Node}}
+            {next_state, worker, State#state{last_heard=Now, master=Node}}
     end;
 
 worker(Event, State) ->

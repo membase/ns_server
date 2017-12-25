@@ -62,7 +62,7 @@ get_nodes() ->
     gen_server:call(?MODULE, get_nodes).
 
 annotate_status(empty) ->
-    {recv_ts, erlang:now()}.
+    {recv_ts, time_compat:monotonic_time()}.
 
 is_node_down(needs_attention) ->
     {true, {"The cluster manager did not respond for the duration of the auto-failover threshold.", cluster_manager_down}};
