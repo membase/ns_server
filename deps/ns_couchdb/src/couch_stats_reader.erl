@@ -81,7 +81,7 @@ handle_cast(_Msg, State) ->
 handle_info(refresh_stats, #state{bucket = Bucket,
                                   last_ts = LastTS,
                                   last_view_stats = LastViewStats} = State) ->
-    TS = misc:time_to_epoch_ms_int(os:timestamp()),
+    TS = time_compat:monotonic_time(millisecond),
 
     Config = ns_config:get(),
     MinFileSize = ns_config:search_node_prop(Config,
@@ -93,8 +93,8 @@ handle_info(refresh_stats, #state{bucket = Bucket,
                                                              LastViewStats, MinFileSize),
     ets:insert(server(Bucket), {stuff, ProcessedSamples}),
 
-    NowTS = misc:time_to_epoch_ms_int(os:timestamp()),
-    Delta = min(?SAMPLE_INTERVAL, max(0, NowTS - TS)),
+    NowTS = time_compat:monotonic_time(millisecond),
+    Delta = min(?SAMPLE_INTERVAL, NowTS - TS),
     timer2:send_after(?SAMPLE_INTERVAL - Delta, refresh_stats),
 
     {noreply, State#state{last_view_stats = NewLastViewStats,
