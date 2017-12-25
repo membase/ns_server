@@ -22,6 +22,7 @@ ENDIF (NOT EXISTS "${COUCHBASE_PLT}")
 # Compute list of .beam files
 FILE (GLOB beamfiles RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" ebin/*.beam)
 STRING (REGEX REPLACE "ebin/(couch_api_wrap(_httpc)?).beam\;?" "" beamfiles "${beamfiles}")
+STRING (REGEX REPLACE "ebin/time_compat.beam\;?" "" beamfiles "${beamfiles}")
 
 FILE (GLOB couchdb_beamfiles RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" deps/ns_couchdb/ebin/*.beam)
 STRING (REGEX REPLACE "deps/ns_couchdb/ebin/couch_log.beam\;?" "" couchdb_beamfiles "${couchdb_beamfiles}")
