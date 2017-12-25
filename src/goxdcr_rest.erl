@@ -181,7 +181,7 @@ find_all_replication_docs(Timeout) ->
 process_repl_error(Error) ->
     TimeStamp  = misc:expect_prop_value(<<"Time">>, Error),
 
-    Time = calendar:now_to_local_time(misc:epoch_to_time(TimeStamp)),
+    Time = calendar:now_to_local_time(misc:time_to_timestamp(TimeStamp, nanosecond)),
 
     {{Year, Month, Day}, {Hour, Minute, Second}} = Time,
     TimeFormatted = io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B ",
