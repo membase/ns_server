@@ -185,15 +185,6 @@ position(E, [E|_List], N) -> N;
 
 position(E, [_|List], N) -> position(E, List, N+1).
 
-time_to_epoch_float(Time) when is_integer(Time) or is_float(Time) ->
-  Time;
-
-time_to_epoch_float({Mega,Sec,Micro}) ->
-  Mega * 1000000 + Sec + Micro / 1000000;
-
-time_to_epoch_float(_) ->
-  undefined.
-
 msecs_to_usecs(MilliSec) ->
     MilliSec * 1000.
 
@@ -2072,3 +2063,12 @@ timestamp_to_time({MegaSec, Sec, MicroSec}, Unit) ->
 
 timestamp_to_time(TimeStamp) ->
     timestamp_to_time(TimeStamp, native).
+
+time_to_epoch_float(Time) when is_integer(Time) or is_float(Time) ->
+    Time;
+
+time_to_epoch_float({_, _, _} = TS) ->
+    timestamp_to_time(TS, microsecond) / 1000000;
+
+time_to_epoch_float(_) ->
+  undefined.
