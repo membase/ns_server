@@ -483,7 +483,7 @@ handle_info({remote_bucket_request_result, TargetNode, {UUID, Bucket} = Id, R},
 handle_info({remote_bucket_request_timeout, Id},
             #state{remote_bucket_waiters=Waiters,
                    remote_bucket_waiters_trefs=TRefs} = State) ->
-    Now = misc:time_to_epoch_ms_int(os:timestamp()),
+    Now = time_compat:monotonic_time(millisecond),
 
     BucketWaiters = dict:fetch(Id, Waiters),
     BucketTRef = dict:fetch(Id, TRefs),
@@ -609,7 +609,7 @@ cancel_bucket_request_tref(Id, TRef) ->
 enqueue_waiter(Id, From, Timeout,
                #state{remote_bucket_waiters=Waiters,
                       remote_bucket_waiters_trefs=TRefs} = State) ->
-    Now = misc:time_to_epoch_ms_int(os:timestamp()),
+    Now = time_compat:monotonic_time(millisecond),
     Expiration = Now + Timeout,
 
     BucketWaiters = misc:dict_get(Id, Waiters, []),
