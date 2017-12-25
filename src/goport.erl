@@ -728,7 +728,7 @@ is_space($\n) ->
 is_space(_) ->
     false.
 
-prop_trime_spaces_() ->
+prop_trim_spaces_() ->
     {?FORALL(Str, list(oneof("\r\s\t\nabcdef")),
              begin
                  Binary = list_to_binary(Str),
