@@ -93,17 +93,6 @@
           status = idle
  }).
 
-%% vbucket checkpoint status used by each vbucket replicator and status reporting
-%% to bucket replicator
--record(rep_checkpoint_status, {
-          %% timestamp of the checkpoint from now() with granularity of microsecond, used
-          %% as key for ordering
-          ts,
-          time,   % human readable local time
-          vb,     % vbucket id
-          succ    % true if a succesful checkpoint, false otherwise
- }).
-
 %% batch of documents usd by vb replicator worker process
 -record(batch, {
           docs = [],
