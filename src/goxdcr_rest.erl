@@ -179,10 +179,11 @@ find_all_replication_docs(Timeout) ->
                     end, "/pools/default/replications", Timeout).
 
 process_repl_error(Error) ->
-    {{Year, Month, Day}, {Hour, Minute, Second}} =
-        Time = calendar:universal_time_to_local_time(
-                 calendar:now_to_datetime(
-                   misc:epoch_to_time(misc:expect_prop_value(<<"Time">>, Error)))),
+    TimeStamp  = misc:expect_prop_value(<<"Time">>, Error),
+
+    Time = calendar:now_to_local_time(misc:epoch_to_time(TimeStamp)),
+
+    {{Year, Month, Day}, {Hour, Minute, Second}} = Time,
     TimeFormatted = io_lib:format("~4.10.0B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B ",
                                   [Year, Month, Day, Hour, Minute, Second]),
     TimeBin = iolist_to_binary(TimeFormatted),
