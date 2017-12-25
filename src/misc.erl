@@ -185,15 +185,6 @@ position(E, [E|_List], N) -> N;
 
 position(E, [_|List], N) -> position(E, List, N+1).
 
-time_to_epoch_int(Time) when is_integer(Time) or is_float(Time) ->
-  Time;
-
-time_to_epoch_int({Mega,Sec,_}) ->
-  Mega * 1000000 + Sec.
-
-time_to_epoch_ms_int({Mega,Sec,Micro}) ->
-  (Mega * 1000000 + Sec) * 1000 + (Micro div 1000).
-
 time_to_epoch_float(Time) when is_integer(Time) or is_float(Time) ->
   Time;
 
