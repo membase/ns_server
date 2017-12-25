@@ -67,7 +67,7 @@ handle_cast(Msg, State) ->
 %% Called once per second on the node where the gen_server runs
 handle_info(tick, State) ->
     misc:verify_name(?MODULE), % MB-3180: make sure we're still registered
-    Now = misc:time_to_epoch_ms_int(os:timestamp()),
+    Now = time_compat:os_system_time(millisecond),
     lists:foreach(fun (Node) ->
                           gen_event:notify({?EVENT_MANAGER, Node}, {tick, Now})
                   end, [node() | nodes()]),
