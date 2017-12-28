@@ -29,26 +29,23 @@
         [reply_json/2,
          reply_json/3]).
 
-%% common memcached settings are ints which is usually 32-bits wide
--define(MAXINT, 16#7FFFFFFF).
-
 supported_setting_names() ->
-    [{maxconn, {int, 1000, ?MAXINT}},
-     {dedicated_port_maxconn, {int, 1000, ?MAXINT}},
-     {verbosity, {int, 0, ?MAXINT}},
+    [{maxconn, {int, 1000, ?MC_MAXINT}},
+     {dedicated_port_maxconn, {int, 1000, ?MC_MAXINT}},
+     {verbosity, {int, 0, ?MC_MAXINT}},
      {ssl_cipher_list, string},
-     {connection_idle_time, {int, 0, ?MAXINT}},
+     {connection_idle_time, {int, 0, ?MC_MAXINT}},
      {privilege_debug, bool},
      {breakpad_enabled, bool},
      {breakpad_minidump_dir_path, string},
      {dedupe_nmvb_maps, bool}].
 
 supported_extra_setting_names() ->
-    [{default_reqs_per_event, {int, 0, ?MAXINT}},
-     {reqs_per_event_high_priority, {int, 0, ?MAXINT}},
-     {reqs_per_event_med_priority, {int, 0, ?MAXINT}},
-     {reqs_per_event_low_priority, {int, 0, ?MAXINT}},
-     {threads, {int, 0, ?MAXINT}}].
+    [{default_reqs_per_event, {int, 0, ?MC_MAXINT}},
+     {reqs_per_event_high_priority, {int, 0, ?MC_MAXINT}},
+     {reqs_per_event_med_priority, {int, 0, ?MC_MAXINT}},
+     {reqs_per_event_low_priority, {int, 0, ?MC_MAXINT}},
+     {threads, {int, 0, ?MC_MAXINT}}].
 
 parse_validate_node("self") ->
     parse_validate_node(atom_to_list(node()));

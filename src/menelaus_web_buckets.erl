@@ -290,6 +290,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                           {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
                           {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                             {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
+                          {maxTTL, proplists:get_value(max_ttl, BucketConfig)},
                           {basicStats, {struct, BasicStats}},
                           {evictionPolicy, EvictionPolicy},
                           {conflictResolutionType, ConflictResolutionType}
@@ -525,7 +526,7 @@ extract_bucket_props(BucketId, Props) ->
                                                                      conflict_resolution_type,
                                                                      drift_ahead_threshold_ms,
                                                                      drift_behind_threshold_ms,
-                                                                     storage_mode]],
+                                                                     storage_mode, max_ttl]],
                            X =/= false],
     case not cluster_compat_mode:is_cluster_50() andalso
         BucketId =:= "default" of
@@ -956,7 +957,8 @@ validate_bucket_type_specific_params(CommonParams, Params, membase, IsNew,
          parse_validate_threads_number(Params, IsNew),
          parse_validate_eviction_policy(Params, BucketConfig, IsNew),
          quota_size_error(CommonParams, membase, IsNew, BucketConfig),
-         get_storage_mode(Params, BucketConfig, IsNew)
+         get_storage_mode(Params, BucketConfig, IsNew),
+         parse_validate_max_ttl(Params, BucketConfig, IsNew)
          | validate_bucket_auto_compaction_settings(Params)],
 
     validate_bucket_purge_interval(Params, BucketConfig, IsNew) ++
@@ -1394,6 +1396,36 @@ replicas_num_default(_) ->
 parse_validate_replica_index("0") -> {ok, replica_index, false};
 parse_validate_replica_index("1") -> {ok, replica_index, true};
 parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaIndex can only be 1 or 0">>}.
+
+parse_validate_max_ttl(Params, BucketConfig, IsNew) ->
+    CanParse = cluster_compat_mode:is_enterprise() andalso cluster_compat_mode:is_cluster_vulcan(),
+    MaxTTL = proplists:get_value("maxTTL", Params),
+    parse_validate_max_ttl_inner(CanParse, MaxTTL, BucketConfig, IsNew).
+
+parse_validate_max_ttl_inner(false, undefined, _BucketCfg, _IsNew) ->
+    ignore;
+parse_validate_max_ttl_inner(false, _MaxTTL, _BucketCfg, _IsNew) ->
+    case not cluster_compat_mode:is_enterprise() of
+        true ->
+            {error, maxTTL, <<"Max TTL is supported in enterprise edition only">>};
+        false ->
+            {error, maxTTL, <<"Max TTL can not be set until the cluster is fully vulcan">>}
+    end;
+parse_validate_max_ttl_inner(true, MaxTTL, BucketCfg, IsNew) ->
+    DefaultVal = case IsNew of
+                     true -> "0";
+                     false -> proplists:get_value(max_ttl, BucketCfg)
+                 end,
+    validate_with_missing(MaxTTL, DefaultVal, IsNew, fun do_parse_validate_max_ttl/1).
+
+do_parse_validate_max_ttl(Val) ->
+    case menelaus_util:parse_validate_number(Val, 0, ?MC_MAXINT) of
+        {ok, X} ->
+            {ok, max_ttl, X};
+        _Error ->
+            Msg = io_lib:format("Max TTL must be an integer between 0 and ~p", [?MC_MAXINT]),
+            {error, maxTTL, list_to_binary(Msg)}
+    end.
 
 parse_validate_threads_number(Params, IsNew) ->
     validate_with_missing(proplists:get_value("threadsNumber", Params),

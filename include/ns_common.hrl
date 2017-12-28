@@ -219,6 +219,9 @@
 -define(INDEX_STORAGE_MODE_FORESTDB, <<"forestdb">>).
 -define(INDEX_STORAGE_MODE_PLASMA, <<"plasma">>).
 
+%% common memcached settings are ints which is usually 32-bits wide
+-define(MC_MAXINT, 16#7FFFFFFF).
+
 -define(VERSION_25, [2, 5]).
 -define(VERSION_30, [3, 0]).
 -define(VERSION_40, [4, 0]).
