@@ -126,6 +126,7 @@ config_string(BucketName) ->
                 ConflictResolutionType = conflict_resolution_type(BucketConfig),
                 DriftThresholds = drift_thresholds(BucketConfig),
                 StorageMode = storage_mode(BucketConfig),
+                MaxTTL = proplists:get_value(max_ttl, BucketConfig),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -152,9 +153,9 @@ config_string(BucketName) ->
                        eviction_policy_cfg_string(BucketConfig, ItemEvictionPolicy,
                                                   EphemeralFullPolicy)]),
                 CFG1 = metadata_purge_age_cfg_string(EphemeralPurgeAge) ++ CFG,
-                CFG2 = ht_size_cfg_string(BucketConfig) ++ CFG1,
+                CFG2 = ht_size_cfg_string(BucketConfig) ++ max_ttl_cfg_string(MaxTTL) ++ CFG1,
                 {CFG2, {MemQuota, DBSubDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
-                       DriftThresholds, EphemeralPurgeAge}, DBSubDir};
+                       DriftThresholds, EphemeralPurgeAge, MaxTTL}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
                  MemQuota, undefined}
@@ -330,6 +331,14 @@ ht_size_cfg_string(BucketConfig) ->
             [];
         X when is_integer(X) ->
             io_lib:format("ht_size=~B;", [X])
+    end.
+
+max_ttl_cfg_string(MaxTTL) ->
+    case MaxTTL of
+        undefined ->
+            [];
+        _ ->
+            io_lib:format("max_ttl=~B;", [MaxTTL])
     end.
 
 -spec storage_mode([{_,_}]) -> atom().

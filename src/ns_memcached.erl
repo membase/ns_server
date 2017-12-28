@@ -1231,14 +1231,15 @@ ensure_bucket(Sock, Bucket) ->
                  ephemeral_full_policy = missing_ephemeral_full_policy,
                  ahead_threshold = missing_ahead_threshold,
                  behind_threshold = missing_behind_threshold,
-                 ephemeral_metadata_purge_age = missing_ephemeral_metadata_purge_age}).
+                 ephemeral_metadata_purge_age = missing_ephemeral_metadata_purge_age,
+                 max_ttl = missing_max_ttl}).
 
 -spec ensure_bucket_config(port(), bucket_name(), bucket_type(),
                            {pos_integer(), nonempty_string()}) ->
                                   ok | no_return().
 ensure_bucket_config(Sock, Bucket, membase,
                      {MaxSize, DBDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
-                      DriftThresholds, EphemeralPurgeAge}) ->
+                      DriftThresholds, EphemeralPurgeAge, MaxTTL}) ->
     {ok, #qstats{max_size = ActualMaxSize,
                  dbname = ActualDBDir,
                  max_num_workers = ActualNumThreads,
@@ -1246,7 +1247,8 @@ ensure_bucket_config(Sock, Bucket, membase,
                  ephemeral_full_policy = ActualEphemeralFullPolicy,
                  ahead_threshold = ActualDAT,
                  behind_threshold = ActualDBT,
-                 ephemeral_metadata_purge_age = ActualPurgeAge}} =
+                 ephemeral_metadata_purge_age = ActualPurgeAge,
+                 max_ttl = ActualMaxTTL}} =
         mc_binary:quick_stats(
           Sock, <<>>,
           fun (<<"ep_max_size">>, V, QStats) ->
@@ -1265,6 +1267,8 @@ ensure_bucket_config(Sock, Bucket, membase,
                   QStats#qstats{behind_threshold = V};
               (<<"ep_ephemeral_metadata_purge_age">>, V, QStats) ->
                   QStats#qstats{ephemeral_metadata_purge_age = V};
+              (<<"ep_max_ttl">>, V, QStats) ->
+                  QStats#qstats{max_ttl = V};
               (_, _, QStats) ->
                   QStats
           end, #qstats{}),
@@ -1279,7 +1283,8 @@ ensure_bucket_config(Sock, Bucket, membase,
            maybe_set_ephemeral_metadata_purge_age(Sock, Bucket, EphemeralPurgeAge, ActualPurgeAge),
            maybe_set_drift_thresholds(Sock, Bucket, DriftThresholds, ActualDAT, ActualDBT),
            maybe_set_max_size(Sock, Bucket, MaxSize, ActualMaxSize),
-           maybe_set_db_dir(Bucket, DBDir, ActualDBDir)],
+           maybe_set_db_dir(Bucket, DBDir, ActualDBDir),
+           maybe_set_max_ttl(Sock, Bucket, MaxTTL, ActualMaxTTL)],
 
     case lists:any(fun(RV) -> RV =:= {ok, needs_restart} end, Out) of
         true ->
@@ -1367,6 +1372,13 @@ maybe_set_max_size(Sock, Bucket, NewMaxSize, ActualMaxSizeBin) ->
     NewMaxSizeBin = list_to_binary(integer_to_list(NewMaxSize)),
     maybe_set_engine_param(Sock, Bucket, <<"max_size">>, NewMaxSizeBin, ActualMaxSizeBin,
                            "max size", flush).
+
+maybe_set_max_ttl(_Sock, _Bucket, undefined, _) ->
+    ok;
+maybe_set_max_ttl(Sock, Bucket, NewMaxTTL, ActualMaxTTLBin) ->
+    NewMaxTTLBin = list_to_binary(integer_to_list(NewMaxTTL)),
+    maybe_set_engine_param(Sock, Bucket, <<"max_ttl">>, NewMaxTTLBin, ActualMaxTTLBin,
+                           "max ttl", flush).
 
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).
