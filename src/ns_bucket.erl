@@ -87,7 +87,8 @@
          bucket_config_view_nodes/1,
          get_num_vbuckets/0,
          config_upgrade_to_50/1,
-         config_upgrade_to_51/1]).
+         config_upgrade_to_51/1,
+         config_upgrade_to_vulcan/1]).
 
 
 %%%===================================================================
@@ -1076,6 +1077,16 @@ config_upgrade_to_51(Config) ->
                    end};
               (Pair) ->
                   Pair
+          end, Buckets),
+    [{set, buckets, [{configs, NewBuckets}]}].
+
+config_upgrade_to_vulcan(Config) ->
+    Buckets = get_buckets(Config),
+    NewBuckets =
+        lists:map(
+          fun ({Name, BCfg}) ->
+                  BCfg1 = lists:keystore(max_ttl, 1, BCfg, {max_ttl, 0}),
+                  {Name, BCfg1}
           end, Buckets),
     [{set, buckets, [{configs, NewBuckets}]}].
 
