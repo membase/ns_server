@@ -44,6 +44,7 @@
 -include("generic.hrl").
 
 -compile(export_all).
+-export_type([timer/0, timer/1]).
 
 shuffle(List) when is_list(List) ->
     [N || {_R, N} <- lists:keysort(1, [{random:uniform(), X} || X <- List])].
@@ -2037,3 +2038,54 @@ prop_dump_parse_term() ->
 
 prop_dump_parse_term_binary() ->
     forall_recoverable_terms(?cut(_1 =:= parse_term(iolist_to_binary(dump_term(_1))))).
+
+-record(timer, {tref, msg}).
+
+-type timer()     :: timer(any()).
+-type timer(Type) :: #timer{tref :: undefined | reference(),
+                            msg  :: Type}.
+
+-spec create_timer(Msg :: Type) -> timer(Type).
+create_timer(Msg) ->
+    #timer{tref = undefined,
+           msg  = Msg}.
+
+-spec create_timer(non_neg_integer(), Msg :: Type) -> timer(Type).
+create_timer(Timeout, Msg) ->
+    arm_timer(Timeout, create_timer(Msg)).
+
+-spec arm_timer(non_neg_integer(), timer(Type)) -> timer(Type).
+arm_timer(Timeout, Timer) ->
+    do_arm_timer(Timeout, cancel_timer(Timer)).
+
+do_arm_timer(0, Timer) ->
+    self() ! Timer#timer.msg,
+    Timer;
+do_arm_timer(Timeout, #timer{msg = Msg} = Timer) ->
+    TRef = erlang:send_after(Timeout, self(), Msg),
+    Timer#timer{tref = TRef}.
+
+-spec cancel_timer(timer(Type)) -> timer(Type).
+cancel_timer(#timer{tref = undefined} = Timer) ->
+    Timer;
+cancel_timer(#timer{tref = TRef,
+                    msg  = Msg} = Timer) ->
+    erlang:cancel_timer(TRef),
+    flush(Msg),
+
+    Timer#timer{tref = undefined}.
+
+-spec read_timer(timer()) -> false | non_neg_integer().
+read_timer(#timer{tref = undefined}) ->
+    false;
+read_timer(Timer) ->
+    case erlang:read_timer(Timer#timer.tref) of
+        false ->
+            %% Since we change tref to undefined when the timer is
+            %% canceled, here we can be confident that the timer has
+            %% fired. The user might or might not have processed the
+            %% message, regardless, we return 0 here.
+            0;
+        TimeLeft when is_integer(TimeLeft) ->
+            TimeLeft
+    end.
