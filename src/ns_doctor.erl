@@ -326,7 +326,7 @@ update_status(Name, Status0, Dict) ->
 
 annotate_status(Node, Status, Now, LiveNodes) ->
     LastHeard = proplists:get_value(last_heard, Status),
-    Diff      = time_compat:convert_time_unit(Now - LastHeard, native, microsecond),
+    Diff      = misc:convert_time_unit(Now - LastHeard, microsecond),
 
     Stale = case Diff > ?STALE_TIME of
                 true ->

@@ -394,7 +394,7 @@ compute_rate_stat(#xdcr_stats_sample{docs_written = Written1,
                      work_time = OldWorkTime
                     } = RateStat) ->
     T2 = time_compat:monotonic_time(),
-    DeltaMilliSecs = time_compat:convert_time_unit(T2 - T1, native, millisecond),
+    DeltaMilliSecs = misc:convert_time_unit(T2 - T1, millisecond),
     %% to smooth the stats, only compute rate when interval is big enough
     Interval = ns_config:read_key_fast(xdcr_rate_stat_interval_ms, ?XDCR_RATE_STAT_INTERVAL_MS),
     NewRateStat = case DeltaMilliSecs < Interval of

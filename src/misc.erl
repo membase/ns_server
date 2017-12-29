@@ -1982,3 +1982,8 @@ time_to_epoch_float({_, _, _} = TS) ->
 
 time_to_epoch_float(_) ->
   undefined.
+
+%% Shortcut convert_time_unit/3. Always assumes that time to convert
+%% is in native units.
+convert_time_unit(Time, TargetUnit) ->
+    time_compat:convert_time_unit(Time, native, TargetUnit).

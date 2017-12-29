@@ -250,7 +250,7 @@ current_status_slow(TS) ->
     Status0 = current_status_slow_inner(),
 
     Now  = time_compat:monotonic_time(),
-    Diff = time_compat:convert_time_unit(Now - TS, native, microsecond),
+    Diff = misc:convert_time_unit(Now - TS, microsecond),
 
     system_stats_collector:add_histo(status_latency, Diff),
     [{status_latency, Diff} | Status0].

@@ -550,7 +550,7 @@ update_work_time(#rep_state{status = VbStatus} = State) ->
                                      Now  = time_compat:monotonic_time(),
                                      Diff = Now - State#rep_state.work_start_time,
 
-                                     time_compat:convert_time_unit(Diff, native, microsecond)
+                                     misc:convert_time_unit(Diff, microsecond)
                              end;
                          %% if not replicating (idling or waiting for turn), do not count the work time
                          _ ->

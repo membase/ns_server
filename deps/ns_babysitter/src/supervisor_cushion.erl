@@ -74,7 +74,7 @@ handle_info(Info, State) ->
 die_slowly(Reason, State) ->
     %% How long (in microseconds) has this service been running?
     Lifetime0 = time_compat:monotonic_time() - State#state.started,
-    Lifetime  = time_compat:convert_time_unit(Lifetime0, native, millisecond),
+    Lifetime  = misc:convert_time_unit(Lifetime0, millisecond),
 
     %% If the restart was too soon, slow down a bit.
     case Lifetime < State#state.delay of
