@@ -178,7 +178,8 @@ register_with_async(Pid) ->
 
 async_loop_wait_result(Type, Child, Reply, ChildAsyncs) ->
     receive
-        {'DOWN', _MRef, process, _Pid, Reason} ->
+        {'DOWN', _MRef, process, _Pid, Reason} = Down ->
+            maybe_log_down_message(Down),
             terminate_now(Reason, [Child | ChildAsyncs]);
         {'EXIT', Child, Reason} ->
             terminate_on_query(Type, {child_died, Reason}, ChildAsyncs);
@@ -235,7 +236,8 @@ async_loop_handle_result(Type, Child, ChildAsyncs, Result) ->
 
 async_loop_with_result(Result) ->
     receive
-        {'DOWN', _MRef, process, _Pid, Reason} ->
+        {'DOWN', _MRef, process, _Pid, Reason} = Down ->
+            maybe_log_down_message(Down),
             exit(Reason);
         {'EXIT', _, Reason} ->
             exit(Reason);
@@ -380,3 +382,12 @@ handle_initiate_adoption(Controller, Executor, From) ->
     register_with_async(Controller),
     erlang:monitor(process, Executor),
     reply(From, ok).
+
+maybe_log_down_message({'DOWN', _MRef, process, Pid, Reason}) ->
+    case misc:is_normal_termination(Reason) of
+        true ->
+            ok;
+        false ->
+            ?log_warning("Monitored process ~p "
+                         "terminated abnormally (reason = ~p)", [Pid, Reason])
+    end.
