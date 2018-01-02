@@ -30,9 +30,6 @@ start(Fun) ->
     start(Fun, []).
 
 start(Fun, Opts) ->
-    Parent = self(),
-    PDict = erlang:get(),
-
     SpawnFun =
         case proplists:get_value(monitor, Opts, false) of
             true ->
@@ -41,9 +38,12 @@ start(Fun, Opts) ->
                 fun proc_lib:spawn/1
         end,
 
+    Parent           = self(),
+    ParentController = get_controller(),
+
     SpawnFun(
       fun () ->
-              async_init(Parent, PDict, Opts, Fun)
+              async_init(Parent, ParentController, Opts, Fun)
       end).
 
 perform(Fun) ->
@@ -133,19 +133,21 @@ run_with_timeout(Fun, Timeout) ->
     end.
 
 %% internal
-async_init(Parent, PDict, Opts, Fun) ->
+async_init(Parent, ParentController, Opts, Fun) ->
     process_flag(trap_exit, true),
     MRef = erlang:monitor(process, Parent),
 
-    maybe_register_with_parent_async(PDict),
+    set_role(controller),
+    maybe_register_with_parent_async(ParentController),
 
-    Reply = make_ref(),
-    Async = self(),
+    Reply      = make_ref(),
+    Controller = self(),
 
     Child =
         spawn_link(
           fun () ->
-                  erlang:put('$async', Async),
+                  set_role(executor),
+                  set_controller(Controller),
 
                   R = try
                           {ok, Fun()}
@@ -155,21 +157,19 @@ async_init(Parent, PDict, Opts, Fun) ->
                                         erlang:get_stacktrace()}}
                       end,
 
-                  Async ! {Reply, R}
+                  Controller ! {Reply, R}
           end),
 
     Type = proplists:get_value(type, Opts, wait),
     async_loop_wait_result(Type, MRef, Child, Reply, []).
 
-maybe_register_with_parent_async(PDict) ->
-    case lists:keyfind('$async', 1, PDict) of
-        false ->
-            ok;
-        {_, Pid} ->
-            register_with_parent_async(Pid)
-    end.
+maybe_register_with_parent_async(undefined) ->
+    ok;
+maybe_register_with_parent_async(Pid) ->
+    register_with_parent_async(Pid).
 
 register_with_parent_async(Pid) ->
+    controller = get_role(),
     ok = call(Pid, {register_child_async, self()}).
 
 async_loop_wait_result(Type, ParentMRef, Child, Reply, ChildAsyncs) ->
@@ -353,3 +353,16 @@ recv_any_loop_resend_pending(PendingMsgs) ->
       fun (Msg) ->
               self() ! Msg
       end, lists:reverse(PendingMsgs)).
+
+set_role(Role) ->
+    erlang:put('$async_role', Role).
+
+get_role() ->
+    erlang:get('$async_role').
+
+set_controller(Pid) when is_pid(Pid) ->
+    executor = get_role(),
+    erlang:put('$async_controller', Pid).
+
+get_controller() ->
+    erlang:get('$async_controller').
