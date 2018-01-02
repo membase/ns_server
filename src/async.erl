@@ -20,7 +20,7 @@
 -export([start/1, start/2, start_many/2,
          perform/1, perform/2,
          abort/1, abort_many/1,
-         send/2,
+         send/2, adopt/1,
          with/2, with_many/3,
          wait/1, wait_many/1, wait_any/1,
          race/2, map/2, foreach/2,
@@ -66,6 +66,10 @@ abort_many(Pids) ->
 send(Async, Msg) ->
     Async ! {'$async_msg', Msg},
     Msg.
+
+adopt(Child) ->
+    executor = get_role(),
+    ok = call(Child, {initiate_adoption, get_controller(), self()}).
 
 with(AsyncBody, Fun) ->
     Async = start(AsyncBody),
@@ -166,9 +170,9 @@ async_init(Parent, ParentController, Opts, Fun) ->
 maybe_register_with_parent_async(undefined) ->
     ok;
 maybe_register_with_parent_async(Pid) ->
-    register_with_parent_async(Pid).
+    register_with_async(Pid).
 
-register_with_parent_async(Pid) ->
+register_with_async(Pid) ->
     controller = get_role(),
     ok = call(Pid, {register_child_async, self()}).
 
@@ -183,6 +187,9 @@ async_loop_wait_result(Type, Child, Reply, ChildAsyncs) ->
         %% actual parent of our process
         {'EXIT', _, Reason} ->
             terminate_now(Reason, [Child | ChildAsyncs]);
+        {'$async_req', From, {initiate_adoption, Controller, Executor}} ->
+            handle_initiate_adoption(Controller, Executor, From),
+            async_loop_wait_result(Type, Child, Reply, ChildAsyncs);
         {'$async_req', From, {register_child_async, Pid}} ->
             reply(From, ok),
             async_loop_wait_result(Type, Child, Reply, [Pid | ChildAsyncs]);
@@ -234,6 +241,9 @@ async_loop_with_result(Result) ->
             exit(Reason);
         {'$async_req', From, get_result} ->
             handle_get_result(From, Result);
+        {'$async_req', From, {initiate_adoption, Controller, Executor}} ->
+            handle_initiate_adoption(Controller, Executor, From),
+            async_loop_with_result(Result);
         {'$async_req', From, {register_child_async, _Pid}} ->
             %% We don't expect register requests at this point, but it's
             %% possible to write a correct async that has such behavior. If we
@@ -365,3 +375,8 @@ set_controller(Pid) when is_pid(Pid) ->
 
 get_controller() ->
     erlang:get('$async_controller').
+
+handle_initiate_adoption(Controller, Executor, From) ->
+    register_with_async(Controller),
+    erlang:monitor(process, Executor),
+    reply(From, ok).
