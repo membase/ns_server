@@ -135,7 +135,7 @@ run_with_timeout(Fun, Timeout) ->
 %% internal
 async_init(Parent, ParentController, Opts, Fun) ->
     process_flag(trap_exit, true),
-    MRef = erlang:monitor(process, Parent),
+    erlang:monitor(process, Parent),
 
     set_role(controller),
     maybe_register_with_parent_async(ParentController),
@@ -161,7 +161,7 @@ async_init(Parent, ParentController, Opts, Fun) ->
           end),
 
     Type = proplists:get_value(type, Opts, wait),
-    async_loop_wait_result(Type, MRef, Child, Reply, []).
+    async_loop_wait_result(Type, Child, Reply, []).
 
 maybe_register_with_parent_async(undefined) ->
     ok;
@@ -172,12 +172,12 @@ register_with_parent_async(Pid) ->
     controller = get_role(),
     ok = call(Pid, {register_child_async, self()}).
 
-async_loop_wait_result(Type, ParentMRef, Child, Reply, ChildAsyncs) ->
+async_loop_wait_result(Type, Child, Reply, ChildAsyncs) ->
     receive
-        {'DOWN', ParentMRef, _, _, Reason} ->
+        {'DOWN', _MRef, process, _Pid, Reason} = Down ->
             terminate_now(Reason, [Child | ChildAsyncs]);
         {'EXIT', Child, Reason} ->
-            terminate_on_query(Type, ParentMRef, {child_died, Reason}, ChildAsyncs);
+            terminate_on_query(Type, {child_died, Reason}, ChildAsyncs);
         %% note, we don't assume that this comes from the parent, because we
         %% can be terminated by parent async, for example, which is not the
         %% actual parent of our process
@@ -185,26 +185,25 @@ async_loop_wait_result(Type, ParentMRef, Child, Reply, ChildAsyncs) ->
             terminate_now(Reason, [Child | ChildAsyncs]);
         {'$async_req', From, {register_child_async, Pid}} ->
             reply(From, ok),
-            async_loop_wait_result(Type, ParentMRef, Child,
-                                   Reply, [Pid | ChildAsyncs]);
+            async_loop_wait_result(Type, Child, Reply, [Pid | ChildAsyncs]);
         {Reply, Result} ->
-            async_loop_handle_result(Type, ParentMRef, Child, ChildAsyncs, Result);
+            async_loop_handle_result(Type, Child, ChildAsyncs, Result);
         {'$async_msg', Msg} ->
             Child ! Msg,
-            async_loop_wait_result(Type, ParentMRef, Child, Reply, ChildAsyncs)
+            async_loop_wait_result(Type, Child, Reply, ChildAsyncs)
     end.
 
 terminate_now(Reason, Children) ->
     misc:terminate_and_wait(Reason, Children),
     exit(Reason).
 
-terminate_on_query(perform, _ParentMRef, Reason, Children) ->
+terminate_on_query(perform, Reason, Children) ->
     terminate_now(Reason, Children);
-terminate_on_query(wait, ParentMRef, Reason, Children) ->
+terminate_on_query(wait, Reason, Children) ->
     misc:terminate_and_wait(Reason, Children),
-    async_loop_with_result(ParentMRef, {die, Reason}).
+    async_loop_with_result({die, Reason}).
 
-async_loop_handle_result(Type, ParentMRef, Child, ChildAsyncs, Result) ->
+async_loop_handle_result(Type, Child, ChildAsyncs, Result) ->
     unlink(Child),
     ?flush({'EXIT', Child, _}),
 
@@ -221,15 +220,15 @@ async_loop_handle_result(Type, ParentMRef, Child, ChildAsyncs, Result) ->
         wait ->
             case Result of
                 {ok, Success} ->
-                    async_loop_with_result(ParentMRef, {reply, Success});
+                    async_loop_with_result({reply, Success});
                 {raised, _} = Raised ->
-                    async_loop_with_result(ParentMRef, {die, Raised})
+                    async_loop_with_result({die, Raised})
             end
     end.
 
-async_loop_with_result(ParentMRef, Result) ->
+async_loop_with_result(Result) ->
     receive
-        {'DOWN', ParentMRef, _, _, Reason} ->
+        {'DOWN', _MRef, process, _Pid, Reason} = Down ->
             exit(Reason);
         {'EXIT', _, Reason} ->
             exit(Reason);
@@ -247,7 +246,7 @@ async_loop_with_result(ParentMRef, Result) ->
             %% don't exist at the moment).
             reply(From, nack);
         _ ->
-            async_loop_with_result(ParentMRef, Result)
+            async_loop_with_result(Result)
     end.
 
 handle_get_result(From, {reply, Result}) ->
