@@ -38,6 +38,9 @@
 
 -export([start/0, start_eunit/0, start_triq/0, config/1]).
 
+%% Used by cluster_run --dont-start.
+-export([fake_loggers/0]).
+
 start() ->
     run_tests(all).
 

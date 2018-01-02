@@ -373,7 +373,9 @@ def main():
     if static_cookie:
         extra_args += ["-ns_server", "dont_reset_cookie", "true"]
 
-    if not dont_start:
+    if dont_start:
+        extra_args += ["-run", "t", "fake_loggers"]
+    else:
         extra_args += ["-noinput"]
         extra_args += ["-run", "child_erlang", "child_start", "ns_babysitter_bootstrap"]
         extra_args += ["-ns_babysitter", "handle_ctrl_c", "true"]
