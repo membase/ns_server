@@ -31,6 +31,14 @@
                 default_stats,
                 buckets}).
 
+-record(stats_accumulators, {
+          gauges = [],
+          counters = [],
+          sys_gauges = [],
+          sys_counters = [],
+          status = []
+         }).
+
 server_name(Indexer) ->
     list_to_atom(?MODULE_STRING "-" ++ atom_to_list(Indexer:get_type())).
 
@@ -80,12 +88,12 @@ find_type(Name, [{Type, Metrics} | Rest]) ->
     end.
 
 do_recognize_name(_Indexer, <<"needs_restart">>) ->
-    {status, index_needs_restart};
+    {#stats_accumulators.status, index_needs_restart};
 do_recognize_name(_Indexer, <<"num_connections">>) ->
-    {status, index_num_connections};
+    {#stats_accumulators.status, index_num_connections};
 do_recognize_name(Indexer, K) ->
-    Type = find_type(K, [{service_gauge, Indexer:get_service_gauges()},
-                         {service_counter, Indexer:get_service_counters()}]),
+    Type = find_type(K, [{#stats_accumulators.sys_gauges, Indexer:get_service_gauges()},
+                         {#stats_accumulators.sys_counters, Indexer:get_service_counters()}]),
     case Type of
         not_found ->
             do_recognize_bucket_metric(Indexer, K);
@@ -98,8 +106,8 @@ do_recognize_name(Indexer, K) ->
 do_recognize_bucket_metric(Indexer, K) ->
     case binary:split(K, <<":">>, [global]) of
         [Bucket, Index, Metric] ->
-            Type = find_type(Metric, [{gauge, Indexer:get_gauges()},
-                                      {counter, Indexer:get_counters()}]),
+            Type = find_type(Metric, [{#stats_accumulators.gauges, Indexer:get_gauges()},
+                                      {#stats_accumulators.counters, Indexer:get_counters()}]),
 
             case Type of
                 not_found ->
@@ -129,31 +137,17 @@ recognize_name(Indexer, Ets, K) ->
     end.
 
 massage_stats(Indexer, Ets, GrabbedStats) ->
-    massage_stats(Indexer, Ets, GrabbedStats, [], [], [], [], []).
+    massage_stats(Indexer, Ets, GrabbedStats, #stats_accumulators{}).
 
-massage_stats(_Indexer, _Ets, [], AccGauges, AccCounters, AccStatus, AccSysGauges, AccSysCounters) ->
-    {AccGauges, AccCounters, AccStatus, AccSysGauges, AccSysCounters};
-massage_stats(Indexer, Ets, [{K, V} | Rest], AccGauges, AccCounters,
-              AccStatus, AccSysGauges, AccSysCounters) ->
+massage_stats(_Indexer, _Ets, [], Acc) ->
+    Acc;
+massage_stats(Indexer, Ets, [{K, V} | Rest], Acc) ->
     case recognize_name(Indexer, Ets, K) of
         undefined ->
-            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters, AccStatus,
-                          AccSysGauges, AccSysCounters);
-        {counter, NewK} ->
-            massage_stats(Indexer, Ets, Rest, AccGauges,
-                          [{NewK, V} | AccCounters], AccStatus, AccSysGauges, AccSysCounters);
-        {gauge, NewK} ->
-            massage_stats(Indexer, Ets, Rest, [{NewK, V} | AccGauges],
-                          AccCounters, AccStatus, AccSysGauges, AccSysCounters);
-        {service_gauge, NewK} ->
-            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters,
-                          AccStatus, [{NewK, V} | AccSysGauges], AccSysCounters);
-        {service_counter, NewK} ->
-            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters,
-                          AccStatus, AccSysGauges, [{NewK, V} | AccSysCounters]);
-        {status, NewK} ->
-            massage_stats(Indexer, Ets, Rest, AccGauges, AccCounters,
-                          [{NewK, V} | AccStatus], AccSysGauges, AccSysCounters)
+            massage_stats(Indexer, Ets, Rest, Acc);
+        {Pos, NewK} ->
+            massage_stats(
+              Indexer, Ets, Rest, setelement(Pos, Acc, [{NewK, V} | element(Pos, Acc)]))
     end.
 
 grab_stats(#state{indexer = Indexer}) ->
@@ -178,23 +172,32 @@ do_grab_stats(Indexer) ->
 process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{indexer = Indexer,
                                                              buckets = KnownBuckets,
                                                              default_stats = Defaults} = State) ->
-    {Gauges0, Counters, Status, ServiceGauges, ServiceCounters} =
+    MassagedStats =
         massage_stats(Indexer, ets_name(Indexer), GrabbedStats),
-    Gauges = Indexer:compute_gauges(Gauges0) ++ Gauges0,
+
+    CalculateStats =
+        fun (GaugesPos, CountersPos, ComputeGauges) ->
+                Gauges0 = element(GaugesPos, MassagedStats),
+                Gauges = Indexer:ComputeGauges(Gauges0) ++ Gauges0,
+                Counters = element(CountersPos, MassagedStats),
+                base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS)
+        end,
+
+    index_status_keeper:update(Indexer, MassagedStats#stats_accumulators.status),
 
     {Stats, SortedBucketCounters} =
-        base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS),
-
-    index_status_keeper:update(Indexer, Status),
-    AllServiceGauges = Indexer:compute_service_gauges(ServiceGauges) ++ ServiceGauges,
+        CalculateStats(#stats_accumulators.gauges, #stats_accumulators.counters, compute_gauges),
     {ServiceStats1, SortedServiceCounters} =
-        base_stats_collector:calculate_counters(TS, AllServiceGauges, ServiceCounters, PrevCounters, PrevTS),
+        CalculateStats(#stats_accumulators.sys_gauges, #stats_accumulators.sys_counters,
+                       compute_service_gauges),
+
     ServiceStats = [{Indexer:service_event_name(),
                      finalize_index_stats(ServiceStats1)}],
     Prefix = Indexer:prefix(),
     AggregatedStats =
         [{Prefix ++ binary_to_list(Bucket), Values} ||
-            {Bucket, Values} <- aggregate_index_stats(Indexer, Stats, KnownBuckets, Defaults)] ++ ServiceStats,
+            {Bucket, Values} <- aggregate_index_stats(Indexer, Stats, KnownBuckets, Defaults)] ++
+        ServiceStats,
 
     AllCounters = SortedBucketCounters ++ SortedServiceCounters,
     SortedCounters = lists:sort(AllCounters),
