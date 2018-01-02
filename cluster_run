@@ -287,7 +287,6 @@ def main():
     dont_rename = False
     dont_start = False
     static_cookie = False
-    interactive_shell = False
     start_index = 0
     num_nodes = 1
     prepend_extras = False
@@ -300,8 +299,6 @@ def main():
     for o, a in optlist:
         if o in ("--nodes", "-n"):
             num_nodes = int(a)
-        elif o in ("--interactive", "-i"):
-            interactive_shell = True
         elif o == '--dont-start':
             dont_start = True
         elif o == '--host':
@@ -376,14 +373,10 @@ def main():
     if static_cookie:
         extra_args += ["-ns_server", "dont_reset_cookie", "true"]
 
-    if not interactive_shell:
+    if not dont_start:
         extra_args += ["-noinput"]
-        if not dont_start:
-            extra_args += ["-run", "child_erlang", "child_start", "ns_babysitter_bootstrap"]
-            extra_args += ["-ns_babysitter", "handle_ctrl_c", "true"]
-    else:
-        if not dont_start:
-            extra_args += ["-run", "ns_babysitter_bootstrap"]
+        extra_args += ["-run", "child_erlang", "child_start", "ns_babysitter_bootstrap"]
+        extra_args += ["-ns_babysitter", "handle_ctrl_c", "true"]
 
     if loglevel not in LOGLEVELS:
         print "Valid log levels are the following: %s" % ', '.join(LOGLEVELS)
