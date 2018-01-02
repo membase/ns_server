@@ -782,7 +782,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
     fts_tasks = []
     fts_port = read_guts(guts, "fts_http_port")
     if fts_port:
-        url='http://127.0.0.1:%s/api/diag' % fts_port
+        url = 'http://127.0.0.1:%s/api/diag' % fts_port
         fts_tasks = [make_curl_task(name="FTS /api/diag: ",
                                     user="@", password=memcached_pass,
                                     url=url,
