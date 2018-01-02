@@ -57,6 +57,18 @@ uncurry(F) ->
             (F(X))(Y)
     end.
 
+%% Apply functions in a row until one succeeds, as indicated by {ok, _} return
+%% value.
+alternative(_Initial, []) ->
+    false;
+alternative(Initial, [F | Funs]) ->
+    case F(Initial) of
+        {ok, _New} = R ->
+            R;
+        false ->
+            alternative(Initial, Funs)
+    end.
+
 %% some partially applied built-in operations
 add(Y) ->
     fun (X) -> X + Y end.
