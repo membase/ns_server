@@ -91,17 +91,7 @@ spawn_and_wait(Body) ->
                 false ->
                     self() ! ExitMsg,
 
-                    Shutdown =
-                        case Reason of
-                            shutdown ->
-                                true;
-                            {shutdown, _} ->
-                                true;
-                            _ ->
-                                false
-                        end,
-
-                    case Shutdown of
+                    case misc:is_shutdown(Reason) of
                         true ->
                             ?log_debug("Got shutdown exit signal ~p. "
                                        "Assuming it's from our parent", [ExitMsg]),

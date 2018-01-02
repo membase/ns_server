@@ -2089,3 +2089,15 @@ read_timer(Timer) ->
         TimeLeft when is_integer(TimeLeft) ->
             TimeLeft
     end.
+
+is_normal_termination(normal) ->
+    true;
+is_normal_termination(Reason) ->
+    is_shutdown(Reason).
+
+is_shutdown(shutdown) ->
+    true;
+is_shutdown({shutdown, _}) ->
+    true;
+is_shutdown(_) ->
+    false.

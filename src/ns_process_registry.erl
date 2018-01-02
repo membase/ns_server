@@ -100,12 +100,10 @@ handle_cast(_Msg, State) ->
 
 handle_info({'EXIT', Pid, Reason} = ExitMsg, #state{name = Name,
                                                     pids2ids = PidsToIds} = State) ->
-    case Reason of
-        normal ->
+    case misc:is_normal_termination(Reason) of
+        true ->
             ok;
-        shutdown ->
-            ok;
-        _ ->
+        false ->
             ?log_debug("~p detected abnormal exit: ~p", [Name, ExitMsg])
     end,
     case ets:lookup(PidsToIds, Pid) of

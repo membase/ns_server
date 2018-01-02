@@ -219,7 +219,7 @@ handle_info(Msg, State) ->
 terminate(_Reason, #state{port = undefined}) ->
     ok;
 terminate(Reason, #state{port = Port} = State) when is_port(Port) ->
-    case Reason =:= shutdown orelse Reason =:= normal of
+    case misc:is_normal_termination(Reason) of
         true ->
             ok;
         false ->
