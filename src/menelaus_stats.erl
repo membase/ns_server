@@ -1298,64 +1298,66 @@ couchbase_goxdcr_stats_descriptions(BucketId) ->
 
 do_couchbase_goxdcr_stats_descriptions(BucketId) ->
     Reps = goxdcr_status_keeper:get_replications_with_remote_info(BucketId),
-    lists:map(fun ({Id, RemoteClusterName, RemoteBucket}) ->
-                      Prefix = <<"replications/", Id/binary,"/">>,
+    lists:map(
+      fun ({Id, RemoteClusterName, RemoteBucket}) ->
+              Prefix = <<"replications/", Id/binary,"/">>,
 
-                      BlockName = io_lib:format("Outbound XDCR Operations to bucket ~p "
+              BlockName = io_lib:format("Outbound XDCR Operations to bucket ~p "
                                                 "on remote cluster ~p",[RemoteBucket, RemoteClusterName]),
 
-                      {struct,[{blockName, iolist_to_binary(BlockName)},
-                               {extraCSSClasses,<<"dynamic_closed">>},
-                               {stats,
-                                [
-                                 {struct,[{title,<<"mutations">>},
-                                          {name,<<Prefix/binary,"changes_left">>},
-                                          {desc,<<"Number of mutations to be replicated to other clusters "
-                                                  "(measured from per-replication stat changes_left)">>}]},
-                                 {struct,[{title,<<"percent completed">>},
-                                          {maxY, 100},
-                                          {name,<<Prefix/binary, "percent_completeness">>},
-                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
-                                                  "(measured from per-replication stat percent_completeness)">>}]},
-                                 {struct,[{title,<<"mutations replicated">>},
-                                          {name,<<Prefix/binary,"docs_written">>},
-                                          {desc,<<"Number of mutations that have been replicated to other clusters "
-                                                  "(measured from per-replication stat docs_written)">>}]},
-                                 {struct,[{title,<<"mutations filtered per sec.">>},
-                                          {name,<<Prefix/binary,"docs_filtered">>},
-                                          {desc,<<"Number of mutations per second that have been filtered out and have not been replicated to other clusters "
-                                                  "(measured from per-replication stat docs_filtered)">>}]},
-                                 {struct,[{title,<<"mutations skipped by resolution">>},
-                                          {name,<<Prefix/binary,"docs_failed_cr_source">>},
-                                          {desc,<<"Number of mutations that failed conflict resolution on the source side and hence have not been replicated to other clusters "
-                                                  "(measured from per-replication stat docs_failed_cr_source)">>}]},
-                                 {struct,[{title,<<"mutation replication rate">>},
-                                          {name,<<Prefix/binary,"rate_replicated">>},
-                                          {desc,<<"Rate of replication in terms of number of replicated mutations per second "
-                                                  "(measured from per-replication stat rate_replicated)">>}]},
-                                 {struct,[{isBytes,true},
-                                          {title,<<"data replication rate">>},
-                                          {name,<<Prefix/binary,"bandwidth_usage">>},
-                                          {desc,<<"Rate of replication in terms of bytes replicated per second "
-                                                  "(measured from per-replication stat bandwidth_usage)">>}]},
-                                 {struct,[{title,<<"opt. replication rate">>},
-                                          {name,<<Prefix/binary,"rate_doc_opt_repd">>},
-                                          {desc,<<"Rate of optimistic replications in terms of number of replicated mutations per second ">>}]},
-                                 {struct,[{title,<<"doc checks rate">>},
-                                          {name,<<Prefix/binary,"rate_doc_checks">>},
-                                          {desc,<<"Rate of doc checks per second ">>}]},
-                                 {struct,[{title,<<"ms meta batch latency">>},
-                                          {name,<<Prefix/binary, "wtavg_meta_latency">>},
-                                          {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
-                                                  "(measured from per-replication stat wtavg_meta_latency)">>}]},
-                                 {struct,[{title,<<"ms doc batch latency">>},
-                                          {name,<<Prefix/binary, "wtavg_docs_latency">>},
-                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
-                                                  "(measured from per-replication stat wtavg_docs_latency)">>}]},
-                                 {struct,[{title,<<"doc reception rate">>},
-                                          {name,<<Prefix/binary,"rate_received_from_dcp">>},
-                                          {desc,<<"Rate of mutations received from dcp in terms of number of mutations per second ">>}]}]}]}
-              end, Reps).
+              {struct,
+               [{blockName, iolist_to_binary(BlockName)},
+                {extraCSSClasses, <<"dynamic_closed">>},
+                {stats,
+                 [
+                  {struct, [{title, <<"mutations">>},
+                            {name, <<Prefix/binary, "changes_left">>},
+                            {desc, <<"Number of mutations to be replicated to other clusters "
+                                     "(measured from per-replication stat changes_left)">>}]},
+                  {struct, [{title, <<"percent completed">>},
+                            {maxY, 100},
+                            {name, <<Prefix/binary, "percent_completeness">>},
+                            {desc, <<"Percentage of checked items out of all checked and to-be-replicated items "
+                                     "(measured from per-replication stat percent_completeness)">>}]},
+                  {struct, [{title, <<"mutations replicated">>},
+                            {name, <<Prefix/binary, "docs_written">>},
+                            {desc, <<"Number of mutations that have been replicated to other clusters "
+                                     "(measured from per-replication stat docs_written)">>}]},
+                  {struct, [{title, <<"mutations filtered per sec.">>},
+                            {name, <<Prefix/binary, "docs_filtered">>},
+                            {desc, <<"Number of mutations per second that have been filtered out and have not been replicated to other clusters "
+                                     "(measured from per-replication stat docs_filtered)">>}]},
+                  {struct, [{title, <<"mutations skipped by resolution">>},
+                            {name, <<Prefix/binary, "docs_failed_cr_source">>},
+                            {desc, <<"Number of mutations that failed conflict resolution on the source side and hence have not been replicated to other clusters "
+                                     "(measured from per-replication stat docs_failed_cr_source)">>}]},
+                  {struct, [{title, <<"mutation replication rate">>},
+                            {name, <<Prefix/binary, "rate_replicated">>},
+                            {desc, <<"Rate of replication in terms of number of replicated mutations per second "
+                                     "(measured from per-replication stat rate_replicated)">>}]},
+                  {struct, [{isBytes, true},
+                            {title, <<"data replication rate">>},
+                            {name, <<Prefix/binary, "bandwidth_usage">>},
+                            {desc, <<"Rate of replication in terms of bytes replicated per second "
+                                     "(measured from per-replication stat bandwidth_usage)">>}]},
+                  {struct, [{title, <<"opt. replication rate">>},
+                            {name, <<Prefix/binary, "rate_doc_opt_repd">>},
+                            {desc, <<"Rate of optimistic replications in terms of number of replicated mutations per second ">>}]},
+                  {struct, [{title, <<"doc checks rate">>},
+                            {name, <<Prefix/binary, "rate_doc_checks">>},
+                            {desc, <<"Rate of doc checks per second ">>}]},
+                  {struct, [{title, <<"ms meta batch latency">>},
+                            {name, <<Prefix/binary, "wtavg_meta_latency">>},
+                            {desc, <<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
+                                     "(measured from per-replication stat wtavg_meta_latency)">>}]},
+                  {struct, [{title, <<"ms doc batch latency">>},
+                            {name, <<Prefix/binary, "wtavg_docs_latency">>},
+                            {desc, <<"Weighted average latency in ms of sending replicated mutations to remote cluster "
+                                     "(measured from per-replication stat wtavg_docs_latency)">>}]},
+                  {struct, [{title, <<"doc reception rate">>},
+                            {name, <<Prefix/binary, "rate_received_from_dcp">>},
+                            {desc, <<"Rate of mutations received from dcp in terms of number of mutations per second ">>}]}]}]}
+      end, Reps).
 
 
 couchbase_replication_stats_descriptions(BucketId) ->
@@ -1375,79 +1377,87 @@ do_couchbase_replication_stats_descriptions(BucketId) ->
                       {ok, Targ} = xdc_replication:target(Pid),
                       Prefix = <<"replications/", Id/binary,"/">>,
 
-                      {ok, {RemoteClusterUUID, RemoteBucket}} = remote_clusters_info:parse_remote_bucket_reference(Targ),
+                      {ok, {RemoteClusterUUID, RemoteBucket}} =
+                          remote_clusters_info:parse_remote_bucket_reference(Targ),
                       RemoteCluster = remote_clusters_info:find_cluster_by_uuid(RemoteClusterUUID),
                       RemoteClusterName = proplists:get_value(name, RemoteCluster),
                       BlockName = io_lib:format("Outbound XDCR Operations to bucket ~p "
-                                                "on remote cluster ~p",[RemoteBucket, RemoteClusterName]),
+                                                "on remote cluster ~p",
+                                                [RemoteBucket, RemoteClusterName]),
 
-                      {struct,[{blockName, iolist_to_binary(BlockName)},
-                               {extraCSSClasses,<<"dynamic_closed">>},
-                               {stats,
-                                [%% first row
-                                 {struct,[{title,<<"mutations">>},
-                                          {name,<<Prefix/binary,"changes_left">>},
-                                          {desc,<<"Number of mutations to be replicated to other clusters "
-                                                  "(measured from per-replication stat changes_left)">>}]},
-                                 {struct,[{title,<<"percent completed">>},
-                                          {maxY, 100},
-                                          {name,<<Prefix/binary, "percent_completeness">>},
-                                          {desc,<<"Percentage of checked items out of all checked and to-be-replicated items "
-                                                  "(measured from per-replication stat percent_completeness)">>}]},
-                                 {struct,[{title,<<"active vb reps">>},
-                                          {name,<<Prefix/binary,"active_vbreps">>},
-                                          {desc,<<"Number of active vbucket replications "
-                                                  "(measured from per-replication stat active_vbreps)">>}]},
-                                 {struct,[{title,<<"waiting vb reps">>},
-                                          {name,<<Prefix/binary,"waiting_vbreps">>},
-                                          {desc,<<"Number of waiting vbucket replications "
-                                                  "(measured from per-replication stat waiting_vbreps)">>}]},
-                                 %% second row
-                                 {struct,[{title,<<"mutation replication rate">>},
-                                          {name,<<Prefix/binary,"rate_replication">>},
-                                          {desc,<<"Rate of replication in terms of number of replicated mutations per second "
-                                                  "(measured from per-replication stat rate_replication)">>}]},
-                                 {struct,[{isBytes,true},
-                                          {title,<<"data replication rate">>},
-                                          {name,<<Prefix/binary,"bandwidth_usage">>},
-                                          {desc,<<"Rate of replication in terms of bytes replicated per second "
-                                                  "(measured from per-replication stat bandwidth_usage)">>}]},
-                                 {struct,[{title,<<"opt. replication rate">>},
-                                          {name,<<Prefix/binary,"rate_doc_opt_repd">>},
-                                          {desc,<<"Rate of optimistic replications in terms of number of replicated mutations per second ">>}]},
-                                 {struct,[{title,<<"doc checks rate">>},
-                                          {name,<<Prefix/binary,"rate_doc_checks">>},
-                                          {desc,<<"Rate of doc checks per second ">>}]},
+                      {struct,
+                       [{blockName, iolist_to_binary(BlockName)},
+                        {extraCSSClasses, <<"dynamic_closed">>},
+                        {stats,
+                         [%% first row
+                          {struct, [{title, <<"mutations">>},
+                                    {name, <<Prefix/binary, "changes_left">>},
+                                    {desc, <<"Number of mutations to be replicated to other clusters "
+                                             "(measured from per-replication stat changes_left)">>}]},
+                          {struct, [{title, <<"percent completed">>},
+                                    {maxY, 100},
+                                    {name, <<Prefix/binary, "percent_completeness">>},
+                                    {desc, <<"Percentage of checked items out of all checked and to-be-replicated items "
+                                             "(measured from per-replication stat percent_completeness)">>}]},
+                          {struct, [{title, <<"active vb reps">>},
+                                    {name, <<Prefix/binary, "active_vbreps">>},
+                                    {desc, <<"Number of active vbucket replications "
+                                             "(measured from per-replication stat active_vbreps)">>}]},
+                          {struct, [{title, <<"waiting vb reps">>},
+                                    {name, <<Prefix/binary, "waiting_vbreps">>},
+                                    {desc, <<"Number of waiting vbucket replications "
+                                             "(measured from per-replication stat waiting_vbreps)">>}]},
+                          %% second row
+                          {struct, [{title, <<"mutation replication rate">>},
+                                    {name, <<Prefix/binary,"rate_replication">>},
+                                    {desc, <<"Rate of replication in terms of number of replicated mutations per second "
+                                             "(measured from per-replication stat rate_replication)">>}]},
+                          {struct, [{isBytes, true},
+                                    {title, <<"data replication rate">>},
+                                    {name, <<Prefix/binary, "bandwidth_usage">>},
+                                    {desc, <<"Rate of replication in terms of bytes replicated per second "
+                                             "(measured from per-replication stat bandwidth_usage)">>}]},
+                          {struct, [{title, <<"opt. replication rate">>},
+                                    {name, <<Prefix/binary, "rate_doc_opt_repd">>},
+                                    {desc, <<"Rate of optimistic replications in terms of number of "
+                                             "replicated mutations per second ">>}]},
+                          {struct, [{title, <<"doc checks rate">>},
+                                    {name, <<Prefix/binary,"rate_doc_checks">>},
+                                    {desc, <<"Rate of doc checks per second ">>}]},
 
-                                 %% third row
-                                 {struct,[{title,<<"meta batches per sec.">>},
-                                          {name,<<Prefix/binary, "meta_latency_wt">>},
-                                          {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
-                                                  "(measured from per-replication stat wtavg_meta_latency)">>}]},
-                                 {struct,[{title,<<"ms meta batch latency">>},
-                                          {name,<<Prefix/binary, "wtavg_meta_latency">>},
-                                          {desc,<<"Weighted average latency in ms of sending getMeta and waiting for conflict solution result from remote cluster "
-                                                  "(measured from per-replication stat wtavg_meta_latency)">>}]},
-                                 {struct,[{title,<<"docs batches per sec.">>},
-                                          {name,<<Prefix/binary, "docs_latency_wt">>},
-                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
-                                                  "(measured from per-replication stat wtavg_docs_latency)">>}]},
-                                 {struct,[{title,<<"ms doc batch latency">>},
-                                          {name,<<Prefix/binary, "wtavg_docs_latency">>},
-                                          {desc,<<"Weighted average latency in ms of sending replicated mutations to remote cluster "
-                                                  "(measured from per-replication stat wtavg_docs_latency)">>}]},
-                                 %% fourth row
-                                 {struct, [{title, <<"wakeups per sec.">>},
-                                           {name, <<Prefix/binary, "wakeups_rate">>},
-                                           {desc, <<"Rate of XDCR vbucket replicator wakeups">>}]},
-                                 {struct, [{title, <<"XDCR vb reps per sec.">>},
-                                           {name, <<Prefix/binary, "worker_batches_rate">>},
-                                           {desc, <<"Rate at which XDCR vbucket replicators replicates batches per second">>}]},
-                                 {struct, [{title, <<"% time spent vb reps">>},
-                                           {maxY, 100},
-                                           {name, <<Prefix/binary, "utilization">>},
-                                           {desc, <<"Percentage of time spent with vbucket replicators * 100 / (max_workers_count * <time passed since last sample>)">>}]}]}]}
-
+                          %% third row
+                          {struct, [{title, <<"meta batches per sec.">>},
+                                    {name, <<Prefix/binary, "meta_latency_wt">>},
+                                    {desc, <<"Weighted average latency in ms of sending getMeta and "
+                                             "waiting for conflict solution result from remote cluster "
+                                             "(measured from per-replication stat wtavg_meta_latency)">>}]},
+                          {struct, [{title, <<"ms meta batch latency">>},
+                                    {name, <<Prefix/binary, "wtavg_meta_latency">>},
+                                    {desc, <<"Weighted average latency in ms of sending getMeta and "
+                                             "waiting for conflict solution result from remote cluster "
+                                             "(measured from per-replication stat wtavg_meta_latency)">>}]},
+                          {struct, [{title, <<"docs batches per sec.">>},
+                                    {name, <<Prefix/binary, "docs_latency_wt">>},
+                                    {desc, <<"Weighted average latency in ms of sending replicated "
+                                             "mutations to remote cluster "
+                                             "(measured from per-replication stat wtavg_docs_latency)">>}]},
+                          {struct, [{title, <<"ms doc batch latency">>},
+                                    {name, <<Prefix/binary, "wtavg_docs_latency">>},
+                                    {desc, <<"Weighted average latency in ms of sending replicated "
+                                             "mutations to remote cluster "
+                                             "(measured from per-replication stat wtavg_docs_latency)">>}]},
+                          %% fourth row
+                          {struct, [{title, <<"wakeups per sec.">>},
+                                    {name, <<Prefix/binary, "wakeups_rate">>},
+                                    {desc, <<"Rate of XDCR vbucket replicator wakeups">>}]},
+                          {struct, [{title, <<"XDCR vb reps per sec.">>},
+                                    {name, <<Prefix/binary, "worker_batches_rate">>},
+                                    {desc, <<"Rate at which XDCR vbucket replicators replicates batches per second">>}]},
+                          {struct, [{title, <<"% time spent vb reps">>},
+                                    {maxY, 100},
+                                    {name, <<Prefix/binary, "utilization">>},
+                                    {desc, <<"Percentage of time spent with vbucket replicators * 100 "
+                                             "/ (max_workers_count * <time passed since last sample>)">>}]}]}]}
               end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
@@ -1464,29 +1474,29 @@ do_couchbase_view_stats_descriptions(BucketId) ->
 do_couchbase_view_stats_descriptions(DictBySig, KeyPrefix, Title) ->
     dict:fold(
       fun(Sig, DDocIds0, Stats) ->
-              Prefix = <<KeyPrefix/binary, Sig/binary,"/">>,
+              Prefix = <<KeyPrefix/binary, Sig/binary, "/">>,
               DDocIds = lists:sort(DDocIds0),
               Ids = iolist_to_binary([hd(DDocIds) |
                                       [[?SPACE_CHAR | Id]
                                        || Id <- tl(DDocIds)]]),
-              MyStats = {struct,[{blockName,<<Title/binary, ": ", Ids/binary>>},
-                                 {extraCSSClasses,<<"dynamic_closed">>},
+              MyStats = {struct,[{blockName, <<Title/binary, ": ", Ids/binary>>},
+                                 {extraCSSClasses, <<"dynamic_closed">>},
                                  {columns,
-                                  [<<"Data">>,<<"Disk">>,<<"Read Ops">>]},
+                                  [<<"Data">>, <<"Disk">>, <<"Read Ops">>]},
                                  {stats,
-                                  [{struct,[{isBytes,true},
-                                            {title,<<"data size">>},
-                                            {name,<<Prefix/binary,"data_size">>},
-                                            {desc,<<"How many bytes stored">>}]},
-                                   {struct,[{isBytes,true},
-                                            {title,<<"disk size">>},
-                                            {name,<<Prefix/binary,"disk_size">>},
-                                            {desc,<<"How much storage used">>}]},
-                                   {struct,[{title,<<"view reads per sec.">>},
-                                            {name,<<Prefix/binary,"accesses">>},
-                                            {desc,<<"Traffic to the views in this design doc">>}]}
+                                  [{struct, [{isBytes, true},
+                                             {title, <<"data size">>},
+                                             {name, <<Prefix/binary, "data_size">>},
+                                             {desc, <<"How many bytes stored">>}]},
+                                   {struct, [{isBytes, true},
+                                             {title, <<"disk size">>},
+                                             {name, <<Prefix/binary, "disk_size">>},
+                                             {desc, <<"How much storage used">>}]},
+                                   {struct, [{title, <<"view reads per sec.">>},
+                                             {name, <<Prefix/binary, "accesses">>},
+                                             {desc, <<"Traffic to the views in this design doc">>}]}
                                   ]}]},
-              [MyStats|Stats]
+              [MyStats | Stats]
       end, [], DictBySig).
 
 couchbase_index_stats_descriptions(_, []) ->
@@ -1697,12 +1707,16 @@ couchbase_query_stats_descriptions() ->
                            {desc, <<"Number of queries that take longer than 5000 ms per second">>}]},
                  {struct, [{title, <<"invalid requests/sec">>},
                            {name, <<"query_invalid_requests">>},
-                           {desc, <<"Number of requests for unsupported endpoints per second, specifically HTTP requests for all endpoints not supported by the query engine. For example, a request for http://localhost:8093/foo will be included. Potentially useful in identifying DOS attacks.">>}]}]}]}].
+                           {desc, <<"Number of requests for unsupported endpoints per second, "
+                                    "specifically HTTP requests for all endpoints not supported by "
+                                    "the query engine. For example, a request for http://localhost"
+                                    ":8093/foo will be included. Potentially useful in identifying "
+                                    "DOS attacks.">>}]}]}]}].
 
 membase_query_stats_description(false) ->
     [];
 membase_query_stats_description(true) ->
-    [{struct,[{title,<<"N1QL queries/sec">>},
+    [{struct,[{title, <<"N1QL queries/sec">>},
               {name, <<"query_requests">>},
               {desc, <<"Number of N1QL requests processed per second">>}]}].
 
@@ -1719,7 +1733,9 @@ membase_index_stats_description(_) ->
                {isBytes, true}]},
      {struct, [{title, <<"index fragmentation %">>},
                {name, global_index_stat(<<"fragmentation">>)},
-               {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less than a hundred kB, the static overhead of the index disk file will inflate the index fragmentation percentage">>}]},
+               {desc, <<"Percentage fragmentation of the index. Note: at small index sizes of less "
+                        "than a hundred kB, the static overhead of the index disk file will inflate "
+                        "the index fragmentation percentage">>}]},
      {struct, [{title, <<"index scanned/sec">>},
                {name, global_index_stat(<<"num_rows_returned">>)},
                {desc, <<"Number of index items scanned by the indexer per second">>}]}].
@@ -1738,421 +1754,494 @@ membase_fts_stats_description(_) ->
                {desc, <<"Total fts disk file size for this bucket">>}]}].
 
 membase_drift_stats_description() ->
-    [{struct,[{title,<<"avg active drift/mutation">>},
-              {name,<<"avg_active_timestamp_drift">>},
-              {desc,<<"Average drift (in seconds) per mutation on active vBuckets">>}]},
-     {struct,[{title,<<"avg replica drift/mutation">>},
-              {name,<<"avg_replica_timestamp_drift">>},
-              {desc,<<"Average drift (in seconds) per mutation on replica vBuckets">>}]},
-     {struct,[{title,<<"active ahead exceptions/sec">>},
-              {name,<<"ep_active_ahead_exceptions">>},
-              {desc,<<"Total number of ahead exceptions for  all active vBuckets">>}]},
-     {struct,[{title,<<"replica ahead exceptions/sec">>},
-              {name,<<"ep_replica_ahead_exceptions">>},
-              {desc,<<"Total number of ahead exceptions for all replica vBuckets">>}]}].
+    [{struct, [{title, <<"avg active drift/mutation">>},
+               {name, <<"avg_active_timestamp_drift">>},
+               {desc, <<"Average drift (in seconds) per mutation on active vBuckets">>}]},
+     {struct, [{title, <<"avg replica drift/mutation">>},
+               {name, <<"avg_replica_timestamp_drift">>},
+               {desc, <<"Average drift (in seconds) per mutation on replica vBuckets">>}]},
+     {struct, [{title, <<"active ahead exceptions/sec">>},
+               {name, <<"ep_active_ahead_exceptions">>},
+               {desc, <<"Total number of ahead exceptions for  all active vBuckets">>}]},
+     {struct, [{title, <<"replica ahead exceptions/sec">>},
+               {name, <<"ep_replica_ahead_exceptions">>},
+               {desc, <<"Total number of ahead exceptions for all replica vBuckets">>}]}].
 
 membase_summary_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, IsEphemeral) ->
-    [{struct,[{blockName,<<"Summary">>},
-              {stats,
-               [{struct,[{title,<<"ops per second">>},
-                         {name,<<"ops">>},
-                         {desc,<<"Total amount of operations per second (including XDCR) to this bucket (measured from cmd_get + cmd_set + incr_misses + incr_hits + decr_misses + decr_hits + delete_misses + delete_hits + ep_num_ops_del_meta + ep_num_ops_get_meta + ep_num_ops_set_meta)">>},
-                         {default,true}]},
-                {struct,[{title,<<"cache miss ratio">>},
-                         {name,<<"ep_cache_miss_rate">>},
-                         {desc,<<"Percentage of reads per second to this bucket from disk as opposed to RAM (measured from ep_bg_fetches / gets * 100)">>},
-                         {maxY,100}]},
-                {struct,[{title,<<"gets per sec.">>},
-                         {name,<<"cmd_get">>},
-                         {desc,<<"Number of reads (get operations) per second from this bucket (measured from cmd_get)">>}]},
-                {struct,[{title,<<"sets per sec.">>},
-                         {name,<<"cmd_set">>},
-                         {desc,<<"Number of writes (set operations) per second to this bucket (measured from cmd_set)">>}]},
-                {struct,[{title,<<"deletes per sec.">>},
-                         {name,<<"delete_hits">>},
-                         {desc,<<"Number of delete operations per second for this bucket (measured from delete_hits)">>}]},
-                {struct,[{title,<<"CAS ops per sec.">>},
-                         {name,<<"cas_hits">>},
-                         {desc,<<"Number of operations with a CAS id per second for this bucket (measured from cas_hits)">>}]},
-                {struct,[{title,<<"active docs resident %">>},
-                         {name,<<"vb_active_resident_items_ratio">>},
-                         {desc,<<"Percentage of active items cached in RAM in this bucket (measured from vb_active_resident_items_ratio)">>},
-                         {maxY,100}]},
-                {struct,[{title,<<"items">>},
-                         {name,<<"curr_items">>},
-                         {desc,<<"Number of unique items in this bucket - only active items, not replica (measured from curr_items)">>}]},
-                {struct,[{title,<<"temp OOM per sec.">>},
-                         {name,<<"ep_tmp_oom_errors">>},
-                         {desc,<<"Number of back-offs sent per second to client SDKs due to \"out of memory\" situations from this bucket (measured from ep_tmp_oom_errors)">>}]},
-                {struct, [{isBytes,true},
-                          {title, <<"low water mark">>},
-                          {name, <<"ep_mem_low_wat">>},
-                          {desc, <<"Low water mark for auto-evictions (measured from ep_mem_low_wat)">>}]},
-                {struct, [{isBytes,true},
-                          {title, <<"high water mark">>},
-                          {name, <<"ep_mem_high_wat">>},
-                          {desc, <<"High water mark for auto-evictions (measured from ep_mem_high_wat)">>}]},
-                {struct, [{isBytes,true},
-                          {title, <<"memory used">>},
-                          {name, <<"mem_used">>},
-                          {desc, <<"Memory used as measured from mem_used">>}]}]
-               ++ case IsEphemeral of
-                      true -> [];
-                      false ->
-                          [{struct,[{title,<<"disk creates per sec.">>},
-                                    {name,<<"ep_ops_create">>},
-                                    {desc,<<"Number of new items created on disk per second for this bucket (measured from vb_active_ops_create + vb_replica_ops_create + vb_pending_ops_create)">>}]},
-                           {struct,[{title,<<"disk updates per sec.">>},
-                                    {name,<<"ep_ops_update">>},
-                                    {desc,<<"Number of items updated on disk per second for this bucket (measured from vb_active_ops_update + vb_replica_ops_update + vb_pending_ops_update)">>}]},
-                           {struct,[{title,<<"disk reads per sec.">>},
-                                    {name,<<"ep_bg_fetched">>},
-                                    {desc,<<"Number of reads per second from disk for this bucket (measured from ep_bg_fetched)">>}]},
-                           {struct,[{title,<<"disk write queue">>},
-                                    {name,<<"disk_write_queue">>},
-                                    {desc,<<"Number of items waiting to be written to disk in this bucket (measured from ep_queue_size+ep_flusher_todo)">>}]},
-                           {struct,[{title,<<"disk read failures.">>},
-                                    {name,<<"ep_data_read_failed">>},
-                                    {desc,<<"Number of disk read failures (measured from ep_data_read_failed)">>}]},
-                           {struct,[{title,<<"disk write failures.">>},
-                                    {name,<<"ep_data_write_failed">>},
-                                    {desc,<<"Number of disk write failures (measured from ep_data_write_failed)">>}]},
-                           {struct,[{isBytes,true},
-                                    {name,<<"couch_docs_data_size">>},
-                                    {title,<<"docs data size">>},
-                                    {desc,<<"The size of active data in this bucket "
-                                            "(measured from couch_docs_data_size)">>}]},
-                           {struct,[{isBytes, true},
-                                    {name,<<"couch_docs_actual_disk_size">>},
-                                    {title,<<"docs total disk size">>},
-                                    {desc,<<"The size of all data files for this bucket, including the data itself, meta data and temporary files "
-                                            "(measured from couch_docs_actual_disk_size)">>}]},
-                           {struct,[{name,<<"couch_docs_fragmentation">>},
-                                    {title,<<"docs fragmentation %">>},
-                                    {desc,<<"How much fragmented data there is to be compacted compared to real data for the data files in this bucket "
-                                            "(measured from couch_docs_fragmentation)">>}]},
-                           {struct,[{isBytes,true},
-                                    {name,<<"couch_total_disk_size">>},
-                                    {title,<<"total disk size">>},
-                                    {desc,<<"The total size on disk of all data and view files for this bucket."
-                                            "(measured from couch_total_disk_size)">>}]},
-                           {struct,[{isBytes,true},
-                                    {name,<<"couch_views_data_size">>},
-                                    {title,<<"views data size">>},
-                                    {desc,<<"The size of active data on for all the indexes in this bucket"
-                                            "(measured from couch_views_data_size)">>}]},
-                           {struct,[{isBytes,true},
-                                    {name,<<"couch_views_actual_disk_size">>},
-                                    {title,<<"views total disk size">>},
-                                    {desc,<<"The size of all active items in all the indexes for this bucket on disk"
-                                            "(measured from couch_views_actual_disk_size)">>}]},
-                           {struct,[{name,<<"couch_views_fragmentation">>},
-                                    {title,<<"views fragmentation %">>},
-                                    {desc,<<"How much fragmented data there is to be compacted compared to real data for the view index files in this bucket"
-                                            "(measured from couch_views_fragmentation)">>}]},
-                           {struct,[{name,<<"couch_views_ops">>},
-                                    {title,<<"view reads per sec.">>},
-                                    {desc,<<"All the view reads for all design documents including scatter gather."
-                                            "(measured from couch_views_ops)">>}]},
-                           {struct, [{title, <<"disk update time">>},
-                                     {name, <<"avg_disk_update_time">>},
-                                     {hidden, true},
-                                     {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings"
-                                              "(measured from avg_disk_update_time)">>}]},
-                           {struct, [{title, <<"disk commit time">>},
-                                     {name, <<"avg_disk_commit_time">>},
-                                     {hidden, true},
-                                     {desc, <<"Average disk commit time in seconds as from disk_update histogram of timings"
-                                              "(measured from avg_disk_commit_time)">>}]}]
-                  end
-               ++ [{struct, [{title, <<"bg wait time">>},
-                             {hidden, true},
-                             {name, <<"avg_bg_wait_time">>},
-                             {desc, <<"Average background fetch time in microseconds"
-                                      "(measured from avg_bg_wait_time)">>}]},
-                   {struct,[{title,<<"incoming XDCR ops/sec.">>},
-                            {name,<<"xdc_ops">>},
-                            {desc,<<"Incoming XDCR operations per second for this bucket "
-                                    "(measured from xdc_ops)">>}]},
-                   {struct,[{title,<<"intra-replication queue">>},
-                            {name,<<"ep_dcp_replica_items_remaining">>},
-                            {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]}]
-               ++ case display_outbound_xdcr_mutations(BucketId) of
-                      true ->
-                          [{struct,[{title,<<"outbound XDCR mutations">>},
-                                    {name,<<"replication_changes_left">>},
-                                    {desc,<<"Number of mutations to be replicated to other clusters"
-                                            "(measured from replication_changes_left)">>}]}];
-                      false ->
-                          []
-                  end
-               ++ membase_query_stats_description(AddQuery)
-               ++ membase_index_stats_description(IndexNodes)
-               ++ membase_fts_stats_description(FtsNodes)
-               ++ membase_drift_stats_description()
-              }]}].
+    [{struct,
+      [{blockName, <<"Summary">>},
+       {stats,
+        [{struct,[{title, <<"ops per second">>},
+                  {name, <<"ops">>},
+                  {desc, <<"Total amount of operations per second (including XDCR) to this bucket "
+                           "(measured from cmd_get + cmd_set + incr_misses + incr_hits + decr_misses "
+                           "+ decr_hits + delete_misses + delete_hits + ep_num_ops_del_meta + "
+                           "ep_num_ops_get_meta + ep_num_ops_set_meta)">>},
+                  {default, true}]},
+         {struct, [{title, <<"cache miss ratio">>},
+                   {name, <<"ep_cache_miss_rate">>},
+                   {desc, <<"Percentage of reads per second to this bucket from disk as opposed to "
+                            "RAM (measured from ep_bg_fetches / gets * 100)">>},
+                   {maxY, 100}]},
+         {struct, [{title, <<"gets per sec.">>},
+                   {name, <<"cmd_get">>},
+                   {desc, <<"Number of reads (get operations) per second from this bucket (measured from cmd_get)">>}]},
+         {struct, [{title, <<"sets per sec.">>},
+                   {name, <<"cmd_set">>},
+                   {desc, <<"Number of writes (set operations) per second to this bucket (measured from cmd_set)">>}]},
+         {struct, [{title, <<"deletes per sec.">>},
+                   {name, <<"delete_hits">>},
+                   {desc, <<"Number of delete operations per second for this bucket (measured from delete_hits)">>}]},
+         {struct, [{title, <<"CAS ops per sec.">>},
+                   {name, <<"cas_hits">>},
+                   {desc, <<"Number of operations with a CAS id per second for this bucket (measured from cas_hits)">>}]},
+         {struct, [{title, <<"active docs resident %">>},
+                   {name, <<"vb_active_resident_items_ratio">>},
+                   {desc, <<"Percentage of active items cached in RAM in this bucket (measured from vb_active_resident_items_ratio)">>},
+                   {maxY, 100}]},
+         {struct, [{title, <<"items">>},
+                   {name, <<"curr_items">>},
+                   {desc, <<"Number of unique items in this bucket - only active items, not replica (measured from curr_items)">>}]},
+         {struct, [{title, <<"temp OOM per sec.">>},
+                   {name, <<"ep_tmp_oom_errors">>},
+                   {desc, <<"Number of back-offs sent per second to client SDKs due to "
+                            "\"out of memory\" situations from this bucket (measured from ep_tmp_oom_errors)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"low water mark">>},
+                   {name, <<"ep_mem_low_wat">>},
+                   {desc, <<"Low water mark for auto-evictions (measured from ep_mem_low_wat)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"high water mark">>},
+                   {name, <<"ep_mem_high_wat">>},
+                   {desc, <<"High water mark for auto-evictions (measured from ep_mem_high_wat)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"memory used">>},
+                   {name, <<"mem_used">>},
+                   {desc, <<"Memory used as measured from mem_used">>}]}]
+        ++ case IsEphemeral of
+               true -> [];
+               false ->
+                   [{struct, [{title, <<"disk creates per sec.">>},
+                              {name, <<"ep_ops_create">>},
+                              {desc, <<"Number of new items created on disk per second for this bucket "
+                                       "(measured from vb_active_ops_create + vb_replica_ops_create "
+                                       "+ vb_pending_ops_create)">>}]},
+                    {struct, [{title, <<"disk updates per sec.">>},
+                              {name, <<"ep_ops_update">>},
+                              {desc, <<"Number of items updated on disk per second for this bucket "
+                                       "(measured from vb_active_ops_update + vb_replica_ops_update "
+                                       "+ vb_pending_ops_update)">>}]},
+                    {struct, [{title, <<"disk reads per sec.">>},
+                              {name, <<"ep_bg_fetched">>},
+                              {desc, <<"Number of reads per second from disk for this bucket (measured from ep_bg_fetched)">>}]},
+                    {struct, [{title, <<"disk write queue">>},
+                              {name, <<"disk_write_queue">>},
+                              {desc, <<"Number of items waiting to be written to disk in this bucket "
+                                       "(measured from ep_queue_size+ep_flusher_todo)">>}]},
+                    {struct, [{title, <<"disk read failures.">>},
+                              {name, <<"ep_data_read_failed">>},
+                              {desc, <<"Number of disk read failures (measured from ep_data_read_failed)">>}]},
+                    {struct, [{title, <<"disk write failures.">>},
+                              {name, <<"ep_data_write_failed">>},
+                              {desc, <<"Number of disk write failures (measured from ep_data_write_failed)">>}]},
+                    {struct, [{isBytes, true},
+                              {name, <<"couch_docs_data_size">>},
+                              {title, <<"docs data size">>},
+                              {desc, <<"The size of active data in this bucket "
+                                       "(measured from couch_docs_data_size)">>}]},
+                    {struct,[{isBytes, true},
+                             {name, <<"couch_docs_actual_disk_size">>},
+                             {title, <<"docs total disk size">>},
+                             {desc, <<"The size of all data files for this bucket, including the data "
+                                      "itself, meta data and temporary files "
+                                      "(measured from couch_docs_actual_disk_size)">>}]},
+                    {struct, [{name, <<"couch_docs_fragmentation">>},
+                              {title, <<"docs fragmentation %">>},
+                              {desc, <<"How much fragmented data there is to be compacted compared "
+                                       "to real data for the data files in this bucket "
+                                       "(measured from couch_docs_fragmentation)">>}]},
+                    {struct, [{isBytes, true},
+                              {name, <<"couch_total_disk_size">>},
+                              {title, <<"total disk size">>},
+                              {desc, <<"The total size on disk of all data and view files for this bucket."
+                                       "(measured from couch_total_disk_size)">>}]},
+                    {struct, [{isBytes, true},
+                              {name, <<"couch_views_data_size">>},
+                              {title, <<"views data size">>},
+                              {desc, <<"The size of active data on for all the indexes in this bucket"
+                                       "(measured from couch_views_data_size)">>}]},
+                    {struct, [{isBytes, true},
+                              {name, <<"couch_views_actual_disk_size">>},
+                              {title, <<"views total disk size">>},
+                              {desc, <<"The size of all active items in all the indexes for this bucket on disk"
+                                       "(measured from couch_views_actual_disk_size)">>}]},
+                    {struct, [{name, <<"couch_views_fragmentation">>},
+                              {title, <<"views fragmentation %">>},
+                              {desc, <<"How much fragmented data there is to be compacted compared "
+                                       "to real data for the view index files in this bucket"
+                                       "(measured from couch_views_fragmentation)">>}]},
+                    {struct, [{name, <<"couch_views_ops">>},
+                              {title, <<"view reads per sec.">>},
+                              {desc, <<"All the view reads for all design documents including scatter gather."
+                                       "(measured from couch_views_ops)">>}]},
+                    {struct, [{title, <<"disk update time">>},
+                              {name, <<"avg_disk_update_time">>},
+                              {hidden, true},
+                              {desc, <<"Average disk update time in microseconds as from disk_update histogram of timings"
+                                       "(measured from avg_disk_update_time)">>}]},
+                    {struct, [{title, <<"disk commit time">>},
+                              {name, <<"avg_disk_commit_time">>},
+                              {hidden, true},
+                              {desc, <<"Average disk commit time in seconds as from disk_update histogram of timings"
+                                       "(measured from avg_disk_commit_time)">>}]}]
+           end
+        ++ [{struct, [{title, <<"bg wait time">>},
+                      {hidden, true},
+                      {name, <<"avg_bg_wait_time">>},
+                      {desc, <<"Average background fetch time in microseconds"
+                               "(measured from avg_bg_wait_time)">>}]},
+            {struct, [{title, <<"incoming XDCR ops/sec.">>},
+                      {name, <<"xdc_ops">>},
+                      {desc, <<"Incoming XDCR operations per second for this bucket "
+                               "(measured from xdc_ops)">>}]},
+            {struct, [{title, <<"intra-replication queue">>},
+                      {name, <<"ep_dcp_replica_items_remaining">>},
+                      {desc,<<"Number of items remaining to be sent to consumer in this bucket "
+                              "(measured from ep_dcp_replica_items_remaining)">>}]}]
+        ++ case display_outbound_xdcr_mutations(BucketId) of
+               true ->
+                   [{struct, [{title, <<"outbound XDCR mutations">>},
+                              {name, <<"replication_changes_left">>},
+                              {desc, <<"Number of mutations to be replicated to other clusters"
+                                       "(measured from replication_changes_left)">>}]}];
+               false ->
+                   []
+           end
+        ++ membase_query_stats_description(AddQuery)
+        ++ membase_index_stats_description(IndexNodes)
+        ++ membase_fts_stats_description(FtsNodes)
+        ++ membase_drift_stats_description()
+       }]}].
 
 membase_vbucket_resources_stats_description() ->
-    [{struct,[{blockName,<<"vBucket Resources">>},
-              {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
-              {columns,
-               [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
-              {stats,
-               [{struct,[{title,<<"vBuckets">>},
-                         {name,<<"vb_active_num">>},
-                         {desc,<<"Number of vBuckets in the \"active\" state for this bucket (measured from vb_active_num)">>}]},
-                {struct,[{title,<<"vBuckets">>},
-                         {name,<<"vb_replica_num">>},
-                         {desc,<<"Number of vBuckets in the \"replica\" state for this bucket (measured from vb_replica_num)">>}]},
-                {struct,[{title,<<"vBuckets">>},
-                         {name,<<"vb_pending_num">>},
-                         {desc,<<"Number of vBuckets in the \"pending\" state for this bucket and should be transient during rebalancing (measured from vb_pending_num)">>}]},
-                {struct,[{title,<<"vBuckets">>},
-                         {name,<<"ep_vb_total">>},
-                         {desc,<<"Total number of vBuckets for this bucket (measured from ep_vb_total)">>}]},
-                {struct,[{title,<<"items">>},
-                         {name,<<"curr_items">>},
-                         {desc,<<"Number of items in \"active\" vBuckets in this bucket (measured from curr_items)">>}]},
-                {struct,[{title,<<"items">>},
-                         {name,<<"vb_replica_curr_items">>},
-                         {desc,<<"Number of items in \"replica\" vBuckets in this bucket (measured from vb_replica_curr_items)">>}]},
-                {struct,[{title,<<"items">>},
-                         {name,<<"vb_pending_curr_items">>},
-                         {desc,<<"Number of items in \"pending\" vBuckets in this bucket and should be transient during rebalancing (measured from vb_pending_curr_items)">>}]},
-                {struct,[{title,<<"items">>},
-                         {name,<<"curr_items_tot">>},
-                         {desc,<<"Total number of items in this bucket (measured from curr_items_tot)">>}]},
-                {struct,[{title,<<"resident %">>},
-                         {name,<<"vb_active_resident_items_ratio">>},
-                         {desc,<<"Percentage of active items cached in RAM in this bucket (measured from vb_active_resident_items_ratio)">>},
-                         {maxY,100}]},
-                {struct,[{title,<<"resident %">>},
-                         {name,<<"vb_replica_resident_items_ratio">>},
-                         {desc,<<"Percentage of replica items cached in RAM in this bucket (measured from vb_replica_resident_items_ratio)">>},
-                         {maxY,100}]},
-                {struct,[{title,<<"resident %">>},
-                         {name,<<"vb_pending_resident_items_ratio">>},
-                         {desc,<<"Percentage of items in pending state vbuckets cached in RAM in this bucket (measured from vb_pending_resident_items_ratio)">>},
-                         {maxY,100}]},
-                {struct,[{title,<<"resident %">>},
-                         {name,<<"ep_resident_items_rate">>},
-                         {desc,<<"Percentage of all items cached in RAM in this bucket (measured from ep_resident_items_rate)">>},
-                         {maxY,100}]},
-                {struct,[{title,<<"new items per sec.">>},
-                         {name,<<"vb_active_ops_create">>},
-                         {desc,<<"New items per second being inserted into \"active\" vBuckets in this bucket (measured from vb_active_ops_create)">>}]},
-                {struct,[{title,<<"new items per sec.">>},
-                         {name,<<"vb_replica_ops_create">>},
-                         {desc,<<"New items per second being inserted into \"replica\" vBuckets in this bucket (measured from vb_replica_ops_create">>}]},
-                {struct,[{title,<<"new items per sec.">>},
-                         {name,<<"vb_pending_ops_create">>},
-                         {desc,<<"New items per second being instead into \"pending\" vBuckets in this bucket and should be transient during rebalancing (measured from vb_pending_ops_create)">>}]},
-                {struct,[{title,<<"new items per sec.">>},
-                         {name,<<"ep_ops_create">>},
-                         {desc,<<"Total number of new items being inserted into this bucket (measured from ep_ops_create)">>}]},
-                {struct,[{title,<<"ejections per sec.">>},
-                         {name,<<"vb_active_eject">>},
-                         {desc,<<"Number of items per second being ejected to disk from \"active\" vBuckets in this bucket (measured from vb_active_eject)">>}]},
-                {struct,[{title,<<"ejections per sec.">>},
-                         {name,<<"vb_replica_eject">>},
-                         {desc,<<"Number of items per second being ejected to disk from \"replica\" vBuckets in this bucket (measured from vb_replica_eject)">>}]},
-                {struct,[{title,<<"ejections per sec.">>},
-                         {name,<<"vb_pending_eject">>},
-                         {desc,<<"Number of items per second being ejected to disk from \"pending\" vBuckets in this bucket and should be transient during rebalancing (measured from vb_pending_eject)">>}]},
-                {struct,[{title,<<"ejections per sec.">>},
-                         {name,<<"ep_num_value_ejects">>},
-                         {desc,<<"Total number of items per second being ejected to disk in this bucket (measured from ep_num_value_ejects)">>}]},
-                {struct,[{isBytes,true},
-                         {title,<<"user data in RAM">>},
-                         {name,<<"vb_active_itm_memory">>},
-                         {desc,<<"Amount of active user data cached in RAM in this bucket (measured from vb_active_itm_memory)">>}]},
-                {struct,[{isBytes,true},
-                         {title,<<"user data in RAM">>},
-                         {name,<<"vb_replica_itm_memory">>},
-                         {desc,<<"Amount of replica user data cached in RAM in this bucket (measured from vb_replica_itm_memory)">>}]},
-                {struct,[{isBytes,true},
-                         {title,<<"user data in RAM">>},
-                         {name,<<"vb_pending_itm_memory">>},
-                         {desc,<<"Amount of pending user data cached in RAM in this bucket and should be transient during rebalancing (measured from vb_pending_itm_memory)">>}]},
-                {struct,[{isBytes,true},
-                         {title,<<"user data in RAM">>},
-                         {name,<<"ep_kv_size">>},
-                         {desc,<<"Total amount of user data cached in RAM in this bucket (measured from ep_kv_size)">>}]},
-                {struct,[{isBytes,true},
-                         {title,<<"metadata in RAM">>},
-                         {name,<<"vb_active_meta_data_memory">>},
-                         {desc,<<"Amount of active item metadata consuming RAM in this bucket (measured from vb_active_meta_data_memory)">>}]},
-                {struct,[{isBytes,true},
-                         {title,<<"metadata in RAM">>},
-                         {name,<<"vb_replica_meta_data_memory">>},
-                         {desc,<<"Amount of replica item metadata consuming in RAM in this bucket (measured from vb_replica_meta_data_memory)">>}]},
-                {struct,[{isBytes,true},
-                         {title,<<"metadata in RAM">>},
-                         {name,<<"vb_pending_meta_data_memory">>},
-                         {desc,<<"Amount of pending item metadata consuming RAM in this bucket and should be transient during rebalancing (measured from vb_pending_meta_data_memory)">>}]},
-                {struct,[{isBytes,true},
-                         {title,<<"metadata in RAM">>},
-                         {name,<<"ep_meta_data_memory">>},
-                         {desc,<<"Total amount of item  metadata consuming RAM in this bucket (measured from ep_meta_data_memory)">>}]}]}]}].
+    [{struct,
+      [{blockName, <<"vBucket Resources">>},
+       {extraCSSClasses, <<"dynamic_withtotal dynamic_closed">>},
+       {columns,
+        [<<"Active">>, <<"Replica">>, <<"Pending">>, <<"Total">>]},
+       {stats,
+        [{struct, [{title, <<"vBuckets">>},
+                   {name, <<"vb_active_num">>},
+                   {desc, <<"Number of vBuckets in the \"active\" state for this bucket (measured from vb_active_num)">>}]},
+         {struct, [{title, <<"vBuckets">>},
+                   {name, <<"vb_replica_num">>},
+                   {desc, <<"Number of vBuckets in the \"replica\" state for this bucket (measured from vb_replica_num)">>}]},
+         {struct, [{title, <<"vBuckets">>},
+                   {name, <<"vb_pending_num">>},
+                   {desc, <<"Number of vBuckets in the \"pending\" state for this bucket and should "
+                            "be transient during rebalancing (measured from vb_pending_num)">>}]},
+         {struct, [{title, <<"vBuckets">>},
+                   {name, <<"ep_vb_total">>},
+                   {desc, <<"Total number of vBuckets for this bucket (measured from ep_vb_total)">>}]},
+         {struct, [{title, <<"items">>},
+                   {name, <<"curr_items">>},
+                   {desc, <<"Number of items in \"active\" vBuckets in this bucket (measured from curr_items)">>}]},
+         {struct, [{title, <<"items">>},
+                   {name, <<"vb_replica_curr_items">>},
+                   {desc, <<"Number of items in \"replica\" vBuckets in this bucket (measured from vb_replica_curr_items)">>}]},
+         {struct, [{title, <<"items">>},
+                   {name, <<"vb_pending_curr_items">>},
+                   {desc, <<"Number of items in \"pending\" vBuckets in this bucket and should be "
+                            "transient during rebalancing (measured from vb_pending_curr_items)">>}]},
+         {struct, [{title, <<"items">>},
+                   {name, <<"curr_items_tot">>},
+                   {desc, <<"Total number of items in this bucket (measured from curr_items_tot)">>}]},
+         {struct, [{title, <<"resident %">>},
+                   {name, <<"vb_active_resident_items_ratio">>},
+                   {desc, <<"Percentage of active items cached in RAM in this bucket (measured from "
+                            "vb_active_resident_items_ratio)">>},
+                   {maxY, 100}]},
+         {struct, [{title, <<"resident %">>},
+                   {name, <<"vb_replica_resident_items_ratio">>},
+                   {desc, <<"Percentage of replica items cached in RAM in this bucket "
+                            "(measured from vb_replica_resident_items_ratio)">>},
+                   {maxY, 100}]},
+         {struct, [{title, <<"resident %">>},
+                   {name, <<"vb_pending_resident_items_ratio">>},
+                   {desc, <<"Percentage of items in pending state vbuckets cached in RAM in this bucket "
+                            "(measured from vb_pending_resident_items_ratio)">>},
+                   {maxY, 100}]},
+         {struct, [{title, <<"resident %">>},
+                   {name, <<"ep_resident_items_rate">>},
+                   {desc, <<"Percentage of all items cached in RAM in this bucket (measured from ep_resident_items_rate)">>},
+                   {maxY, 100}]},
+         {struct, [{title, <<"new items per sec.">>},
+                   {name, <<"vb_active_ops_create">>},
+                   {desc, <<"New items per second being inserted into \"active\" vBuckets in this "
+                            "bucket (measured from vb_active_ops_create)">>}]},
+         {struct, [{title, <<"new items per sec.">>},
+                   {name, <<"vb_replica_ops_create">>},
+                   {desc, <<"New items per second being inserted into \"replica\" vBuckets in this "
+                            "bucket (measured from vb_replica_ops_create">>}]},
+         {struct, [{title, <<"new items per sec.">>},
+                   {name, <<"vb_pending_ops_create">>},
+                   {desc, <<"New items per second being instead into \"pending\" vBuckets in this "
+                            "bucket and should be transient during rebalancing (measured from vb_pending_ops_create)">>}]},
+         {struct, [{title, <<"new items per sec.">>},
+                   {name, <<"ep_ops_create">>},
+                   {desc, <<"Total number of new items being inserted into this bucket (measured from ep_ops_create)">>}]},
+         {struct, [{title, <<"ejections per sec.">>},
+                   {name, <<"vb_active_eject">>},
+                   {desc, <<"Number of items per second being ejected to disk from \"active\" "
+                            "vBuckets in this bucket (measured from vb_active_eject)">>}]},
+         {struct, [{title, <<"ejections per sec.">>},
+                   {name, <<"vb_replica_eject">>},
+                   {desc, <<"Number of items per second being ejected to disk from \"replica\" "
+                            "vBuckets in this bucket (measured from vb_replica_eject)">>}]},
+         {struct, [{title, <<"ejections per sec.">>},
+                   {name, <<"vb_pending_eject">>},
+                   {desc, <<"Number of items per second being ejected to disk from \"pending\" "
+                            "vBuckets in this bucket and should be transient during rebalancing "
+                            "(measured from vb_pending_eject)">>}]},
+         {struct, [{title, <<"ejections per sec.">>},
+                   {name, <<"ep_num_value_ejects">>},
+                   {desc, <<"Total number of items per second being ejected to disk in this bucket "
+                            "(measured from ep_num_value_ejects)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"user data in RAM">>},
+                   {name, <<"vb_active_itm_memory">>},
+                   {desc, <<"Amount of active user data cached in RAM in this bucket "
+                            "(measured from vb_active_itm_memory)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"user data in RAM">>},
+                   {name, <<"vb_replica_itm_memory">>},
+                   {desc, <<"Amount of replica user data cached in RAM in this bucket (measured from vb_replica_itm_memory)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"user data in RAM">>},
+                   {name, <<"vb_pending_itm_memory">>},
+                   {desc, <<"Amount of pending user data cached in RAM in this bucket and should be "
+                            "transient during rebalancing (measured from vb_pending_itm_memory)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"user data in RAM">>},
+                   {name, <<"ep_kv_size">>},
+                   {desc, <<"Total amount of user data cached in RAM in this bucket (measured from ep_kv_size)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"metadata in RAM">>},
+                   {name, <<"vb_active_meta_data_memory">>},
+                   {desc, <<"Amount of active item metadata consuming RAM in this bucket "
+                            "(measured from vb_active_meta_data_memory)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"metadata in RAM">>},
+                   {name, <<"vb_replica_meta_data_memory">>},
+                   {desc, <<"Amount of replica item metadata consuming in RAM in this bucket "
+                            "(measured from vb_replica_meta_data_memory)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"metadata in RAM">>},
+                   {name, <<"vb_pending_meta_data_memory">>},
+                   {desc, <<"Amount of pending item metadata consuming RAM in this bucket and "
+                            "should be transient during rebalancing (measured from vb_pending_meta_data_memory)">>}]},
+         {struct, [{isBytes, true},
+                   {title, <<"metadata in RAM">>},
+                   {name, <<"ep_meta_data_memory">>},
+                   {desc, <<"Total amount of item  metadata consuming RAM in this bucket "
+                            "(measured from ep_meta_data_memory)">>}]}]}]}].
 
 membase_disk_queues_stats_description() ->
-    [{struct,[{blockName,<<"Disk Queues">>},
-              {extraCSSClasses,<<"dynamic_withtotal dynamic_closed">>},
-              {columns,
-               [<<"Active">>,<<"Replica">>,<<"Pending">>,<<"Total">>]},
-              {stats,
-               [{struct,[{title,<<"items">>},
-                         {name,<<"vb_active_queue_size">>},
-                         {desc,<<"Number of active items waiting to be written to disk in this bucket (measured from vb_active_queue_size)">>}]},
-                {struct,[{title,<<"items">>},
-                         {name,<<"vb_replica_queue_size">>},
-                         {desc,<<"Number of replica items waiting to be written to disk in this bucket (measured from vb_replica_queue_size)">>}]},
-                {struct,[{title,<<"items">>},
-                         {name,<<"vb_pending_queue_size">>},
-                         {desc,<<"Number of pending items waiting to be written to disk in this bucket and should be transient during rebalancing  (measured from vb_pending_queue_size)">>}]},
-                {struct,[{title,<<"items">>},
-                         {name,<<"ep_diskqueue_items">>},
-                         {desc,<<"Total number of items waiting to be written to disk in this bucket (measured from ep_diskqueue_items)">>}]},
-                {struct,[{title,<<"fill rate">>},
-                         {name,<<"vb_active_queue_fill">>},
-                         {desc,<<"Number of active items per second being put on the active item disk queue in this bucket (measured from vb_active_queue_fill)">>}]},
-                {struct,[{title,<<"fill rate">>},
-                         {name,<<"vb_replica_queue_fill">>},
-                         {desc,<<"Number of replica items per second being put on the replica item disk queue in this bucket (measured from vb_replica_queue_fill)">>}]},
-                {struct,[{title,<<"fill rate">>},
-                         {name,<<"vb_pending_queue_fill">>},
-                         {desc,<<"Number of pending items per second being put on the pending item disk queue in this bucket and should be transient during rebalancing (measured from vb_pending_queue_fill)">>}]},
-                {struct,[{title,<<"fill rate">>},
-                         {name,<<"ep_diskqueue_fill">>},
-                         {desc,<<"Total number of items per second being put on the disk queue in this bucket (measured from ep_diskqueue_fill)">>}]},
-                {struct,[{title,<<"drain rate">>},
-                         {name,<<"vb_active_queue_drain">>},
-                         {desc,<<"Number of active items per second being written to disk in this bucket (measured from vb_active_queue_drain)">>}]},
-                {struct,[{title,<<"drain rate">>},
-                         {name,<<"vb_replica_queue_drain">>},
-                         {desc,<<"Number of replica items per second being written to disk in this bucket (measured from vb_replica_queue_drain)">>}]},
-                {struct,[{title,<<"drain rate">>},
-                         {name,<<"vb_pending_queue_drain">>},
-                         {desc,<<"Number of pending items per second being written to disk in this bucket and should be transient during rebalancing (measured from vb_pending_queue_drain)">>}]},
-                {struct,[{title,<<"drain rate">>},
-                         {name,<<"ep_diskqueue_drain">>},
-                         {desc,<<"Total number of items per second being written to disk in this bucket (measured from ep_diskqueue_drain)">>}]},
-                {struct,[{title,<<"average age">>},
-                         {name,<<"vb_avg_active_queue_age">>},
-                         {desc,<<"Average age in seconds of active items in the active item queue for this bucket (measured from vb_avg_active_queue_age)">>}]},
-                {struct,[{title,<<"average age">>},
-                         {name,<<"vb_avg_replica_queue_age">>},
-                         {desc,<<"Average age in seconds of replica items in the replica item queue for this bucket (measured from vb_avg_replica_queue_age)">>}]},
-                {struct,[{title,<<"average age">>},
-                         {name,<<"vb_avg_pending_queue_age">>},
-                         {desc,<<"Average age in seconds of pending items in the pending item queue for this bucket and should be transient during rebalancing (measured from vb_avg_pending_queue_age)">>}]},
-                {struct,[{title,<<"average age">>},
-                         {name,<<"vb_avg_total_queue_age">>},
-                         {desc,<<"Average age in seconds of all items in the disk write queue for this bucket (measured from vb_avg_total_queue_age)">>}]}]}]}].
+    [{struct,
+      [{blockName, <<"Disk Queues">>},
+       {extraCSSClasses, <<"dynamic_withtotal dynamic_closed">>},
+       {columns, [<<"Active">>, <<"Replica">>, <<"Pending">>, <<"Total">>]},
+       {stats,
+        [{struct, [{title, <<"items">>},
+                   {name, <<"vb_active_queue_size">>},
+                   {desc, <<"Number of active items waiting to be written to disk in this bucket "
+                            "(measured from vb_active_queue_size)">>}]},
+         {struct, [{title, <<"items">>},
+                   {name, <<"vb_replica_queue_size">>},
+                   {desc, <<"Number of replica items waiting to be written to disk in this bucket "
+                            "(measured from vb_replica_queue_size)">>}]},
+         {struct, [{title, <<"items">>},
+                   {name, <<"vb_pending_queue_size">>},
+                   {desc, <<"Number of pending items waiting to be written to disk in this bucket "
+                            "and should be transient during rebalancing  (measured from vb_pending_queue_size)">>}]},
+         {struct, [{title, <<"items">>},
+                   {name, <<"ep_diskqueue_items">>},
+                   {desc, <<"Total number of items waiting to be written to disk in this bucket "
+                            "(measured from ep_diskqueue_items)">>}]},
+         {struct, [{title, <<"fill rate">>},
+                   {name, <<"vb_active_queue_fill">>},
+                   {desc, <<"Number of active items per second being put on the active item disk "
+                            "queue in this bucket (measured from vb_active_queue_fill)">>}]},
+         {struct, [{title, <<"fill rate">>},
+                   {name, <<"vb_replica_queue_fill">>},
+                   {desc, <<"Number of replica items per second being put on the replica item disk "
+                            "queue in this bucket (measured from vb_replica_queue_fill)">>}]},
+         {struct, [{title, <<"fill rate">>},
+                   {name, <<"vb_pending_queue_fill">>},
+                   {desc, <<"Number of pending items per second being put on the pending item disk "
+                            "queue in this bucket and should be transient during rebalancing "
+                            "(measured from vb_pending_queue_fill)">>}]},
+         {struct, [{title, <<"fill rate">>},
+                   {name, <<"ep_diskqueue_fill">>},
+                   {desc, <<"Total number of items per second being put on the disk queue in this "
+                            "bucket (measured from ep_diskqueue_fill)">>}]},
+         {struct, [{title, <<"drain rate">>},
+                   {name, <<"vb_active_queue_drain">>},
+                   {desc, <<"Number of active items per second being written to disk in this bucket "
+                            "(measured from vb_active_queue_drain)">>}]},
+         {struct, [{title, <<"drain rate">>},
+                   {name, <<"vb_replica_queue_drain">>},
+                   {desc, <<"Number of replica items per second being written to disk in this bucket "
+                            "(measured from vb_replica_queue_drain)">>}]},
+         {struct, [{title, <<"drain rate">>},
+                   {name, <<"vb_pending_queue_drain">>},
+                   {desc, <<"Number of pending items per second being written to disk in this bucket "
+                            "and should be transient during rebalancing (measured from vb_pending_queue_drain)">>}]},
+         {struct, [{title, <<"drain rate">>},
+                   {name, <<"ep_diskqueue_drain">>},
+                   {desc, <<"Total number of items per second being written to disk in this bucket "
+                            "(measured from ep_diskqueue_drain)">>}]},
+         {struct, [{title, <<"average age">>},
+                   {name, <<"vb_avg_active_queue_age">>},
+                   {desc, <<"Average age in seconds of active items in the active item queue for "
+                            "this bucket (measured from vb_avg_active_queue_age)">>}]},
+         {struct, [{title, <<"average age">>},
+                   {name, <<"vb_avg_replica_queue_age">>},
+                   {desc, <<"Average age in seconds of replica items in the replica item queue for "
+                            "this bucket (measured from vb_avg_replica_queue_age)">>}]},
+         {struct, [{title, <<"average age">>},
+                   {name, <<"vb_avg_pending_queue_age">>},
+                   {desc, <<"Average age in seconds of pending items in the pending item queue for "
+                            "this bucket and should be transient during rebalancing (measured from "
+                            "vb_avg_pending_queue_age)">>}]},
+         {struct, [{title, <<"average age">>},
+                   {name, <<"vb_avg_total_queue_age">>},
+                   {desc, <<"Average age in seconds of all items in the disk write queue for this "
+                            "bucket (measured from vb_avg_total_queue_age)">>}]}]}]}].
 
 membase_dcp_queues_stats_description() ->
-    [{struct,[{blockName,<<"DCP Queues">>},
-              {extraCSSClasses,<<"dynamic_closed">>},
-              {columns,
-               [<<"Replication">>,<<"XDCR">>,<<"Views/Indexes">>,<<"Other">>]},
-              {stats,
-               [{struct,[{title,<<"DCP connections">>},
-                         {name,<<"ep_dcp_replica_count">>},
-                         {desc,<<"Number of internal replication DCP connections in this bucket (measured from ep_dcp_replica_count)">>}]},
-                {struct,[{title,<<"DCP connections">>},
-                         {name,<<"ep_dcp_xdcr_count">>},
-                         {desc,<<"Number of internal xdcr DCP connections in this bucket (measured from ep_dcp_xdcr_count)">>}]},
-                {struct,[{title,<<"DCP connections">>},
-                         {name,<<"ep_dcp_views+indexes_count">>},
-                         {desc,<<"Number of internal views/indexes DCP connections in this bucket (measured from ep_dcp_views_count + ep_dcp_2i_count + ep_dcp_fts_count)">>}]},
-                {struct,[{title,<<"DCP connections">>},
-                         {name,<<"ep_dcp_other_count">>},
-                         {desc,<<"Number of other DCP connections in this bucket (measured from ep_dcp_other_count)">>}]},
-                {struct,[{title,<<"DCP senders">>},
-                         {name,<<"ep_dcp_replica_producer_count">>},
-                         {desc,<<"Number of replication senders for this bucket (measured from ep_dcp_replica_producer_count)">>}]},
-                {struct,[{title,<<"DCP senders">>},
-                         {name,<<"ep_dcp_xdcr_producer_count">>},
-                         {desc,<<"Number of xdcr senders for this bucket (measured from ep_dcp_xdcr_producer_count)">>}]},
-                {struct,[{title,<<"DCP senders">>},
-                         {name,<<"ep_dcp_views+indexes_producer_count">>},
-                         {desc,<<"Number of views/indexes senders for this bucket (measured from ep_dcp_views_producer_count + ep_dcp_2i_producer_count + ep_dcp_fts_producer_count)">>}]},
-                {struct,[{title,<<"DCP senders">>},
-                         {name,<<"ep_dcp_other_producer_count">>},
-                         {desc,<<"Number of other senders for this bucket (measured from ep_dcp_other_producer_count)">>}]},
-                {struct,[{title,<<"items remaining">>},
-                         {name,<<"ep_dcp_replica_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_replica_items_remaining)">>}]},
-                {struct,[{title,<<"items remaining">>},
-                         {name,<<"ep_dcp_xdcr_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_xdcr_items_remaining)">>}]},
-                {struct,[{title,<<"items remaining">>},
-                         {name,<<"ep_dcp_views+indexes_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_views_items_remaining + ep_dcp_2i_items_remaining + ep_dcp_fts_items_remaining)">>}]},
-                {struct,[{title,<<"items remaining">>},
-                         {name,<<"ep_dcp_other_items_remaining">>},
-                         {desc,<<"Number of items remaining to be sent to consumer in this bucket (measured from ep_dcp_other_items_remaining)">>}]},
-                {struct,[{title,<<"drain rate items/sec">>},
-                         {name,<<"ep_dcp_replica_items_sent">>},
-                         {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_replica_items_sent)">>}]},
-                {struct,[{title,<<"drain rate items/sec">>},
-                         {name,<<"ep_dcp_xdcr_items_sent">>},
-                         {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_xdcr_items_sent)">>}]},
-                {struct,[{title,<<"drain rate items/sec">>},
-                         {name,<<"ep_dcp_views+indexes_items_sent">>},
-                         {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_views_items_sent + ep_dcp_2i_items_sent + ep_dcp_fts_items_sent)">>}]},
-                {struct,[{title,<<"drain rate items/sec">>},
-                         {name,<<"ep_dcp_other_items_sent">>},
-                         {desc,<<"Number of items per second being sent for a producer for this bucket (measured from ep_dcp_other_items_sent)">>}]},
-                {struct,[{title,<<"drain rate bytes/sec">>},
-                         {name,<<"ep_dcp_replica_total_bytes">>},
-                         {desc,<<"Number of bytes per second being sent for replication DCP connections for this bucket (measured from ep_dcp_replica_total_bytes)">>}]},
-                {struct,[{title,<<"drain rate bytes/sec">>},
-                         {name,<<"ep_dcp_xdcr_total_bytes">>},
-                         {desc,<<"Number of bytes per second being sent for xdcr DCP connections for this bucket (measured from ep_dcp_xdcr_total_bytes)">>}]},
-                {struct,[{title,<<"drain rate bytes/sec">>},
-                         {name,<<"ep_dcp_views+indexes_total_bytes">>},
-                         {desc,<<"Number of bytes per second being sent for views/indexes DCP connections for this bucket (measured from ep_dcp_views_total_bytes + ep_dcp_2i_total_bytes + ep_dcp_fts_total_bytes)">>}]},
-                {struct,[{title,<<"drain rate bytes/sec">>},
-                         {name,<<"ep_dcp_other_total_bytes">>},
-                         {desc,<<"Number of bytes per second being sent for other DCP connections for this bucket (measured from ep_dcp_other_total_bytes)">>}]},
-                {struct, [{title, <<"backoffs/sec">>},
-                          {name, <<"ep_dcp_replica_backoff">>},
-                          {desc,<<"Number of backoffs for replication DCP connections">>}]},
-                {struct, [{title, <<"backoffs/sec">>},
-                          {name, <<"ep_dcp_xdcr_backoff">>},
-                          {desc,<<"Number of backoffs for xdcr DCP connections">>}]},
-                {struct, [{title, <<"backoffs/sec">>},
-                          {name, <<"ep_dcp_views+indexes_backoff">>},
-                          {desc,<<"Number of backoffs for views/indexes DCP connections (measured from ep_dcp_views_backoff + ep_dcp_2i_backoff + ep_dcp_fts_backoff)">>}]},
-                {struct, [{title, <<"backoffs/sec">>},
-                          {name, <<"ep_dcp_other_backoff">>},
-                          {desc,<<"Number of backoffs for other DCP connections">>}]}
-               ]}]}].
+    [{struct,
+      [{blockName,<<"DCP Queues">>},
+       {extraCSSClasses,<<"dynamic_closed">>},
+       {columns, [<<"Replication">>, <<"XDCR">>, <<"Views/Indexes">>, <<"Other">>]},
+       {stats,
+        [{struct, [{title, <<"DCP connections">>},
+                   {name, <<"ep_dcp_replica_count">>},
+                   {desc, <<"Number of internal replication DCP connections in this bucket "
+                            "(measured from ep_dcp_replica_count)">>}]},
+         {struct, [{title, <<"DCP connections">>},
+                   {name, <<"ep_dcp_xdcr_count">>},
+                   {desc, <<"Number of internal xdcr DCP connections in this bucket "
+                            "(measured from ep_dcp_xdcr_count)">>}]},
+         {struct, [{title, <<"DCP connections">>},
+                   {name, <<"ep_dcp_views+indexes_count">>},
+                   {desc, <<"Number of internal views/indexes DCP connections in this bucket "
+                            "(measured from ep_dcp_views_count + ep_dcp_2i_count + ep_dcp_fts_count)">>}]},
+         {struct, [{title, <<"DCP connections">>},
+                   {name, <<"ep_dcp_other_count">>},
+                   {desc, <<"Number of other DCP connections in this bucket (measured from ep_dcp_other_count)">>}]},
+         {struct, [{title, <<"DCP senders">>},
+                   {name, <<"ep_dcp_replica_producer_count">>},
+                   {desc, <<"Number of replication senders for this bucket (measured from ep_dcp_replica_producer_count)">>}]},
+         {struct, [{title, <<"DCP senders">>},
+                   {name, <<"ep_dcp_xdcr_producer_count">>},
+                   {desc, <<"Number of xdcr senders for this bucket (measured from ep_dcp_xdcr_producer_count)">>}]},
+         {struct, [{title, <<"DCP senders">>},
+                   {name, <<"ep_dcp_views+indexes_producer_count">>},
+                         {desc,<<"Number of views/indexes senders for this bucket (measured from "
+                                 "ep_dcp_views_producer_count + ep_dcp_2i_producer_count + ep_dcp_fts_producer_count)">>}]},
+         {struct, [{title, <<"DCP senders">>},
+                   {name, <<"ep_dcp_other_producer_count">>},
+                   {desc, <<"Number of other senders for this bucket (measured from ep_dcp_other_producer_count)">>}]},
+         {struct, [{title, <<"items remaining">>},
+                   {name, <<"ep_dcp_replica_items_remaining">>},
+                   {desc, <<"Number of items remaining to be sent to consumer in this bucket "
+                            "(measured from ep_dcp_replica_items_remaining)">>}]},
+         {struct, [{title, <<"items remaining">>},
+                   {name, <<"ep_dcp_xdcr_items_remaining">>},
+                   {desc, <<"Number of items remaining to be sent to consumer in this bucket "
+                            "(measured from ep_dcp_xdcr_items_remaining)">>}]},
+         {struct, [{title, <<"items remaining">>},
+                   {name, <<"ep_dcp_views+indexes_items_remaining">>},
+                   {desc, <<"Number of items remaining to be sent to consumer in this bucket "
+                            "(measured from ep_dcp_views_items_remaining + ep_dcp_2i_items_remaining "
+                            "+ ep_dcp_fts_items_remaining)">>}]},
+         {struct, [{title, <<"items remaining">>},
+                   {name, <<"ep_dcp_other_items_remaining">>},
+                   {desc, <<"Number of items remaining to be sent to consumer in this bucket "
+                            "(measured from ep_dcp_other_items_remaining)">>}]},
+         {struct, [{title, <<"drain rate items/sec">>},
+                   {name, <<"ep_dcp_replica_items_sent">>},
+                   {desc, <<"Number of items per second being sent for a producer for this bucket "
+                            "(measured from ep_dcp_replica_items_sent)">>}]},
+         {struct, [{title, <<"drain rate items/sec">>},
+                   {name, <<"ep_dcp_xdcr_items_sent">>},
+                   {desc, <<"Number of items per second being sent for a producer for this bucket "
+                            "(measured from ep_dcp_xdcr_items_sent)">>}]},
+         {struct, [{title, <<"drain rate items/sec">>},
+                   {name, <<"ep_dcp_views+indexes_items_sent">>},
+                   {desc, <<"Number of items per second being sent for a producer for this bucket "
+                            "(measured from ep_dcp_views_items_sent + ep_dcp_2i_items_sent + ep_dcp_fts_items_sent)">>}]},
+         {struct, [{title, <<"drain rate items/sec">>},
+                   {name, <<"ep_dcp_other_items_sent">>},
+                   {desc, <<"Number of items per second being sent for a producer for this bucket "
+                            "(measured from ep_dcp_other_items_sent)">>}]},
+         {struct, [{title, <<"drain rate bytes/sec">>},
+                   {name, <<"ep_dcp_replica_total_bytes">>},
+                   {desc, <<"Number of bytes per second being sent for replication DCP connections "
+                            "for this bucket (measured from ep_dcp_replica_total_bytes)">>}]},
+         {struct, [{title, <<"drain rate bytes/sec">>},
+                   {name, <<"ep_dcp_xdcr_total_bytes">>},
+                   {desc, <<"Number of bytes per second being sent for xdcr DCP connections for "
+                            "this bucket (measured from ep_dcp_xdcr_total_bytes)">>}]},
+         {struct, [{title, <<"drain rate bytes/sec">>},
+                   {name, <<"ep_dcp_views+indexes_total_bytes">>},
+                   {desc, <<"Number of bytes per second being sent for views/indexes DCP connections "
+                            "for this bucket (measured from ep_dcp_views_total_bytes + "
+                            "ep_dcp_2i_total_bytes + ep_dcp_fts_total_bytes)">>}]},
+         {struct, [{title, <<"drain rate bytes/sec">>},
+                   {name, <<"ep_dcp_other_total_bytes">>},
+                   {desc, <<"Number of bytes per second being sent for other DCP connections for "
+                            "this bucket (measured from ep_dcp_other_total_bytes)">>}]},
+         {struct, [{title, <<"backoffs/sec">>},
+                   {name, <<"ep_dcp_replica_backoff">>},
+                   {desc, <<"Number of backoffs for replication DCP connections">>}]},
+         {struct, [{title, <<"backoffs/sec">>},
+                   {name, <<"ep_dcp_xdcr_backoff">>},
+                   {desc,<<"Number of backoffs for xdcr DCP connections">>}]},
+         {struct, [{title, <<"backoffs/sec">>},
+                   {name, <<"ep_dcp_views+indexes_backoff">>},
+                   {desc, <<"Number of backoffs for views/indexes DCP connections "
+                            "(measured from ep_dcp_views_backoff + ep_dcp_2i_backoff + ep_dcp_fts_backoff)">>}]},
+         {struct, [{title, <<"backoffs/sec">>},
+                   {name, <<"ep_dcp_other_backoff">>},
+                   {desc, <<"Number of backoffs for other DCP connections">>}]}
+        ]}]}].
 
 membase_incoming_xdcr_operations_stats_description() ->
-    [{struct,[{blockName,<<"Incoming XDCR Operations">>},
-              {bigTitlePrefix, <<"Incoming XDCR">>},
-              {extraCSSClasses,<<"dynamic_closed">>},
-              {stats,
-               [{struct,[{title,<<"metadata reads per sec.">>},
-                         {bigTitle,<<"Incoming XDCR metadata reads per sec.">>},
-                         {name,<<"ep_num_ops_get_meta">>},
-                         {desc,<<"Number of metadata read operations per second for this bucket as the target for XDCR "
-                                 "(measured from ep_num_ops_get_meta)">>}]},
-                {struct,[{title,<<"sets per sec.">>},
-                         {name,<<"ep_num_ops_set_meta">>},
-                         {desc,<<"Number of set operations per second for this bucket as the target for XDCR"
-                                 "(measured from ep_num_ops_set_meta)">>}]},
-                {struct,[{title,<<"deletes per sec.">>},
-                         {name,<<"ep_num_ops_del_meta">>},
-                         {desc,<<"Number of delete operations per second for this bucket as the target for XDCR "
-                                 "(measured from ep_num_ops_del_meta)">>}]},
-                {struct,[{title,<<"total ops per sec.">>},
-                         {bigTitle, <<"Incoming XDCR total ops/sec.">>},
-                         {name,<<"xdc_ops">>},
-                         {desc,<<"Total XDCR operations per second for this bucket "
-                                 "(measured from ep_num_ops_del_meta + ep_num_ops_get_meta + ep_num_ops_set_meta)">>}]}]}]}].
+    [{struct,
+      [{blockName,<<"Incoming XDCR Operations">>},
+       {bigTitlePrefix, <<"Incoming XDCR">>},
+       {extraCSSClasses,<<"dynamic_closed">>},
+       {stats,
+        [{struct,[{title, <<"metadata reads per sec.">>},
+                  {bigTitle, <<"Incoming XDCR metadata reads per sec.">>},
+                  {name, <<"ep_num_ops_get_meta">>},
+                  {desc, <<"Number of metadata read operations per second for this bucket as the target for XDCR "
+                           "(measured from ep_num_ops_get_meta)">>}]},
+         {struct, [{title, <<"sets per sec.">>},
+                   {name, <<"ep_num_ops_set_meta">>},
+                   {desc, <<"Number of set operations per second for this bucket as the target for XDCR"
+                            "(measured from ep_num_ops_set_meta)">>}]},
+         {struct, [{title, <<"deletes per sec.">>},
+                   {name, <<"ep_num_ops_del_meta">>},
+                   {desc, <<"Number of delete operations per second for this bucket as the target for XDCR "
+                            "(measured from ep_num_ops_del_meta)">>}]},
+         {struct, [{title, <<"total ops per sec.">>},
+                   {bigTitle, <<"Incoming XDCR total ops/sec.">>},
+                   {name, <<"xdc_ops">>},
+                   {desc, <<"Total XDCR operations per second for this bucket "
+                            "(measured from ep_num_ops_del_meta + ep_num_ops_get_meta + ep_num_ops_set_meta)">>}]}]}]}].
 
 display_outbound_xdcr_mutations(BucketID) ->
     case cluster_compat_mode:is_goxdcr_enabled() of
@@ -2196,90 +2285,105 @@ membase_stats_description(BucketId, AddQuery, IndexNodes, FtsNodes, CBASNode) ->
 
 
 memcached_stats_description() ->
-    [{struct,[{blockName,<<"Memcached">>},
-              {stats,
-               [{struct,[{name,<<"ops">>},
-                         {title,<<"ops per sec.">>},
-                         {default,true},
-                         {desc,<<"Total operations per second serviced by this bucket (measured from cmd_get + cmd_set + incr_misses + incr_hits + decr_misses + decr_hits + delete_misses + delete_hits + get_meta + set_meta + delete_meta)">>}]},
-                {struct,[{name,<<"hit_ratio">>},
-                         {title,<<"hit ratio">>},
-                         {maxY,100},
-                         {desc,<<"Percentage of get requests served with data from this bucket (measured from get_hits * 100/cmd_get)">>}]},
-                {struct,[{isBytes,true},
-                         {name,<<"mem_used">>},
-                         {title,<<"RAM used">>},
-                         {desc,<<"Total amount of RAM used by this bucket (measured from mem_used)">>}]},
-                {struct,[{name,<<"curr_items">>},
-                         {title,<<"items">>},
-                         {desc,<<"Number of items stored in this bucket (measured from curr_items)">>}]},
-                {struct,[{name,<<"evictions">>},
-                         {title,<<"evictions per sec.">>},
-                         {desc,<<"Number of items per second evicted from this bucket (measured from evictions)">>}]},
-                {struct,[{name,<<"cmd_set">>},
-                         {title,<<"sets per sec.">>},
-                         {desc,<<"Number of set operations serviced by this bucket (measured from cmd_set)">>}]},
-                {struct,[{name,<<"cmd_get">>},
-                         {title,<<"gets per sec.">>},
-                         {desc,<<"Number of get operations serviced by this bucket (measured from cmd_get)">>}]},
-                {struct,[{name,<<"bytes_written">>},
-                         {title,<<"bytes TX per sec.">>},
-                         {desc,<<"Number of bytes per second sent from this bucket (measured from bytes_written)">>}]},
-                {struct,[{name,<<"bytes_read">>},
-                         {title,<<"bytes RX per sec.">>},
-                         {desc,<<"Number of bytes per second sent into this bucket (measured from bytes_read)">>}]},
-                {struct,[{name,<<"get_hits">>},
-                         {title,<<"get hits per sec.">>},
-                         {desc,<<"Number of get operations per second for data that this bucket contains (measured from get_hits)">>}]},
-                {struct,[{name,<<"delete_hits">>},
-                         {title,<<"delete hits per sec.">>},
-                         {desc,<<"Number of delete operations per second for data that this bucket contains (measured from delete_hits)">>}]},
-                {struct,[{name,<<"incr_hits">>},
-                         {title,<<"incr hits per sec.">>},
-                         {desc,<<"Number of increment operations per second for data that this bucket contains (measured from incr_hits)">>}]},
-                {struct,[{name,<<"decr_hits">>},
-                         {title,<<"decr hits per sec.">>},
-                         {desc,<<"Number of decrement operations per second for data that this bucket contains (measured from decr_hits)">>}]},
-                {struct,[{name,<<"delete_misses">>},
-                         {title,<<"delete misses per sec.">>},
-                         {desc,<<"Number of delete operations per second for data that this bucket does not contain (measured from delete_misses)">>}]},
-                {struct,[{name,<<"decr_misses">>},
-                         {title,<<"decr misses per sec.">>},
-                         {desc,<<"Number of decr operations per second for data that this bucket does not contain (measured from decr_misses)">>}]},
-                {struct,[{name,<<"get_misses">>},
-                         {title,<<"get misses per sec.">>},
-                         {desc,<<"Number of get operations per second for data that this bucket does not contain (measured from get_misses)">>}]},
-                {struct,[{name,<<"incr_misses">>},
-                         {title,<<"incr misses per sec.">>},
-                         {desc,<<"Number of increment operations per second for data that this bucket does not contain (measured from incr_misses)">>}]},
-                {struct,[{name,<<"cas_hits">>},
-                         {title,<<"CAS hits per sec.">>},
-                         {desc,<<"Number of CAS operations per second for data that this bucket contains (measured from cas_hits)">>}]},
-                {struct,[{name,<<"cas_badval">>},
-                         {title,<<"CAS badval per sec.">>},
-                         {desc,<<"Number of CAS operations per second using an incorrect CAS ID for data that this bucket contains (measured from cas_badval)">>}]},
-                {struct,[{name,<<"cas_misses">>},
-                         {title,<<"CAS misses per sec.">>},
-                         {desc,<<"Number of CAS operations per second for data that this bucket does not contain (measured from cas_misses)">>}]}]}]}].
+    [{struct,
+      [{blockName, <<"Memcached">>},
+       {stats,
+        [{struct, [{name, <<"ops">>},
+                   {title, <<"ops per sec.">>},
+                   {default, true},
+                   {desc, <<"Total operations per second serviced by this bucket (measured from "
+                            "cmd_get + cmd_set + incr_misses + incr_hits + decr_misses + decr_hits "
+                            "+ delete_misses + delete_hits + get_meta + set_meta + delete_meta)">>}]},
+         {struct, [{name, <<"hit_ratio">>},
+                   {title, <<"hit ratio">>},
+                   {maxY, 100},
+                   {desc, <<"Percentage of get requests served with data from this bucket "
+                            "(measured from get_hits * 100/cmd_get)">>}]},
+         {struct, [{isBytes, true},
+                   {name, <<"mem_used">>},
+                   {title, <<"RAM used">>},
+                   {desc, <<"Total amount of RAM used by this bucket (measured from mem_used)">>}]},
+         {struct, [{name, <<"curr_items">>},
+                   {title, <<"items">>},
+                   {desc, <<"Number of items stored in this bucket (measured from curr_items)">>}]},
+         {struct, [{name, <<"evictions">>},
+                   {title, <<"evictions per sec.">>},
+                   {desc, <<"Number of items per second evicted from this bucket (measured from evictions)">>}]},
+         {struct, [{name, <<"cmd_set">>},
+                   {title, <<"sets per sec.">>},
+                   {desc, <<"Number of set operations serviced by this bucket (measured from cmd_set)">>}]},
+         {struct, [{name, <<"cmd_get">>},
+                   {title, <<"gets per sec.">>},
+                   {desc, <<"Number of get operations serviced by this bucket (measured from cmd_get)">>}]},
+         {struct, [{name, <<"bytes_written">>},
+                   {title, <<"bytes TX per sec.">>},
+                   {desc, <<"Number of bytes per second sent from this bucket (measured from bytes_written)">>}]},
+         {struct, [{name, <<"bytes_read">>},
+                   {title, <<"bytes RX per sec.">>},
+                   {desc, <<"Number of bytes per second sent into this bucket (measured from bytes_read)">>}]},
+         {struct, [{name, <<"get_hits">>},
+                   {title, <<"get hits per sec.">>},
+                   {desc, <<"Number of get operations per second for data that this bucket contains "
+                            "(measured from get_hits)">>}]},
+         {struct, [{name, <<"delete_hits">>},
+                   {title, <<"delete hits per sec.">>},
+                   {desc, <<"Number of delete operations per second for data that this bucket "
+                            "contains (measured from delete_hits)">>}]},
+         {struct,[{name, <<"incr_hits">>},
+                  {title, <<"incr hits per sec.">>},
+                  {desc, <<"Number of increment operations per second for data that this bucket "
+                           "contains (measured from incr_hits)">>}]},
+         {struct, [{name, <<"decr_hits">>},
+                   {title, <<"decr hits per sec.">>},
+                   {desc, <<"Number of decrement operations per second for data that this bucket "
+                            "contains (measured from decr_hits)">>}]},
+         {struct, [{name, <<"delete_misses">>},
+                   {title, <<"delete misses per sec.">>},
+                   {desc, <<"Number of delete operations per second for data that this bucket does "
+                            "not contain (measured from delete_misses)">>}]},
+         {struct, [{name, <<"decr_misses">>},
+                   {title, <<"decr misses per sec.">>},
+                   {desc, <<"Number of decr operations per second for data that this bucket does "
+                            "not contain (measured from decr_misses)">>}]},
+         {struct, [{name, <<"get_misses">>},
+                   {title, <<"get misses per sec.">>},
+                   {desc, <<"Number of get operations per second for data that this bucket does not "
+                            "contain (measured from get_misses)">>}]},
+         {struct, [{name, <<"incr_misses">>},
+                   {title, <<"incr misses per sec.">>},
+                   {desc, <<"Number of increment operations per second for data that this bucket "
+                            "does not contain (measured from incr_misses)">>}]},
+         {struct, [{name, <<"cas_hits">>},
+                   {title, <<"CAS hits per sec.">>},
+                   {desc, <<"Number of CAS operations per second for data that this bucket contains "
+                            "(measured from cas_hits)">>}]},
+         {struct, [{name, <<"cas_badval">>},
+                   {title, <<"CAS badval per sec.">>},
+                   {desc, <<"Number of CAS operations per second using an incorrect CAS ID for data "
+                            "that this bucket contains (measured from cas_badval)">>}]},
+         {struct, [{name, <<"cas_misses">>},
+                   {title, <<"CAS misses per sec.">>},
+                   {desc, <<"Number of CAS operations per second for data that this bucket does not "
+                            "contain (measured from cas_misses)">>}]}]}]}].
 
 
 index_server_resources_stats_description([]) ->
     [];
 index_server_resources_stats_description(_IndexNodes) ->
-    [{struct,[{name,<<"index_ram_percent">>},
-              {title,<<"Max Index RAM Used %">>},
-              {desc,<<"Percentage of Index RAM in use across all indexes on this server">>}]},
-     {struct,[{name,<<"index_remaining_ram">>},
-              {title,<<"remaining index ram">>},
-              {desc,<<"Amount of index RAM available on this server">>}]}].
+    [{struct, [{name, <<"index_ram_percent">>},
+               {title, <<"Max Index RAM Used %">>},
+               {desc, <<"Percentage of Index RAM in use across all indexes on this server">>}]},
+     {struct, [{name, <<"index_remaining_ram">>},
+               {title, <<"remaining index ram">>},
+               {desc, <<"Amount of index RAM available on this server">>}]}].
 
 fts_server_resources_stats_description([]) ->
     [];
 fts_server_resources_stats_description(_FtsNodes) ->
-    [{struct,[{isBytes,true},
-              {name,<<"fts_num_bytes_used_ram">>},
-              {title,<<"fts RAM used">>},
-              {desc,<<"Amount of RAM used by FTS on this server">>}]}].
+    [{struct, [{isBytes, true},
+               {name, <<"fts_num_bytes_used_ram">>},
+               {title, <<"fts RAM used">>},
+               {desc, <<"Amount of RAM used by FTS on this server">>}]}].
 
 cbas_server_resources_stats_description([]) ->
     [];
@@ -2308,36 +2412,36 @@ cbas_server_resources_stats_description(_CbasNodes) ->
                {desc, <<"Number of disk bytes written on Analytics node per second">>}]}].
 
 server_resources_stats_description(IndexNodes, FtsNodes, CbasNodes) ->
-    [{blockName,<<"Server Resources">>},
+    [{blockName, <<"Server Resources">>},
      {serverResources, true},
      {stats,
-      [{struct,[{isBytes,true},
-                {name,<<"swap_used">>},
-                {title,<<"swap usage">>},
-                {desc,<<"Amount of swap space in use on this server">>}]},
-       {struct,[{isBytes,true},
-                {name,<<"mem_actual_free">>},
-                {title,<<"free RAM">>},
-                {desc,<<"Amount of RAM available on this server">>}]},
-       {struct,[{name,<<"cpu_utilization_rate">>},
-                {title,<<"Max CPU utilization %">>},
-                {desc,<<"Percentage of CPU in use across all available cores on this server">>},
-                {maxY,100}]},
-       {struct,[{name,<<"curr_connections">>},
-                {title,<<"connections">>},
-                {desc,<<"Number of connections to this server including"
-                        "connections from external client SDKs, proxies, "
-                        "DCP requests and internal statistic gathering "
-                        "(measured from curr_connections)">>}]},
-       {struct,[{name,<<"rest_requests">>},
-                {title,<<"port 8091 reqs/sec">>},
-                {desc,<<"Rate of http requests on port 8091">>}]},
-       {struct,[{name,<<"hibernated_requests">>},
-                {title,<<"idle streaming requests">>},
-                {desc,<<"Number of streaming requests on port 8091 now idle">>}]},
-       {struct,[{name,<<"hibernated_waked">>},
-                {title,<<"streaming wakeups/sec">>},
-                {desc,<<"Rate of streaming request wakeups on port 8091">>}]}
+      [{struct, [{isBytes, true},
+                 {name, <<"swap_used">>},
+                 {title, <<"swap usage">>},
+                 {desc, <<"Amount of swap space in use on this server">>}]},
+       {struct, [{isBytes, true},
+                 {name, <<"mem_actual_free">>},
+                 {title, <<"free RAM">>},
+                 {desc, <<"Amount of RAM available on this server">>}]},
+       {struct, [{name, <<"cpu_utilization_rate">>},
+                 {title, <<"Max CPU utilization %">>},
+                 {desc, <<"Percentage of CPU in use across all available cores on this server">>},
+                 {maxY, 100}]},
+       {struct, [{name, <<"curr_connections">>},
+                 {title, <<"connections">>},
+                 {desc, <<"Number of connections to this server including "
+                          "connections from external client SDKs, proxies, "
+                          "DCP requests and internal statistic gathering "
+                          "(measured from curr_connections)">>}]},
+       {struct, [{name, <<"rest_requests">>},
+                 {title, <<"port 8091 reqs/sec">>},
+                 {desc, <<"Rate of http requests on port 8091">>}]},
+       {struct, [{name, <<"hibernated_requests">>},
+                 {title, <<"idle streaming requests">>},
+                 {desc, <<"Number of streaming requests on port 8091 now idle">>}]},
+       {struct, [{name, <<"hibernated_waked">>},
+                 {title, <<"streaming wakeups/sec">>},
+                 {desc, <<"Rate of streaming request wakeups on port 8091">>}]}
        | index_server_resources_stats_description(IndexNodes) ++
            fts_server_resources_stats_description(FtsNodes) ++
            cbas_server_resources_stats_description(CbasNodes)]}].
