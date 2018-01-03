@@ -28,6 +28,8 @@ clean clean_all:
 install:
 	cd build && $(MAKE) --no-print-directory $@
 
+$(TEST_TARGETS): edts_hack_clean
+
 dataclean distclean $(TEST_TARGETS) ui_test docs dialyzer dialyzer_obsessive:
 	cd build && $(MAKE) --no-print-directory ns_$@
 
