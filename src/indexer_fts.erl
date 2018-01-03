@@ -83,10 +83,10 @@ service_event_name() ->
     "@" ++ atom_to_list(get_type()).
 
 per_index_stat(Index, Metric) ->
-    iolist_to_binary([atom_to_list(get_type()), <<"/">>, Index, $/, Metric]).
+    iolist_to_binary([atom_to_list(get_type()), $/, Index, $/, Metric]).
 
 global_index_stat(StatName) ->
-    iolist_to_binary([atom_to_list(get_type()), <<"/">>, StatName]).
+    iolist_to_binary([atom_to_list(get_type()), $/, StatName]).
 
 compute_service_gauges(_Gauges) ->
     [].

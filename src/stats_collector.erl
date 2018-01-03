@@ -178,7 +178,7 @@ process_stats(TS,
 transform_xdc_stats_loop([], Acc, TotalChangesLeft) -> {Acc, TotalChangesLeft};
 transform_xdc_stats_loop([In | T], Reps, TotalChangesLeft) ->
     {RepID, RepStats} = In,
-    PerRepStats = [{iolist_to_binary([<<"replications/">>, RepID, <<"/">>, atom_to_binary(StatK, latin1)]),
+    PerRepStats = [{iolist_to_binary(["replications/", RepID, $/, atom_to_binary(StatK, latin1)]),
                     StatV} || {StatK, StatV} <- RepStats, is_number(StatV)],
     NewTotalChangesLeft = TotalChangesLeft + proplists:get_value(changes_left, RepStats, 0),
     transform_xdc_stats_loop(T, [PerRepStats | Reps], NewTotalChangesLeft).

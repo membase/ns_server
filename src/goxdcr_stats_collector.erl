@@ -51,7 +51,7 @@ is_counter(_) ->
     false.
 
 build_stat_key(RepID, StatK) ->
-    iolist_to_binary([<<"replications/">>, RepID, <<"/">>, StatK]).
+    iolist_to_binary(["replications/", RepID, $/, StatK]).
 
 massage_rep_stats(_RepID, [], AccGauges, AccCounters, ChangesLeft, DocsRepQueue) ->
     {AccGauges, AccCounters, ChangesLeft, DocsRepQueue};
