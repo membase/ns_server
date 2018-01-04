@@ -44,24 +44,46 @@
         }
       });
     }
+    function addBucketSpecificRoles(obj, name) {
+      obj["bucket_admin" + name] = " (read/write)";
+      obj["fts_searcher" + name] = " (read)";
+      obj["fts_admin" + name] = " (read)";
+      obj["query_manage_index" + name] = " (read)";
+      obj["query_delete" + name] = " (read)";
+      obj["query_insert"  + name] = " (read)";
+      obj["query_update" + name] = " (read)";
+      obj["query_select" + name] = " (read)";
+      obj["views_admin" + name] = " (read)";
+    }
     function controller($scope) {
       $scope.replicaNumberEnabled = $scope.bucketConf.replicaNumber != 0;
       $scope.canChangeBucketsSettings = $scope.bucketConf.isNew;
 
       if ($scope.rbac && $scope.rbac.cluster.admin.security.read) {
         mnUserRolesService.getUsers().then(function (users) {
-          var interestedRoles = {
+          if (users.data.length == 0) {
+            $scope.users = [];
+            return;
+          }
+          var interestingRoles = {
             "admin": " (read/write)",
             "cluster_admin": " (read/write)",
             "ro_admin": " (read)",
-            "bucket_admin*": " (read/write)"
+            "replication_admin": " (read)",
+            "query_external_access": " (read)",
+            "query_system_catalog": " (read)"
           };
+          addBucketSpecificRoles(interestingRoles, "*");
+          if (!$scope.bucketConf.isNew) {
+            addBucketSpecificRoles(interestingRoles, $scope.bucketConf.name);
+          }
           var users1 = _.reduce(users.data, function (acc, user) {
+            user.roles = _.sortBy(user.roles, "role");
             var role1 = _.find(user.roles, function (role) {
-              return interestedRoles[role.role + (role.bucket_name || "")];
+              return interestingRoles[role.role + (role.bucket_name || "")];
             });
             if (role1) {
-              acc.push(user.id + interestedRoles[role1.role + (role1.bucket_name || "")]);
+              acc.push(user.id + interestingRoles[role1.role + (role1.bucket_name || "")]);
             }
             return acc;
           }, []);
