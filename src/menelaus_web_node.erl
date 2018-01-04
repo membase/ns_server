@@ -464,8 +464,9 @@ handle_node_settings_post(Node, Req) when is_atom(Node) ->
     Params = Req:parse_post(),
 
     {ok, DefaultDbPath} = ns_storage_conf:this_node_dbdir(),
+    {ok, DefaultIndexPath} = ns_storage_conf:this_node_ixdir(),
     DbPath = proplists:get_value("path", Params, DefaultDbPath),
-    IxPath = proplists:get_value("index_path", Params, DbPath),
+    IxPath = proplists:get_value("index_path", Params, DefaultIndexPath),
 
     CBASDirs =
         case [Dir || {"cbas_path", Dir} <- Params] of
