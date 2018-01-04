@@ -282,6 +282,8 @@ to_binary({list, List}) ->
     [to_binary(A) || A <- List];
 to_binary(A) when is_list(A) ->
     iolist_to_binary(A);
+to_binary(A) when is_tuple(A) ->
+    iolist_to_binary(io_lib:format("~p", [A]));
 to_binary(A) ->
     A.
 
@@ -661,8 +663,17 @@ password_policy(Req, Policy) ->
                        {must_present, {list, proplists:get_value(must_present, Policy)}}),
     put(password_policy, Req, PreparedPolicy).
 
-client_cert_auth(Req, Value) ->
-    put(client_cert_auth, Req, Value).
+client_cert_auth(Req, ClientCertAuth) ->
+    Val = case cluster_compat_mode:is_cluster_51() of
+              true ->
+                  State = lists:keyfind(state, 1, ClientCertAuth),
+                  {PrefixesKey, Triples} = lists:keyfind(prefixes, 1, ClientCertAuth),
+                  NewTriples = [{list, T} || T <- Triples],
+                  [State, {PrefixesKey, {list, NewTriples}}];
+              false ->
+                  ClientCertAuth
+          end,
+    put(client_cert_auth, Req, Val).
 
 security_settings(Req, Settings) ->
     put(security_settings, Req, [{settings, {prepare_list(Settings)}}]).

@@ -29,7 +29,8 @@
          ssl_minimum_protocol/1,
          client_cert_auth/0,
          set_node_certificate_chain/4,
-         ciphers_strength/1]).
+         ciphers_strength/1,
+         upgrade_client_cert_auth_to_51/1]).
 
 %% used by ssl proxy
 -export([dh_params_der/0, supported_versions/1, supported_ciphers/0]).
@@ -211,8 +212,26 @@ ssl_minimum_protocol(Config) ->
     ns_config:search(Config, ssl_minimum_protocol, 'tlsv1').
 
 client_cert_auth() ->
-    DefaultValue = [{state, "disable"}],
+    DefaultValue = case cluster_compat_mode:is_cluster_51() of
+                       true -> [{state, "disable"}, {prefixes, []}];
+                       false -> [{state, "disable"}]
+                   end,
     ns_config:search(ns_config:latest(), client_cert_auth, DefaultValue).
+
+upgrade_client_cert_auth_to_51(Config) ->
+    Cca = ns_config:search(Config, client_cert_auth, []),
+    State = proplists:get_value(state, Cca, "disable"),
+    NewCca = case proplists:get_value(path, Cca) of
+                 undefined ->
+                     [{state, State}, {prefixes, []}];
+                 Path ->
+                     Prefix = proplists:get_value(prefix, Cca, ""),
+                     Delimiters = proplists:get_value(delimiter, Cca, ""),
+                     [{state, State}, {prefixes,
+                                       [[{path, Path}, {prefix, Prefix}, {delimiter, Delimiters}]]}]
+             end,
+    [{set, client_cert_auth, NewCca}].
+
 
 %% The list is obtained by running the following openssl command:
 %%

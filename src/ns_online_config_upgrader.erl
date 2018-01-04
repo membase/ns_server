@@ -103,7 +103,8 @@ upgrade_config_from_4_6_to_5_0(Config) ->
 
 upgrade_config_from_5_0_to_5_1(Config) ->
     ?log_info("Performing online config upgrade to 5.1 version"),
-    ns_bucket:config_upgrade_to_51(Config).
+    ns_ssl_services_setup:upgrade_client_cert_auth_to_51(Config) ++
+        ns_bucket:config_upgrade_to_51(Config).
 
 upgrade_config_from_5_1_to_vulcan(Config) ->
     ?log_info("Performing online config upgrade to Vulcan"),
