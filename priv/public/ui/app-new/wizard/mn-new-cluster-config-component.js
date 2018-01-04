@@ -58,7 +58,8 @@ mn.components.MnNewClusterConfig =
       return _.reduce([
         ["memoryQuota", "kv"],
         ["indexMemoryQuota", "index"],
-        ["ftsMemoryQuota", "fts"]
+        ["ftsMemoryQuota", "fts"],
+        ["cbasMemoryQuota", "cbas"],
       ], getPoolsDefaultValue.bind(this), {
         clusterName: this.wizardForm.newCluster.get("clusterName").value
       });

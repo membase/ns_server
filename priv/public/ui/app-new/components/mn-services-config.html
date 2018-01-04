@@ -121,6 +121,43 @@
          class="width-6"
          formGroupName="flag">
         <input
+           formControlName="cbas"
+           type="checkbox"
+           id="cbas_ram_quota">
+        <!-- ng-if="config.services" -->
+        <!-- ng-model="config.services.model.index" -->
+        <!-- ng-disabled="config.services.disabled.index" -->
+        <label
+           for="cbas_ram_quota"
+           class="checkbox">
+          Analytics Service
+        </label>
+      </div>
+      <div
+         class="form-inline width-6 text-right"
+         *ngIf="group.value.field"
+         formGroupName="field">
+        <input
+           [(mnFocus)]="!group.value.field.index && !group.value.field.kv && !group.value.field.fts"
+           formControlName="cbas"
+           type="number"
+           min="0">
+        <!-- ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)" -->
+        <small>MB</small>
+      </div>
+    </div>
+
+    <div
+       class="error"
+       [hidden]="!(poolsDefaultHttp.error | async)?.errors.cbasMemoryQuota">
+      {{(poolsDefaultHttp.error | async)?.errors.cbasMemoryQuota}}
+    </div>
+
+    <div class="row formrow">
+      <div
+         class="width-6"
+         formGroupName="flag">
+        <input
            formControlName="n1ql"
            type="checkbox"
            id="n1ql_ram_quota">

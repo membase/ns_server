@@ -43,12 +43,14 @@ mn.services.MnWizard = (function () {
           index: new ng.forms.FormControl(true),
           fts: new ng.forms.FormControl(true),
           n1ql: new ng.forms.FormControl(true),
-          eventing: new ng.forms.FormControl(true)
+          eventing: new ng.forms.FormControl(true),
+          cbas: new ng.forms.FormControl(false)
         }),
         field: new ng.forms.FormGroup({
           kv: new ng.forms.FormControl(null),
           index: new ng.forms.FormControl(null),
-          fts: new ng.forms.FormControl(null)
+          fts: new ng.forms.FormControl(null),
+          cbas: new ng.forms.FormControl(null)
         })
       }),
       storageMode: new ng.forms.FormControl(null),
@@ -84,7 +86,8 @@ mn.services.MnWizard = (function () {
           index: new ng.forms.FormControl(true),
           fts: new ng.forms.FormControl(true),
           n1ql: new ng.forms.FormControl(true),
-          eventing: new ng.forms.FormControl(true)
+          eventing: new ng.forms.FormControl(true),
+          cbas: new ng.forms.FormControl(false)
         })
       }),
       clusterStorage: clusterStorage,

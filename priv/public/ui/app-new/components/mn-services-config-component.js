@@ -39,6 +39,7 @@ mn.components.MnServicesConfig =
       createToggleFieldStream.bind(this)("kv");
       createToggleFieldStream.bind(this)("index");
       createToggleFieldStream.bind(this)("fts");
+      createToggleFieldStream.bind(this)("cbas");
 
       this.group
         .valueChanges
@@ -57,6 +58,7 @@ mn.components.MnServicesConfig =
       maybeAddQuota.bind(this)(data, "memoryQuota", "kv");
       maybeAddQuota.bind(this)(data, "indexMemoryQuota", "index");
       maybeAddQuota.bind(this)(data, "ftsMemoryQuota", "fts");
+      maybeAddQuota.bind(this)(data, "cbasMemoryQuota", "cbas");
       this.poolsDefaultHttp.post([data, true]);
     }
 
@@ -70,7 +72,8 @@ mn.components.MnServicesConfig =
     function calculateTotal(value) {
       return getFieldValue("kv", this.group) +
         getFieldValue("index", this.group) +
-        getFieldValue("fts", this.group);
+        getFieldValue("fts", this.group) +
+        getFieldValue("cbas", this.group);
     }
 
     function getFieldValue(serviceName, group) {
