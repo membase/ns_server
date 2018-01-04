@@ -16,7 +16,7 @@
           n1ql: $scope.poolDefault.compat.atLeast40,
           fts: $scope.poolDefault.compat.atLeast50,
           eventing: $scope.poolDefault.compat.atLeast55,
-          cbas: $scope.poolDefault.compat.atLeast55
+          cbas: false
         }
       },
       credentials: {
