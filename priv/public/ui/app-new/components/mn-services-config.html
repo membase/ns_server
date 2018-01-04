@@ -110,108 +110,108 @@
     </div>
   </div>
 
+  <div
+     class="error"
+     [hidden]="!(poolsDefaultHttp.error | async)?.errors.ftsMemoryQuota">
+    {{(poolsDefaultHttp.error | async)?.errors.ftsMemoryQuota}}
+  </div>
+
+  <div class="row formrow">
     <div
-       class="error"
-       [hidden]="!(poolsDefaultHttp.error | async)?.errors.ftsMemoryQuota">
-      {{(poolsDefaultHttp.error | async)?.errors.ftsMemoryQuota}}
+       class="width-6"
+       formGroupName="flag">
+      <input
+         formControlName="cbas"
+         type="checkbox"
+         id="cbas_ram_quota">
+      <!-- ng-if="config.services" -->
+      <!-- ng-model="config.services.model.index" -->
+      <!-- ng-disabled="config.services.disabled.index" -->
+      <label
+         for="cbas_ram_quota"
+         class="checkbox">
+        Analytics Service
+      </label>
     </div>
-
-    <div class="row formrow">
-      <div
-         class="width-6"
-         formGroupName="flag">
-        <input
-           formControlName="cbas"
-           type="checkbox"
-           id="cbas_ram_quota">
-        <!-- ng-if="config.services" -->
-        <!-- ng-model="config.services.model.index" -->
-        <!-- ng-disabled="config.services.disabled.index" -->
-        <label
-           for="cbas_ram_quota"
-           class="checkbox">
-          Analytics Service
-        </label>
-      </div>
-      <div
-         class="form-inline width-6 text-right"
-         *ngIf="group.value.field"
-         formGroupName="field">
-        <input
-           [(mnFocus)]="!group.value.field.index && !group.value.field.kv && !group.value.field.fts"
-           formControlName="cbas"
-           type="number"
-           min="0">
-        <!-- ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)" -->
-        <small>MB</small>
-      </div>
-    </div>
-
     <div
-       class="error"
-       [hidden]="!(poolsDefaultHttp.error | async)?.errors.cbasMemoryQuota">
-      {{(poolsDefaultHttp.error | async)?.errors.cbasMemoryQuota}}
-    </div>
-
-    <div class="row formrow">
-      <div
-         class="width-6"
-         formGroupName="flag">
-        <input
-           formControlName="n1ql"
-           type="checkbox"
-           id="n1ql_ram_quota">
-        <!-- ng-if="config.services" -->
-        <!-- ng-model="config.services.model.n1ql" -->
-        <!-- ng-disabled="config.services.disabled.n1ql" -->
-        <label
-           for="n1ql_ram_quota"
-           class="checkbox">
-          Query Service
-        </label>
-      </div>
-      <small *ngIf="group.value.field" class="form-inline width-6 text-center">
-        - - - - - - -
-      </small>
-    </div>
-
-    <div
-       class="error"
-       [hidden]="!(poolsDefaultHttp.error | async)?.errors.n1qlMemoryQuota">
-      {{(poolsDefaultHttp.error | async)?.errors.n1qlMemoryQuota}}
-    </div>
-
-    <div class="row formrow">
-      <div
-         class="width-6"
-         formGroupName="flag">
-        <input
-           formControlName="eventing"
-           type="checkbox"
-           id="eventing_ram_quota">
-        <!-- ng-if="config.services" -->
-        <!-- ng-model="config.services.model.eventing" -->
-        <!-- ng-disabled="config.services.disabled.eventing" -->
-        <label
-           for="eventing_ram_quota"
-           class="checkbox">
-          Eventing Service
-        </label>
-      </div>
-      <small *ngIf="group.value.field" class="form-inline width-6 text-center">
-        - - - - - - -
-      </small>
-
-      <div
-         class="error"
-         [hidden]="!(poolsDefaultHttp.error | async)?.errors.eventingMemoryQuota">
-        {{(poolsDefaultHttp.error | async)?.errors.eventingMemoryQuota}}
-      </div>
+       class="form-inline width-6 text-right"
+       *ngIf="group.value.field"
+       formGroupName="field">
+      <input
+         [(mnFocus)]="!group.value.field.index && !group.value.field.kv && !group.value.field.fts"
+         formControlName="cbas"
+         type="number"
+         min="0">
+      <!-- ng-disabled="config.services && !config.services.model.index || (rbac && !rbac.cluster.pools.write)" -->
+      <small>MB</small>
     </div>
   </div>
 
   <div
-     *ngIf="group.value.field"
-     class="text-small text-right nowrap margin-right-1">
-    <strong>TOTAL QUOTA</strong> &nbsp; {{total | async}} MB
+     class="error"
+     [hidden]="!(poolsDefaultHttp.error | async)?.errors.cbasMemoryQuota">
+    {{(poolsDefaultHttp.error | async)?.errors.cbasMemoryQuota}}
   </div>
+
+  <div class="row formrow">
+    <div
+       class="width-6"
+       formGroupName="flag">
+      <input
+         formControlName="n1ql"
+         type="checkbox"
+         id="n1ql_ram_quota">
+      <!-- ng-if="config.services" -->
+      <!-- ng-model="config.services.model.n1ql" -->
+      <!-- ng-disabled="config.services.disabled.n1ql" -->
+      <label
+         for="n1ql_ram_quota"
+         class="checkbox">
+        Query Service
+      </label>
+    </div>
+    <small *ngIf="group.value.field" class="form-inline width-6 text-center">
+      - - - - - - -
+    </small>
+  </div>
+
+  <div
+     class="error"
+     [hidden]="!(poolsDefaultHttp.error | async)?.errors.n1qlMemoryQuota">
+    {{(poolsDefaultHttp.error | async)?.errors.n1qlMemoryQuota}}
+  </div>
+
+  <div class="row formrow">
+    <div
+       class="width-6"
+       formGroupName="flag">
+      <input
+         formControlName="eventing"
+         type="checkbox"
+         id="eventing_ram_quota">
+      <!-- ng-if="config.services" -->
+      <!-- ng-model="config.services.model.eventing" -->
+      <!-- ng-disabled="config.services.disabled.eventing" -->
+      <label
+         for="eventing_ram_quota"
+         class="checkbox">
+        Eventing Service
+      </label>
+    </div>
+    <small *ngIf="group.value.field" class="form-inline width-6 text-center">
+      - - - - - - -
+    </small>
+
+    <div
+       class="error"
+       [hidden]="!(poolsDefaultHttp.error | async)?.errors.eventingMemoryQuota">
+      {{(poolsDefaultHttp.error | async)?.errors.eventingMemoryQuota}}
+    </div>
+  </div>
+</div>
+
+<div
+   *ngIf="group.value.field"
+   class="text-small text-right nowrap margin-right-1">
+  <strong>TOTAL QUOTA</strong> &nbsp; {{total | async}} MB
+</div>
