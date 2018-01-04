@@ -19,7 +19,7 @@
 
 -behaviour(supervisor).
 
--export([start_link/0, start_collect_logs/2,
+-export([start_link/0, start_collect_logs/3,
          cancel_logs_collection/0]).
 
 %% rpc:call-ed by cancel_logs_collection since 3.0
@@ -40,13 +40,13 @@ init([]) ->
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_collect_logs(Nodes, BaseURL) ->
+start_collect_logs(Nodes, BaseURL, RedactLevel) ->
     {Results, _} = MCResult = rpc:multicall(?MODULE, check_local_collect, [], ?TASK_CHECK_TIMEOUT),
     ?log_debug("check_local_collect returned: ~p", [MCResult]),
     case lists:any(fun (Res) -> Res =:= true end, Results) of
         false ->
             Spec = {collect_task,
-                    {cluster_logs_collection_task, start_link, [Nodes, BaseURL]},
+                    {cluster_logs_collection_task, start_link, [Nodes, BaseURL, RedactLevel]},
                     temporary,
                     brutal_kill,
                     worker, []},

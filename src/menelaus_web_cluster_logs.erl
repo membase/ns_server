@@ -21,10 +21,10 @@ handle_start_collect_logs(Req) ->
     Params = Req:parse_post(),
 
     case parse_validate_collect_params(Params, ns_config:get()) of
-        {ok, Nodes, BaseURL} ->
+        {ok, Nodes, BaseURL, RedactLevel} ->
             case cluster_logs_collection_task:preflight_base_url(BaseURL) of
                 ok ->
-                    case cluster_logs_sup:start_collect_logs(Nodes, BaseURL) of
+                    case cluster_logs_sup:start_collect_logs(Nodes, BaseURL, RedactLevel) of
                         ok ->
                             menelaus_util:reply_json(Req, [], 200);
                         already_started ->
@@ -60,7 +60,14 @@ stringify_one_node_upload_error({malformed, ticket}) ->
 stringify_one_node_upload_error(missing_customer) ->
     [{customer, <<"customer must be given if upload host or ticket is given">>}];
 stringify_one_node_upload_error(missing_upload) ->
-    [{uploadHost, <<"upload host must be given if customer or ticket is given">>}].
+    [{uploadHost, <<"upload host must be given if customer or ticket is given">>}];
+stringify_one_node_upload_error({cluster_too_old, log_redaction}) ->
+    {logRedactionLevel, "log redaction is not supported for this version of the cluster"};
+stringify_one_node_upload_error({not_enterprise, log_redaction}) ->
+    {logRedactionLevel, "log redaction is an enterprise only feature"};
+stringify_one_node_upload_error({unknown, log_redaction}) ->
+    {logRedactionLevel, "log redaction should be none or partial"}.
+
 
 parse_nodes("*", Config) ->
     {ok, ns_node_disco:nodes_wanted(Config)};
@@ -133,6 +140,26 @@ parse_validate_collect_params(Params, Config) ->
     %% we handle no ticket or empty ticket the same
     Ticket = proplists:get_value("ticket", Params, ""),
 
+    RedactLevel =
+        case proplists:get_value("logRedactionLevel", Params) of
+            undefined ->
+                none;
+            N when N =:= "none"; N =:= "partial" ->
+                case cluster_compat_mode:is_enterprise() of
+                    true ->
+                        case cluster_compat_mode:is_cluster_vulcan() of
+                            true ->
+                                list_to_atom(N);
+                            false ->
+                                {error, {cluster_too_old, log_redaction}}
+                        end;
+                    false ->
+                        {error, {not_enterprise, log_redaction}}
+                end;
+            _ ->
+                {error, {unknown, log_redaction}}
+        end,
+
     MaybeUpload = case [F || {F, P} <- [{upload, UploadHost},
                                         {customer, Customer}],
                              P =:= undefined] of
@@ -152,13 +179,12 @@ parse_validate_collect_params(Params, Config) ->
                           [{error, missing_customer}]
                   end,
 
-    BasicErrors = [E || {error, E} <- [NodesRV | MaybeUpload]],
-
+    BasicErrors = [E || {error, E} <- [NodesRV | [RedactLevel | MaybeUpload]]],
     case BasicErrors of
         [] ->
             {ok, Nodes} = NodesRV,
             [{ok, Upload}] = MaybeUpload,
-            {ok, Nodes, Upload};
+            {ok, Nodes, Upload, RedactLevel};
         _ ->
             {errors, BasicErrors}
     end.

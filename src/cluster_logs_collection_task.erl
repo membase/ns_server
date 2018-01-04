@@ -17,7 +17,7 @@
 
 -include("ns_common.hrl").
 
--export([start_link/2, start_link_ets_holder/0]).
+-export([start_link/3, start_link_ets_holder/0]).
 
 -export([maybe_build_cluster_logs_task/0]).
 
@@ -27,8 +27,8 @@
 -export([start_collection_per_node/3,
          start_upload_per_node/4]).
 
-start_link(Nodes, BaseURL) ->
-    proc_lib:start_link(erlang, apply, [fun collect_cluster_logs/2, [Nodes, BaseURL]]).
+start_link(Nodes, BaseURL, RedactLevel) ->
+    proc_lib:start_link(erlang, apply, [fun collect_cluster_logs/3, [Nodes, BaseURL, RedactLevel]]).
 
 start_link_ets_holder() ->
     misc:start_event_link(
@@ -131,7 +131,7 @@ format_timestamp({{Year,Month,Day},{Hour,Min,Sec}}) ->
       io_lib:format("~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B~2.10.0B~2.10.0B",
                     [Year, Month, Day, Hour, Min, Sec])).
 
-collect_cluster_logs(Nodes, BaseURL) ->
+collect_cluster_logs(Nodes, BaseURL, RedactLevel) ->
     Timestamp = erlang:universaltime(),
     TimestampS = format_timestamp(Timestamp),
     ets:delete_all_objects(cluster_logs_collection_task_status),
@@ -162,7 +162,7 @@ collect_cluster_logs(Nodes, BaseURL) ->
                                 []
                         end,
 
-    Options = MaybeNoSingleNode,
+    Options = [{redact_level, RedactLevel} | MaybeNoSingleNode],
 
     misc:parallel_map(
       fun (N) ->
@@ -259,17 +259,28 @@ maybe_upload_node_result(Node, Path, BaseURL, Options) ->
     wait_child(P, Node, upload).
 
 start_collection_per_node(TimestampS, Parent, Options) ->
-    Basename = "collectinfo-" ++ TimestampS ++ "-" ++ atom_to_list(node()) ++ ".zip",
-    Filename = path_config:component_path(tmp, Basename),
+    Basename = "collectinfo-" ++ TimestampS ++ "-" ++ atom_to_list(node()),
+    Filename = path_config:component_path(tmp, Basename ++ ".zip"),
     InitargsFilename = path_config:component_path(data, "initargs"),
     proc_lib:init_ack(Parent, {ok, self(), Filename}),
+
+    {UploadFilename, MaybeLogRedaction} =
+        case proplists:get_value(redact_level, Options) of
+            partial ->
+                {path_config:component_path(tmp, Basename ++ "-redacted" ++ ".zip"),
+                 ["--log-redaction=partial"]};
+            _ ->
+                {Filename, []}
+        end,
+
     MaybeSingleNode = case proplists:get_bool(no_single_node_diag, Options) of
                           false ->
                               [];
                           _ ->
                               ["--multi-node-diag"]
                       end,
-    Args0 = ["--watch-stdin"] ++ MaybeSingleNode
+
+    Args0 = ["--watch-stdin"] ++ MaybeSingleNode ++ MaybeLogRedaction
         ++ ["--initargs=" ++ InitargsFilename, Filename],
 
     ExtraArgs = ns_config:search_node_with_default(cbcollect_info_extra_args, []),
@@ -286,7 +297,7 @@ start_collection_per_node(TimestampS, Parent, Options) ->
     case Status of
         0 ->
             ?log_debug("Done"),
-            Parent ! {self(), {ok, Filename, Output}};
+            Parent ! {self(), {ok, UploadFilename, Output}};
         _ ->
             ?log_error("Log collection failed with status: ~p.~nOutput:~n~s",
                        [Status, Output]),
