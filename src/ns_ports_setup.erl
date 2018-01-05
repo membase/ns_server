@@ -733,14 +733,15 @@ cbas_spec(Config) ->
                      "-bindHttpAddress=" ++ Host,
                      "-bindHttpPort=" ++ integer_to_list(HttpPort),
                      "-bindAdminPort=" ++ integer_to_list(AdminPort),
-                     "-dataDirs=" ++ string:join(CBASDirs, ","),
                      "-cbasExecutable=" ++ Cmd,
                      "-debugPort=" ++ integer_to_list(DebugPort),
                      "-ccHttpPort=" ++ integer_to_list(CCHttpPort),
                      "-memoryQuotaMb=" ++ integer_to_list(MemoryQuota),
                      "-authPort=" ++ integer_to_list(AuthPort),
                      "-logDir=" ++ LogDir
-                    ] ++ HttpsOptions,
+                    ] ++
+                        ["-dataDir=" ++ Dir || Dir <- CBASDirs] ++
+                        HttpsOptions,
                     [via_goport, exit_status, stderr_to_stdout,
                      {log, ?CBAS_LOG_FILENAME},
                      {env, build_go_env_vars(Config, cbas)}]},
