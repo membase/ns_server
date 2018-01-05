@@ -489,7 +489,7 @@ disk_storage_conf(Req, Node, DbPath, IxPath, CBASDirs) ->
     put(disk_storage_conf, Req, [{node, Node},
                                  {db_path, DbPath},
                                  {index_path, IxPath},
-                                 {cbas_dirs, string:join(CBASDirs, ",")}]).
+                                 {cbas_dirs, {list, CBASDirs}}]).
 
 rename_node(Req, Node, Hostname) ->
     put(rename_node, Req, [{node, Node},
