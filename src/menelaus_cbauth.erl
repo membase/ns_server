@@ -191,9 +191,16 @@ build_node_info(N, Config) ->
 build_node_info(_N, undefined, _Config) ->
     undefined;
 build_node_info(N, User, Config) ->
-    Services = bucket_info_cache:build_services(
-                 N, Config,
-                 ns_cluster_membership:node_active_services(Config, N)),
+    ActiveServices = ns_cluster_membership:node_active_services(Config, N),
+    Ports0 = [Port || {_Key, Port} <- bucket_info_cache:build_services(N, Config, ActiveServices)],
+
+    Ports =
+        case N =:= node() andalso not lists:member(kv, ActiveServices) of
+            true ->
+                [ns_config:search_node_prop(node(), Config, memcached, port) | Ports0];
+            false ->
+                Ports0
+        end,
 
     {_, Host} = misc:node_name_host(N),
     Local = case node() of
@@ -207,7 +214,7 @@ build_node_info(N, User, Config) ->
       {other_users, ns_config:search_node_prop(N, Config, memcached, other_users, [])},
       {password,
        erlang:list_to_binary(ns_config:search_node_prop(N, Config, memcached, admin_pass))},
-      {ports, [Port || {_Key, Port} <- Services]}] ++ Local}.
+      {ports, Ports}] ++ Local}.
 
 build_auth_info(#state{cert_version = CertVersion}) ->
     Config = ns_config:get(),
