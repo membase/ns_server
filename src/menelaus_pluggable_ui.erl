@@ -327,8 +327,7 @@ server_error(Req, Service, service_not_running) ->
                          ++ " not running on this node"),
     send_server_error(Req, Msg);
 server_error(Req, RestPrefix, unknown_service) ->
-    Msg = list_to_binary("Unknown REST prefix: " ++ RestPrefix),
-    send_server_error(Req, Msg).
+    send_server_error(Req, <<"Not found.">>).
 
 send_server_error(Req, Msg) ->
     menelaus_util:reply_text(Req, Msg, 404).
