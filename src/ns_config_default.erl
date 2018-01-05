@@ -249,6 +249,9 @@ default() ->
      {{node, node(), cbas_auth_port},
       misc:get_env_default(cbas_auth_port, 9119)},
 
+     {{node, node(), cbas_replication_port},
+      misc:get_env_default(cbas_replication_port, 9120)},
+
      {{node, node(), cbas_ssl_port},
       case IsEnterprise of
           true -> misc:get_env_default(cbas_ssl_port, 18095);

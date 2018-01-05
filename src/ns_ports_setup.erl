@@ -708,6 +708,7 @@ cbas_spec(Config) ->
             AuthPort = ns_config:search(Config, {node, node(), cbas_auth_port}, 9119),
             AdminPort = ns_config:search(Config, {node, node(), cbas_admin_port}, 9110),
             DebugPort = ns_config:search(Config, {node, node(), cbas_debug_port}, -1),
+            ReplicationPort = ns_config:search(Config, {node, node(), cbas_replication_port}, 9120),
 
             CBASDirs = [filename:join([Token], "@analytics") ||
                            Token <- ns_storage_conf:this_node_cbas_dirs()],
@@ -738,6 +739,7 @@ cbas_spec(Config) ->
                      "-ccHttpPort=" ++ integer_to_list(CCHttpPort),
                      "-memoryQuotaMb=" ++ integer_to_list(MemoryQuota),
                      "-authPort=" ++ integer_to_list(AuthPort),
+                     "-bindReplicationPort=" ++ integer_to_list(ReplicationPort),
                      "-logDir=" ++ LogDir
                     ] ++
                         ["-dataDir=" ++ Dir || Dir <- CBASDirs] ++
