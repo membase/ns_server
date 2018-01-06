@@ -31,6 +31,8 @@
          find_node_hostname/2,
          handle_node_statuses/1,
          handle_node_rename/1,
+         handle_node_altaddr_external/1,
+         handle_node_altaddr_external_delete/1,
          handle_node_self_xdcr_ssl_ports/1,
          handle_node_settings_post/2]).
 
@@ -239,6 +241,16 @@ build_node_hostname(Config, Node, LocalAddr) ->
            end,
     misc:maybe_add_brackets(Host) ++ ":" ++ integer_to_list(misc:node_rest_port(Config, Node)).
 
+construct_ext_mochijson(undefined, []) ->
+    [];
+construct_ext_mochijson(undefined, Ports) ->
+    [{external, {struct, [{ports, {struct, Ports}}]}}];
+construct_ext_mochijson(Hostname, []) ->
+    [{external, {struct, [{hostname, list_to_binary(Hostname)}]}}];
+construct_ext_mochijson(Hostname, Ports) ->
+    [{external, {struct, [{hostname, list_to_binary(Hostname)},
+                          {ports, {struct, Ports}}]}}].
+
 build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 
     DirectPort = ns_config:search_node_prop(WantENode, Config, memcached, port),
@@ -267,14 +279,28 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
                             _ -> Acc
                         end
                 end, PortsKV0, PortKeys),
-
+    {ExtHostname, ExtPorts} = alternate_addresses:get_external(WantENode, Config),
+    WantedPorts = [moxi_port,
+                   memcached_port,
+                   ssl_proxy_downstream_port,
+                   ssl_capi_port,
+                   capi_port,
+                   ssl_rest_port,
+                   rest_port],
+    External = construct_ext_mochijson(
+                 ExtHostname,
+                 alternate_addresses:filter_rename_ports(ExtPorts, WantedPorts)),
+    AltAddr = case External of
+                  [] -> [];
+                  _ -> [{alternateAddresses, {struct, External}}]
+              end,
     RV = [{hostname, list_to_binary(HostName)},
           {clusterCompatibility, cluster_compat_mode:effective_cluster_compat_version()},
           {version, list_to_binary(Version)},
           {os, list_to_binary(OS)},
           {ports, {struct, PortsKV}},
           {services, ns_cluster_membership:node_services(Config, WantENode)}
-         ],
+         ] ++ AltAddr,
     case WantENode =:= node() of
         true ->
             [{thisNode, true} | RV];
@@ -433,9 +459,21 @@ handle_node_self_xdcr_ssl_ports(Req) ->
             {value, ProxyPort} = ns_config:search_node(ssl_proxy_downstream_port),
             {value, RESTSSL} = ns_config:search_node(ssl_rest_port),
             {value, CapiSSL} = ns_config:search_node(ssl_capi_port),
-            reply_json(Req, {struct, [{sslProxy, ProxyPort},
-                                      {httpsMgmt, RESTSSL},
-                                      {httpsCAPI, CapiSSL}]})
+            {_, ExtPorts} = alternate_addresses:get_external(),
+            WantedPorts = [ssl_proxy_downstream_port,
+                           ssl_capi_port,
+                           ssl_rest_port],
+            External = construct_ext_mochijson(
+                         undefined,
+                         alternate_addresses:filter_rename_ports(ExtPorts, WantedPorts)),
+            AltAddr = case External of
+                          [] -> [];
+                          _ -> [{alternateAddresses, {struct, External}}]
+                      end,
+            Ports = [{sslProxy, ProxyPort},
+                     {httpsMgmt, RESTSSL},
+                     {httpsCAPI, CapiSSL}] ++ AltAddr,
+            reply_json(Req, {struct, Ports})
     end.
 
 
@@ -532,3 +570,54 @@ handle_node_settings_post(Node, Req) when is_atom(Node) ->
             true = ErrsFiltered =/= [],
             reply_json(Req, ErrsFiltered, 400)
     end.
+
+%% Basic port validation is done.
+%% The below port validations are not performed.
+%%  - Verify if all ports being setup for "external" have their particular
+%%    service enabled on the node.
+%%  - Verify if no two hostname:port pair are the same in a cluster.
+%% Reasoning behind not performing above validations is that the node can have
+%% "external" addresses configured before it has been added to the cluster, or
+%% it's services configured. Therefore, we keep port validation simple and trust
+%% the admin to setup "external" addresses correctly for the clients.
+parse_validate_ports(Params) ->
+    lists:foldl(
+      fun ({RestName, Value}, Acc) ->
+              try
+                  ConfigName = alternate_addresses:map_port(
+                                 from_rest, list_to_binary(RestName)),
+                  Port = menelaus_util:parse_validate_port_number(Value),
+                  [{ConfigName, Port} | Acc]
+              catch
+                  throw:{error, [Msg]} ->
+                      ErrorMsg = io_lib:format("Invalid Port ~p : ~s",
+                                               [RestName, Msg]),
+                      throw({web_exception, 400, ErrorMsg, []})
+              end
+      end, [], Params).
+
+parse_validate_external_params(Params) ->
+    Hostname = case proplists:get_value("hostname", Params) of
+                   undefined ->
+                       throw({web_exception, 400, "hostname should be specified", []});
+                   HostNm ->
+                       misc:trim(HostNm)
+               end,
+    Ports = parse_validate_ports(proplists:delete("hostname", Params)),
+    [{external, [{hostname, Hostname}, {ports, Ports}]}].
+
+%% This replaces any existing alternate_addresses config of this node.
+%% For now this is fine because external is only element in alternate_addresses.
+handle_node_altaddr_external(Req) ->
+    menelaus_util:assert_is_vulcan(),
+    Params = Req:parse_post(),
+    External = parse_validate_external_params(Params),
+    ns_config:set({node, node(), alternate_addresses}, External),
+    menelaus_util:reply(Req, 200).
+
+%% Delete alternate_addresses as external is the only element in
+%% alternate_addresses.
+handle_node_altaddr_external_delete(Req) ->
+    menelaus_util:assert_is_vulcan(),
+    ns_config:delete({node, node(), alternate_addresses}),
+    menelaus_util:reply(Req, 200).

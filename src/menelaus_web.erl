@@ -765,6 +765,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                                drop_rest_prefix(Req:get(raw_path)),
                                Plugins, PReq)
                      end};
+                ["node", "controller", "setupAlternateAddresses", "external"] ->
+                    {{[admin, setup], write},
+                     fun menelaus_web_node:handle_node_altaddr_external_delete/1};
                 _ ->
                     ?MENELAUS_WEB_LOG(0002, "Invalid delete received: ~p as ~p",
                                       [Req, PathTokens]),
@@ -802,6 +805,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                                drop_rest_prefix(Req:get(raw_path)),
                                Plugins, PReq)
                      end};
+                ["node", "controller", "setupAlternateAddresses", "external"] ->
+                    {{[admin, setup], write},
+                     fun menelaus_web_node:handle_node_altaddr_external/1};
                 _ ->
                     ?MENELAUS_WEB_LOG(0003, "Invalid ~p received: ~p", [Method, Req]),
                     {done, reply_text(Req, "Method Not Allowed", 405)}

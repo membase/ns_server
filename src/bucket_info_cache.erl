@@ -51,6 +51,9 @@ cache_init() ->
 cleaner_loop({buckets, [{configs, NewBuckets}]}, Parent) ->
     submit_new_buckets(Parent, NewBuckets),
     Parent;
+cleaner_loop({{_, _, alternate_addresses}, _Value}, State) ->
+    submit_full_reset(),
+    State;
 cleaner_loop({{_, _, capi_port}, _Value}, State) ->
     submit_full_reset(),
     State;
@@ -114,10 +117,6 @@ submit_full_reset() ->
               ets:delete_all_objects(bucket_info_cache_buckets),
               gen_event:notify(bucket_info_cache_invalidations, '*')
       end).
-
-build_ports(Node, Config) ->
-    [{proxy, ns_config:search_node_prop(Node, Config, moxi, port)},
-     {direct, ns_config:search_node_prop(Node, Config, memcached, port)}].
 
 build_services(Node, Config, EnabledServices) ->
     GetPort = fun (ConfigKey, JKey) ->
@@ -223,9 +222,19 @@ build_nodes_ext([Node | RestNodes], Config, NodesExtAcc) ->
               _ ->
                   NI1
           end,
-    NodeInfo = {[{services, {build_services(Node, Config, Services)}} | NI2]},
-    build_nodes_ext(RestNodes, Config,
-                    [NodeInfo | NodesExtAcc]).
+    {ExtHostname, ExtPorts} = alternate_addresses:get_external(Node, Config),
+    ReqServices = [rest | Services],
+    WantedPorts = lists:flatmap(fun alternate_addresses:service_ports/1, ReqServices),
+    External = construct_ext_json(
+                 ExtHostname,
+                 alternate_addresses:filter_rename_ports(ExtPorts, WantedPorts)),
+    AltAddr = case External of
+                  [] -> [];
+                  _ -> [{alternateAddresses, {External}}]
+              end,
+    NI3 = NI2 ++ AltAddr,
+    NodeInfo = {[{services, {build_services(Node, Config, Services)}} | NI3]},
+    build_nodes_ext(RestNodes, Config, [NodeInfo | NodesExtAcc]).
 
 do_compute_bucket_info(Bucket, Config) ->
     case ns_bucket:get_bucket_with_vclock(Bucket, Config) of
@@ -235,6 +244,39 @@ do_compute_bucket_info(Bucket, Config) ->
             not_present
     end.
 
+construct_ext_json(undefined, []) ->
+    [];
+construct_ext_json(Hostname, []) ->
+    [{external, {[{hostname, list_to_binary(Hostname)}]}}];
+construct_ext_json(Hostname, Ports) ->
+    [{external, {[{hostname, list_to_binary(Hostname)}, {ports, {Ports}}]}}].
+
+node_bucket_info(Node, Config, Bucket, BucketUUID, BucketConfig) ->
+    HostName = menelaus_web_node:build_node_hostname(Config, Node,
+                                                     ?LOCALHOST_MARKER_STRING),
+    Ports = {[{proxy, ns_config:search_node_prop(Node, Config, moxi, port)},
+              {direct, ns_config:search_node_prop(Node, Config, memcached, port)}]},
+    {ExtHostname, ExtPorts} = alternate_addresses:get_external(Node, Config),
+    WantedPorts = [rest_port, moxi_port, memcached_port],
+    External = construct_ext_json(
+                 ExtHostname,
+                 alternate_addresses:filter_rename_ports(ExtPorts, WantedPorts)),
+    AltAddr = case External of
+                  [] -> [];
+                  _ -> [{alternateAddresses, {External}}]
+              end,
+    Info0 = [{hostname, list_to_binary(HostName)},
+             {ports, Ports}] ++ AltAddr,
+    Info = case ns_bucket:bucket_type(BucketConfig) of
+               membase ->
+                   Url = capi_utils:capi_bucket_url_bin(
+                           Node, Bucket, BucketUUID, ?LOCALHOST_MARKER_STRING),
+                   [{couchApiBase, Url} | Info0];
+               _ ->
+                   Info0
+           end,
+    {Info}.
+
 compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
     {_, Servers0} = lists:keyfind(servers, 1, BucketConfig),
 
@@ -242,23 +284,10 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
     Servers = lists:sort(Servers0),
     BucketUUID = proplists:get_value(uuid, BucketConfig),
 
-    NIs = lists:foldr(
-            fun(Node, Acc) ->
-                    HostName = menelaus_web_node:build_node_hostname(Config, Node,
-                                                                     ?LOCALHOST_MARKER_STRING),
-                    Info0 = [{hostname, list_to_binary(HostName)},
-                             {ports, {build_ports(Node, Config)}}],
-                    Info = case ns_bucket:bucket_type(BucketConfig) of
-                               membase ->
-                                   Url = capi_utils:capi_bucket_url_bin(Node, Bucket, BucketUUID,
-                                                                        ?LOCALHOST_MARKER_STRING),
-                                   [{couchApiBase, Url} | Info0];
-                               _ ->
-                                   Info0
-                           end,
-                    [{Info} | Acc]
-            end, [], Servers),
-
+    NIs = lists:map(fun (Node) ->
+                            node_bucket_info(Node, Config, Bucket,
+                                             BucketUUID, BucketConfig)
+                    end, Servers),
     AllServers = Servers ++ ordsets:subtract(ns_cluster_membership:active_nodes(Config), Servers),
     NEIs = build_nodes_ext(AllServers, Config, []),
 
