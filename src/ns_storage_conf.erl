@@ -565,9 +565,12 @@ check_quotas(NodeInfos, Config, UpdatedQuotas) ->
             Error
     end.
 
+services_ranking() ->
+    [kv, cbas, index, fts].
+
 quota_aware_services(CompatVersion) ->
     [S || S <- ns_cluster_membership:supported_services_for_version(CompatVersion),
-          lists:member(S, [kv, index, fts, cbas])].
+          lists:member(S, services_ranking())].
 
 get_all_quotas(Config, UpdatedQuotas) ->
     CompatVersion = cluster_compat_mode:get_compat_version(Config),
@@ -615,9 +618,10 @@ check_service_quotas([{Service, Quota} | Rest], Config) ->
             Error
     end.
 
--define(MIN_BUCKET_QUOTA, 256).
 -define(MAX_DEFAULT_FTS_QUOTA, 512).
 
+min_quota(kv) ->
+    256;
 min_quota(index) ->
     256;
 min_quota(fts) ->
@@ -626,10 +630,8 @@ min_quota(cbas) ->
     1024.
 
 check_service_quota(kv, Quota, Config) ->
-    MinMemoryMB0 = ?MIN_BUCKET_QUOTA,
-
     BucketsQuota = get_total_buckets_ram_quota(Config) div ?MIB,
-    MinMemoryMB = erlang:max(MinMemoryMB0, BucketsQuota),
+    MinMemoryMB = erlang:max(min_quota(kv), BucketsQuota),
     check_min_quota(kv, MinMemoryMB, Quota);
 check_service_quota(Service, Quota, _) ->
     check_min_quota(Service, min_quota(Service), Quota).
@@ -712,7 +714,8 @@ do_set_memory_quota(Service, Quota, Cfg, SetFn) ->
     SetFn(service_to_quota_key(Service), Quota, Cfg).
 
 default_quota(Service, Memory, Max) ->
-    {Min, Quota} = do_default_quota(Service, Memory),
+    Quota = calculate_default_quota(Service, Memory),
+    Min = min_quota(Service),
 
     %% note that this prefers enforcing minimum quota which for very small
     %% amounts of RAM can result in combined quota be actually larger than RAM
@@ -725,21 +728,14 @@ default_quota(Service, Memory, Max) ->
             Quota
     end.
 
-do_default_quota(kv, Memory) ->
-    KvQuota = (Memory * 3) div 5,
-    {?MIN_BUCKET_QUOTA, KvQuota};
-do_default_quota(index, Memory) ->
-    IndexQuota = (Memory * 3) div 5,
-    {min_quota(index), IndexQuota};
-do_default_quota(fts, Memory) ->
-    FTSQuota = min(Memory div 5, ?MAX_DEFAULT_FTS_QUOTA),
-    {min_quota(fts), FTSQuota};
-do_default_quota(cbas, Memory) ->
-    CBASQuota = Memory div 5,
-    {min_quota(cbas), CBASQuota}.
-
-services_ranking() ->
-    [kv, cbas, index, fts].
+calculate_default_quota(kv, Memory) ->
+    (Memory * 3) div 5;
+calculate_default_quota(index, Memory) ->
+    (Memory * 3) div 5;
+calculate_default_quota(fts, Memory) ->
+    min(Memory div 5, ?MAX_DEFAULT_FTS_QUOTA);
+calculate_default_quota(cbas, Memory) ->
+    Memory div 5.
 
 default_quotas(Services) ->
     %% this is actually bogus, because nodes can be heterogeneous; but that's
