@@ -667,12 +667,6 @@ eventing_spec(Config) ->
             {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
             EventingDir = filename:join(IdxDir, "@eventing"),
 
-            EventingAdminArg = "-adminport=" ++ integer_to_list(EventingAdminPort),
-            EventingDirArg = "-dir=" ++ EventingDir,
-            KVAddrArg = "-kvport=" ++ integer_to_list(LocalMemcachedPort),
-            RestArg = "-restport=" ++ integer_to_list(RestPort),
-            UUIDArg = "-uuid=" ++ binary_to_list(NodeUUID),
-
             BindHttps =
                 case ns_config:search(Config, {node, node(), eventing_https_port}, undefined) of
                     undefined ->
@@ -684,7 +678,11 @@ eventing_spec(Config) ->
                 end,
 
             Spec = {eventing, Command,
-                    [EventingAdminArg, EventingDirArg, KVAddrArg, RestArg, UUIDArg] ++ BindHttps,
+                    ["-adminport=" ++ integer_to_list(EventingAdminPort),
+                     "-dir=" ++ EventingDir,
+                     "-kvport=" ++ integer_to_list(LocalMemcachedPort),
+                     "-restport=" ++ integer_to_list(RestPort),
+                     "-uuid=" ++ binary_to_list(NodeUUID)] ++ BindHttps,
                     [via_goport, exit_status, stderr_to_stdout,
                      {env, build_go_env_vars(Config, eventing) ++ build_tls_config_env_var(Config)},
                      {log, ?EVENTING_LOG_FILENAME}]},
