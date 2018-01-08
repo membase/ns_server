@@ -1283,6 +1283,14 @@ section.error {
 .icon-info:hover {
   color: #000;
 }
+.icon-info-warning {
+  cursor: pointer;
+  color: #f9ca7b !important;
+  font-size: 1.125rem;
+}
+.icon-info-warning:hover {
+  color: #f5a623 !important;
+}
 .icon-info .fa-stack-1x {
   line-height: inherit;
   font-size: .5em;

@@ -15,10 +15,16 @@
     activate();
 
     function getAutoFailoverSettings() {
-      return {
+      var settings = {
         enabled: vm.autoFailoverSettings.enabled,
         timeout: vm.autoFailoverSettings.timeout
       };
+      if (mnPoolDefault.export.compat.atLeast55 &&
+          mnPoolDefault.export.isEnterprise) {
+        settings.failoverOnDataDiskIssues = vm.autoFailoverSettings.failoverOnDataDiskIssues;
+        settings.failoverServerGroup = vm.autoFailoverSettings.failoverServerGroup;
+      }
+      return settings;
     }
 
     function getReprovisionSettings() {

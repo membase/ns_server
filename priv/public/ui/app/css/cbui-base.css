@@ -825,7 +825,7 @@ legend {
   margin-bottom: 0;
   margin-right: 16px;
   text-transform: none;
-  font-weight: normal;
+  font-weight: 400;
   cursor: pointer;
   color: #000;
   font-size: .961rem;
@@ -945,12 +945,15 @@ select.select-small {
 
 /* field validation success and error text ---------------------------------- */
 .forms .error,
-.forms .success {
-  font-size: 12px;
+.forms .success,
+form .error,
+form .success {
+  font-size: .75rem;
   display: block;
 }
 /* error text after form validation - appears at the top of the form -------- */
-.forms .error-form {
+.forms .error-form,
+form .error-form {
   margin-bottom: .5rem;
 }
 
