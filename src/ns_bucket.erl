@@ -85,6 +85,7 @@
          can_have_views/1,
          bucket_view_nodes/1,
          bucket_config_view_nodes/1,
+         get_num_vbuckets/0,
          config_upgrade_to_50/1,
          config_upgrade_to_51/1]).
 
@@ -698,13 +699,17 @@ validate_bucket_config(BucketName, NewConfig) ->
             {error, {invalid_bucket_name, BucketName}}
     end.
 
+get_num_vbuckets() ->
+    case ns_config:search(couchbase_num_vbuckets_default) of
+        false ->
+            misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 1024);
+        {value, X} ->
+            X
+    end.
+
 new_bucket_default_params(membase) ->
-    NumVBuckets = case ns_config:search(couchbase_num_vbuckets_default) of
-                      false -> misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 1024);
-                      {value, X} -> X
-                  end,
     [{type, membase},
-     {num_vbuckets, NumVBuckets},
+     {num_vbuckets, get_num_vbuckets()},
      {num_replicas, 1},
      {ram_quota, 0},
      {replication_topology, star},

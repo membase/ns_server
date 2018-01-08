@@ -406,10 +406,6 @@ index_node_spec(Config) ->
         false ->
             [];
         _ ->
-            NumVBuckets = case ns_config:search(couchbase_num_vbuckets_default) of
-                              false -> misc:getenv_int("COUCHBASE_NUM_VBUCKETS", 1024);
-                              {value, X} -> X
-                          end,
             IndexerCmd = path_config:component_path(bin, "indexer"),
             RestPort = misc:node_rest_port(Config, node()),
             AdminPort = ns_config:search(Config, {node, node(), indexer_admin_port}, 9100),
@@ -443,7 +439,7 @@ index_node_spec(Config) ->
                         end,
 
             Spec = {'indexer', IndexerCmd,
-                    ["-vbuckets=" ++ integer_to_list(NumVBuckets),
+                    ["-vbuckets=" ++ integer_to_list(ns_bucket:get_num_vbuckets()),
                      "-cluster=" ++ misc:local_url(RestPort, [no_scheme]),
                      "-adminPort=" ++ integer_to_list(AdminPort),
                      "-scanPort=" ++ integer_to_list(ScanPort),
@@ -667,6 +663,8 @@ eventing_spec(Config) ->
             {ok, IdxDir} = ns_storage_conf:this_node_ixdir(),
             EventingDir = filename:join(IdxDir, "@eventing"),
 
+            MinidumpDir = path_config:minidump_dir(),
+
             BindHttps =
                 case ns_config:search(Config, {node, node(), eventing_https_port}, undefined) of
                     undefined ->
@@ -682,7 +680,10 @@ eventing_spec(Config) ->
                      "-dir=" ++ EventingDir,
                      "-kvport=" ++ integer_to_list(LocalMemcachedPort),
                      "-restport=" ++ integer_to_list(RestPort),
-                     "-uuid=" ++ binary_to_list(NodeUUID)] ++ BindHttps,
+                     "-uuid=" ++ binary_to_list(NodeUUID),
+                     "-diagdir=" ++ MinidumpDir,
+                     "-ipv6=" ++ atom_to_list(misc:is_ipv6()),
+                     "-vbuckets=" ++ integer_to_list(ns_bucket:get_num_vbuckets())] ++ BindHttps,
                     [via_goport, exit_status, stderr_to_stdout,
                      {env, build_go_env_vars(Config, eventing) ++ build_tls_config_env_var(Config)},
                      {log, ?EVENTING_LOG_FILENAME}]},
