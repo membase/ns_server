@@ -25,7 +25,8 @@
          with/2, with_many/3,
          wait/1, wait_many/1, wait_any/1,
          race/2, map/2, foreach/2,
-         run_with_timeout/2]).
+         run_with_timeout/2,
+         get_identity/0]).
 
 start(Fun) ->
     start(Fun, []).
@@ -135,6 +136,17 @@ run_with_timeout(Fun, Timeout) ->
             {ok, R};
         {right, timeout} ->
             {error, timeout}
+    end.
+
+get_identity() ->
+    case get_role() of
+        executor ->
+            Controller = get_controller(),
+            true = is_pid(Controller),
+
+            {ok, Controller};
+        _ ->
+            not_async
     end.
 
 %% internal
