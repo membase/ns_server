@@ -18,6 +18,7 @@ import urllib
 import shutil
 import urlparse
 import errno
+import hashlib
 from datetime import datetime, timedelta, tzinfo
 from StringIO import StringIO
 
@@ -365,16 +366,48 @@ class TaskRunner(object):
     def literal(self, description, value, **kwargs):
         self.run(LiteralTask(description, value, **kwargs))
 
-    def zip(self, filename, node):
-        """Write all our logs to a zipfile"""
-        exe = exec_name("gozip")
+    def _hash_fun(self, match):
+        hash_object = hashlib.sha1(str(match.group(2)))
+        return str(match.group(1)) + str(hash_object.hexdigest()) + str(match.group(3))
 
+    def _parse_helper(self, p, logline):
+        result = p.sub(self._hash_fun, logline)
+        return result
+
+    def _parse_redact_file(self, ip_file, f_name, redact_dir):
+        p = re.compile('(<ud>)(.+?)(</ud>)')
+        op_file = os.path.join(redact_dir, f_name)
+        try:
+            with open(ip_file, 'r') as ip, open(op_file, 'w+') as op:
+                for line in ip:
+                    result = self._parse_helper(p, line)
+                    op.write('%s' % result)
+        except IOError as e:
+            log("I/O error(%s): %s" % (e.errno, e.strerror))
+        return op_file
+
+    def redact_and_zip(self, filename, node, r_level):
+        redact_dir = os.path.join(self.tmpdir, "redacted")
+        os.makedirs(redact_dir)
+        files = []
+        for name, fp in self.files.iteritems():
+            files.append(self._parse_redact_file(fp.name, name, redact_dir))
+
+        prefix = "cbcollect_info_%s_%s" % (node, self.start_time)
+        self._zip_helper(prefix, filename, files)
+
+    def zip(self, filename, node):
         prefix = "cbcollect_info_%s_%s" % (node, self.start_time)
 
         files = []
         for name, fp in self.files.iteritems():
             fp.close()
             files.append(fp.name)
+        self._zip_helper(prefix, filename, files)
+
+    def _zip_helper(self, prefix, filename, files):
+        """Write all our logs to a zipfile"""
+        exe = exec_name("gozip")
 
         fallback = False
 
@@ -1112,6 +1145,7 @@ def do_upload_and_exit(path, url):
         sys.exit(1)
     else:
         if stdout.strip() == '200':
+            log('Upload path is: %s' % url)
             log('Done uploading')
             sys.exit(0)
         else:
@@ -1185,6 +1219,9 @@ def main():
     parser.add_option("--multi-node-diag", dest="multi_node_diag",
                       action="store_true", default=False,
                       help="collect per-node diag  on all reachable nodes (default is just this node)")
+    parser.add_option("--log-redaction", dest="redact_level",
+                      default="none",
+                      help="redaction level for the logs collected, none and partial supported (default is none)")
     parser.add_option("--just-upload-into", dest="just_upload_into",
                       help=optparse.SUPPRESS_HELP)
     parser.add_option("--upload-host", dest="upload_host",
@@ -1219,7 +1256,16 @@ def main():
         print("do not have write access to the directory %s" % (zip_dir))
         sys.exit(1)
 
-    upload_url = generate_upload_url(parser, options, zip_filename)
+    if options.redact_level != "none" and options.redact_level != "partial":
+        parser.error("Invalid redaction level. Only 'none' and 'partial' are supported.")
+
+    redact_zip_file = zip_filename[:-4] + "-redacted" + zip_filename[-4:]
+    upload_url = ""
+    if options.redact_level != "none":
+        upload_url = generate_upload_url(parser, options, redact_zip_file)
+    else:
+        upload_url = generate_upload_url(parser, options, zip_filename)
+
 
     erldir = os.path.join(mydir, 'erlang', 'bin')
     if os.name == 'posix':
@@ -1318,9 +1364,15 @@ def main():
     runner.literal("cbcollect_info log", log_stream.getvalue(),
                    log_file="cbcollect_info.log", no_header=True)
 
+    if options.redact_level != "none":
+        log("Redacting log files to level: %s" % options.redact_level)
+        runner.redact_and_zip(redact_zip_file, zip_node, options.redact_level)
+
     runner.zip(zip_filename, zip_node)
 
-    if upload_url:
+    if upload_url and options.redact_level != "none":
+        do_upload_and_exit(redact_zip_file, upload_url)
+    elif upload_url:
         do_upload_and_exit(zip_filename, upload_url)
 
 def find_primary_addr(default = None):
