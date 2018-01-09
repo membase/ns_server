@@ -25,8 +25,7 @@
          fetch_settings_json/2,
          decode_settings_json/1,
          id_lens/1,
-         lens_get_many/2,
-         lens_set_many/3,
+         props_lens/1,
          update/2,
          update_txn/2
         ]).
@@ -195,3 +194,12 @@ lens_set_many(Lenses, Values, Dict) ->
               {Key, L} = lists:keyfind(Key, 1, Lenses),
               lens_set(Value, L, Acc)
       end, Dict, Values).
+
+props_lens(Props) ->
+    Get = fun (Dict) ->
+                  lens_get_many(Props, Dict)
+          end,
+    Set = fun (Values, Dict) ->
+                  lens_set_many(Props, Values, Dict)
+          end,
+    {Get, Set}.

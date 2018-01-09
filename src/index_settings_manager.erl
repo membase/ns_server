@@ -163,14 +163,8 @@ general_settings_defaults() ->
      {maxRollbackPoints, 5},
      {logLevel, <<"info">>}].
 
-general_settings_lens_get(Dict) ->
-    json_settings_manager:lens_get_many(general_settings_lens_props(), Dict).
-
-general_settings_lens_set(Values, Dict) ->
-    json_settings_manager:lens_set_many(general_settings_lens_props(), Values, Dict).
-
 general_settings_lens() ->
-    {fun general_settings_lens_get/1, fun general_settings_lens_set/2}.
+    json_settings_manager:props_lens(general_settings_lens_props()).
 
 compaction_interval_default() ->
     [{from_hour, 0},
@@ -219,14 +213,8 @@ circular_compaction_lens_props() ->
       id_lens(<<"indexer.settings.compaction.abort_exceed_interval">>)},
      {interval, compaction_interval_lens()}].
 
-circular_compaction_lens_get(Dict) ->
-    json_settings_manager:lens_get_many(circular_compaction_lens_props(), Dict).
-
-circular_compaction_lens_set(Values, Dict) ->
-    json_settings_manager:lens_set_many(circular_compaction_lens_props(), Values, Dict).
-
 circular_compaction_lens() ->
-    {fun circular_compaction_lens_get/1, fun circular_compaction_lens_set/2}.
+    json_settings_manager:props_lens(circular_compaction_lens_props()).
 
 compaction_lens_props() ->
     [{fragmentation, id_lens(<<"indexer.settings.compaction.min_frag">>)},
@@ -236,14 +224,8 @@ compaction_defaults() ->
     [{fragmentation, 30},
      {interval, compaction_interval_default()}].
 
-compaction_lens_get(Dict) ->
-    json_settings_manager:lens_get_many(compaction_lens_props(), Dict).
-
-compaction_lens_set(Values, Dict) ->
-    json_settings_manager:lens_set_many(compaction_lens_props(), Values, Dict).
-
 compaction_lens() ->
-    {fun compaction_lens_get/1, fun compaction_lens_set/2}.
+    json_settings_manager:props_lens(compaction_lens_props()).
 
 -ifdef(EUNIT).
 
