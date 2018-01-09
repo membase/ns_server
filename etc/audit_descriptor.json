@@ -299,10 +299,7 @@
           "mandatory_fields" : {
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
-              "memory_quota" : 1,
-              "index_memory_quota" : 1,
-              "fts_memory_quota" : 1,
-              "cbas_memory_quota" : 1,
+              "quotas" : {"kv" : 1, "index" : 1, "fts" : 1, "cbas" : 1},
               "cluster_name" : "",
               "remote" : {"ip" : "", "port" : 1}
           },

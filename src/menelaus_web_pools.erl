@@ -422,10 +422,10 @@ do_handle_pool_settings_post_body(Req, Config, CompatVersion, Values) ->
 
 do_audit_cluster_settings(Req) ->
     %% this is obviously raceful, but since it's just audit...
-    {ok, KvQuota} = memory_quota:get_quota(kv),
-    {ok, IndexQuota} = memory_quota:get_quota(index),
-    {ok, FTSQuota} = memory_quota:get_quota(fts),
-    {ok, CBASQuota} = memory_quota:get_quota(cbas),
+    Quotas = lists:map(
+               fun (Service) ->
+                       {ok, Quota} = memory_quota:get_quota(Service),
+                       {Service, Quota}
+               end, memory_quota:aware_services(cluster_compat_mode:get_compat_version())),
     ClusterName = get_cluster_name(),
-
-    ns_audit:cluster_settings(Req, KvQuota, IndexQuota, FTSQuota, CBASQuota, ClusterName).
+    ns_audit:cluster_settings(Req, Quotas, ClusterName).
