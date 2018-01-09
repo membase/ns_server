@@ -28,7 +28,7 @@
          lens_get_many/2,
          lens_set_many/3,
          update/2,
-         update_txn/3
+         update_txn/2
         ]).
 
 start_link(Module) ->
@@ -82,17 +82,18 @@ get_from_json(Key, JSON, KSettings) ->
     Settings = decode_settings_json(JSON),
     lens_get(Lens, Settings).
 
-update_txn(Props, CfgKey, Settings) ->
+update_txn(M, Props) ->
+    CfgKey = M:cfg_key(),
     fun (Config, SetFn) ->
             JSON = fetch_settings_json(Config, CfgKey),
             Current = decode_settings_json(JSON),
 
-            New = build_settings_json(Props, Current, Settings),
+            New = build_settings_json(Props, Current, M:known_settings()),
             {commit, SetFn(CfgKey, New, Config), New}
     end.
 
 do_update(M, Props) ->
-    RV = ns_config:run_txn(update_txn(Props, M:cfg_key(), M:known_settings())),
+    RV = ns_config:run_txn(update_txn(M, Props)),
     case RV of
         {commit, _, NewJSON} ->
             populate_ets_table(M, NewJSON),

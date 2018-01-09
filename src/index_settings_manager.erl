@@ -55,7 +55,7 @@ update(Key, Value) ->
     json_settings_manager:update(?MODULE, [{Key, Value}]).
 
 update_txn(Props) ->
-    json_settings_manager:update_txn(Props, ?INDEX_CONFIG_KEY, known_settings()).
+    json_settings_manager:update_txn(?MODULE, Props).
 
 config_upgrade_to_40() ->
     [{set, ?INDEX_CONFIG_KEY,
