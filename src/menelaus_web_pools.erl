@@ -222,6 +222,8 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
 
     GroupsV = erlang:phash2(ns_config:search(Config, server_groups)),
 
+    Cca = ns_ssl_services_setup:client_cert_auth(),
+    CcaState = list_to_binary(proplists:get_value(state, Cca)),
     PropList0 = [{name, list_to_binary(Id)},
                  {alerts, Alerts},
                  {alertsSilenceURL,
@@ -249,7 +251,8 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
                  {serverGroupsUri, <<"/pools/default/serverGroups?v=",
                                      (list_to_binary(integer_to_list(GroupsV)))/binary>>},
                  {clusterName, list_to_binary(get_cluster_name())},
-                 {balanced, ns_cluster_membership:is_balanced()}],
+                 {balanced, ns_cluster_membership:is_balanced()},
+                 {clientCertAuth, CcaState}],
 
     PropList1 = menelaus_web_node:build_memory_quota_info(Config) ++ PropList0,
     PropList2 =
