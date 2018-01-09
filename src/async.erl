@@ -70,7 +70,7 @@ send(Async, Msg) ->
 
 adopt(Child) ->
     executor = get_role(),
-    ok = call(Child, {initiate_adoption, get_controller(), self()}).
+    ok = call(Child, {initiate_adoption, get_controller()}).
 
 with(AsyncBody, Fun) ->
     Async = start(AsyncBody),
@@ -174,11 +174,11 @@ async_init(Parent, ParentController, Opts, Fun) ->
 maybe_register_with_parent_async(undefined) ->
     ok;
 maybe_register_with_parent_async(Pid) ->
-    register_with_async(Pid).
+    {ok, _} = register_with_async(Pid).
 
 register_with_async(Pid) ->
     controller = get_role(),
-    ok = call(Pid, {register_child_async, self()}).
+    {ok, _} = call(Pid, {register_child_async, self()}).
 
 async_loop_wait_result(Type, Child, Reply, ChildAsyncs) ->
     receive
@@ -192,11 +192,11 @@ async_loop_wait_result(Type, Child, Reply, ChildAsyncs) ->
         %% actual parent of our process
         {'EXIT', _, Reason} ->
             terminate_now(Reason, [Child | ChildAsyncs]);
-        {'$async_req', From, {initiate_adoption, Controller, Executor}} ->
-            handle_initiate_adoption(Controller, Executor, From),
+        {'$async_req', From, {initiate_adoption, Controller}} ->
+            handle_initiate_adoption(Controller, From),
             async_loop_wait_result(Type, Child, Reply, ChildAsyncs);
         {'$async_req', From, {register_child_async, Pid}} ->
-            reply(From, ok),
+            reply(From, {ok, Child}),
             async_loop_wait_result(Type, Child, Reply, [Pid | ChildAsyncs]);
         {Reply, Result} ->
             async_loop_handle_result(Type, Child, ChildAsyncs, Result);
@@ -247,8 +247,8 @@ async_loop_with_result(Result) ->
             exit(Reason);
         {'$async_req', From, get_result} ->
             handle_get_result(From, Result);
-        {'$async_req', From, {initiate_adoption, Controller, Executor}} ->
-            handle_initiate_adoption(Controller, Executor, From),
+        {'$async_req', From, {initiate_adoption, Controller}} ->
+            handle_initiate_adoption(Controller, From),
             async_loop_with_result(Result);
         {'$async_req', From, {register_child_async, _Pid}} ->
             %% We don't expect register requests at this point, but it's
@@ -382,8 +382,8 @@ set_controller(Pid) when is_pid(Pid) ->
 get_controller() ->
     erlang:get('$async_controller').
 
-handle_initiate_adoption(Controller, Executor, From) ->
-    register_with_async(Controller),
+handle_initiate_adoption(Controller, From) ->
+    {ok, Executor} = register_with_async(Controller),
     erlang:monitor(process, Executor),
     reply(From, ok).
 
