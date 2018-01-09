@@ -39,11 +39,16 @@
 
 -export([extract_disk_stats_for_path/2]).
 
--export([check_quotas/3]).
--export([check_this_node_quotas/2]).
--export([get_memory_quota/1, get_memory_quota/2, get_memory_quota/3]).
--export([set_quotas/2]).
--export([default_quotas/1, default_quotas/2]).
+-export([check_quotas/3,
+         check_this_node_quotas/2,
+         get_memory_quota/1,
+         get_memory_quota/2,
+         get_memory_quota/3,
+         set_quotas/2,
+         default_quotas/1,
+         default_quotas/2,
+         service_to_quota_json_name/1,
+         quota_aware_services/1]).
 
 setup_db_and_ix_paths() ->
     setup_db_and_ix_paths(ns_couchdb_api:get_db_and_ix_paths()),
@@ -564,6 +569,15 @@ check_quotas(NodeInfos, Config, UpdatedQuotas) ->
         Error ->
             Error
     end.
+
+service_to_quota_json_name(kv) ->
+    memoryQuota;
+service_to_quota_json_name(index) ->
+    indexMemoryQuota;
+service_to_quota_json_name(fts) ->
+    ftsMemoryQuota;
+service_to_quota_json_name(cbas) ->
+    cbasMemoryQuota.
 
 services_ranking() ->
     [kv, cbas, index, fts].

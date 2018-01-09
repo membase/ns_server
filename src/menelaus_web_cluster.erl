@@ -458,11 +458,12 @@ validate_setup_services_post(Req) ->
 setup_services_check_quota(Services, Params) ->
     Quotas = case proplists:get_value("setDefaultMemQuotas", Params, "false") of
                  "false" ->
-                     {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
-                     {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
-                     {ok, FTSQuota} = ns_storage_conf:get_memory_quota(fts),
-                     {ok, CBASQuota} = ns_storage_conf:get_memory_quota(cbas),
-                     [{kv, KvQuota}, {index, IndexQuota}, {fts, FTSQuota}, {cbas, CBASQuota}];
+                     lists:map(
+                       fun(Service) ->
+                               {ok, Quota} = ns_storage_conf:get_memory_quota(Service),
+                               {Service, Quota}
+                       end, ns_storage_conf:quota_aware_services(
+                              cluster_compat_mode:get_compat_version()));
                  "true" ->
                      do_update_with_default_quotas(ns_storage_conf:default_quotas(Services))
              end,

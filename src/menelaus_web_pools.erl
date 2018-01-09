@@ -306,27 +306,15 @@ validate_pool_settings_post(Config, CompatVersion, Args) ->
     validate_unsupported_params(R2).
 
 validate_memory_quota(Config, CompatVersion, R0) ->
-    R1 = validate_integer(memoryQuota, R0),
-    R2 = case cluster_compat_mode:is_version_40(CompatVersion) of
-             true ->
-                 validate_integer(indexMemoryQuota, R1);
-             false ->
-                 R1
-         end,
-    R3 = case cluster_compat_mode:is_version_45(CompatVersion) of
-             true ->
-                 validate_integer(ftsMemoryQuota, R2);
-             false ->
-                 R2
-         end,
-    R4 = case cluster_compat_mode:is_version_vulcan(CompatVersion) of
-             true ->
-                 validate_integer(cbasMemoryQuota, R3);
-             false ->
-                 R3
-         end,
-
-    Values = get_values(R4),
+    QuotaFields =
+        [{ns_storage_conf:service_to_quota_json_name(Service), Service} ||
+            Service <- ns_storage_conf:quota_aware_services(CompatVersion)],
+    ValidationResult =
+        lists:foldl(
+          fun ({Key, _}, Acc) ->
+                  validate_integer(Key, Acc)
+          end, R0, QuotaFields),
+    Values = get_values(ValidationResult),
 
     Quotas = lists:filtermap(
                fun ({Key, Service}) ->
@@ -336,16 +324,13 @@ validate_memory_quota(Config, CompatVersion, R0) ->
                            {_, ServiceQuota} ->
                                {true, {Service, ServiceQuota}}
                        end
-               end, [{memoryQuota, kv},
-                     {indexMemoryQuota, index},
-                     {ftsMemoryQuota, fts},
-                     {cbasMemoryQuota, cbas}]),
+               end, QuotaFields),
 
     case Quotas of
         [] ->
-            R4;
+            ValidationResult;
         _ ->
-            do_validate_memory_quota(Config, Quotas, R4)
+            do_validate_memory_quota(Config, Quotas, ValidationResult)
     end.
 
 do_validate_memory_quota(Config, Quotas, R0) ->
@@ -373,22 +358,16 @@ quota_error_msg({total_quota_too_high, Node, TotalQuota, MaxAllowed}) ->
                         [TotalQuota, MaxAllowed, Node]),
     {'_', Msg};
 quota_error_msg({service_quota_too_low, Service, Quota, MinAllowed}) ->
-    {Key, Details} =
-        case Service of
-            kv ->
-                D = " (current total buckets quota, or at least 256MB)",
-                {memoryQuota, D};
-            index ->
-                {indexMemoryQuota, ""};
-            fts ->
-                {ftsMemoryQuota, ""};
-            cbas ->
-                {cbasMemoryQuota, ""}
-        end,
+    Details = case Service of
+                  kv ->
+                      " (current total buckets quota, or at least 256MB)";
+                  _ ->
+                      ""
+              end,
 
     Msg = io_lib:format("The ~p service quota (~bMB) cannot be less than ~bMB~s.",
                         [Service, Quota, MinAllowed, Details]),
-    {Key, Msg}.
+    {ns_storage_conf:service_to_quota_json_name(Service), Msg}.
 
 handle_pool_settings_post(Req) ->
     do_handle_pool_settings_post_loop(Req, 10).

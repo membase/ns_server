@@ -990,26 +990,24 @@ do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied, Services) ->
             check_can_join_to(NodeKVList, Services)
     end.
 
-quotas() ->
-    [{kv, <<"memoryQuota">>},
-     {index, <<"indexMemoryQuota">>},
-     {fts, <<"ftsMemoryQuota">>},
-     {cbas, <<"cbasMemoryQuota">>}].
+json_field(Service) ->
+    list_to_binary(atom_to_list(ns_storage_conf:service_to_quota_json_name(Service))).
 
 check_memory_size(NodeKVList, Services) ->
     Quotas =
         lists:foldl(
-          fun({kv, JSONField}, Acc) ->
-                  Quota = expect_json_property_integer(JSONField, NodeKVList),
+          fun(kv, Acc) ->
+                  Quota = expect_json_property_integer(json_field(kv), NodeKVList),
                   [{kv, Quota} | Acc];
-             ({Service, JSONField}, Acc) ->
+             (Service, Acc) ->
+                  JSONField = json_field(Service),
                   case lists:keyfind(JSONField, 1, NodeKVList) of
                       {_, Quota} ->
                           [{Service, expect_integer(JSONField, Quota)} | Acc];
                       false ->
                           Acc
                   end
-          end, [], quotas()),
+          end, [], ns_storage_conf:quota_aware_services(cluster_compat_mode:get_compat_version())),
 
     case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
         ok ->

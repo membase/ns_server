@@ -94,29 +94,12 @@ build_full_node_info(Node, LocalAddr) ->
                                    Fields)}.
 
 build_memory_quota_info(Config) ->
-    {ok, KvQuota} = ns_storage_conf:get_memory_quota(Config, kv),
-    Props = [{memoryQuota, KvQuota}],
-    Props1 = case cluster_compat_mode:is_cluster_40() of
-        true ->
-            {ok, IndexQuota} = ns_storage_conf:get_memory_quota(Config, index),
-            [{indexMemoryQuota, IndexQuota} | Props];
-        false ->
-            Props
-    end,
-    Props2 = case cluster_compat_mode:is_cluster_45() of
-        true ->
-            {ok, FTSQuota} = ns_storage_conf:get_memory_quota(Config, fts),
-            [{ftsMemoryQuota, FTSQuota} | Props1];
-        false ->
-            Props1
-    end,
-    case cluster_compat_mode:is_cluster_vulcan() of
-        true ->
-            {ok, CBASQuota} = ns_storage_conf:get_memory_quota(Config, cbas),
-            [{cbasMemoryQuota, CBASQuota} | Props2];
-        false ->
-            Props2
-    end.
+    CompatVersion = cluster_compat_mode:get_compat_version(Config),
+    lists:map(
+      fun (Service) ->
+              {ok, Quota} = ns_storage_conf:get_memory_quota(Config, Service),
+              {ns_storage_conf:service_to_quota_json_name(Service), Quota}
+      end, ns_storage_conf:quota_aware_services(CompatVersion)).
 
 build_nodes_info(CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
     F = build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr),
