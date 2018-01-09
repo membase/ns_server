@@ -31,6 +31,10 @@
          update_txn/2
         ]).
 
+-callback cfg_key() -> term().
+-callback is_enabled() -> boolean().
+-callback known_settings() -> term().
+
 start_link(Module) ->
     work_queue:start_link(Module, fun () -> init(Module) end).
 

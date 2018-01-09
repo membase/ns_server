@@ -18,6 +18,8 @@
 -include("ns_common.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+-behavior(json_settings_manager).
+
 -export([start_link/0,
          get/1,
          get_from_config/3,
