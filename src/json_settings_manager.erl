@@ -135,7 +135,7 @@ populate_ets_table(M) ->
     populate_ets_table(M, JSON).
 
 populate_ets_table(M, JSON) ->
-    case not M:required_compat_mode()
+    case not M:is_enabled()
         orelse erlang:get(prev_json) =:= JSON of
         true ->
             ok;

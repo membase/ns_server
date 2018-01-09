@@ -26,7 +26,7 @@
         ]).
 
 -export([cfg_key/0,
-         required_compat_mode/0,
+         is_enabled/0,
          known_settings/0]).
 
 -import(json_settings_manager,
@@ -46,7 +46,7 @@ get_from_config(Config, Key, Default) ->
 cfg_key() ->
     ?QUERY_CONFIG_KEY.
 
-required_compat_mode() ->
+is_enabled() ->
     cluster_compat_mode:is_cluster_vulcan().
 
 update(Key, Value) ->
