@@ -15,6 +15,7 @@
 
 -module(async).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
 
 -export([start/1, start/2, start_many/2,
@@ -163,6 +164,9 @@ async_init(Parent, ParentController, Opts, Fun) ->
 
                   Controller ! {Reply, R}
           end),
+
+    MonitorPids = proplists:get_value(monitor_pids, Opts, []),
+    lists:foreach(erlang:monitor(process, _), MonitorPids),
 
     Type = proplists:get_value(type, Opts, wait),
     async_loop_wait_result(Type, Child, Reply, []).
