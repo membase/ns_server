@@ -33,6 +33,7 @@
 -callback cfg_key() -> term().
 -callback is_enabled() -> boolean().
 -callback known_settings() -> term().
+-callback on_update(atom(), term()) -> term().
 
 start_link(Module) ->
     work_queue:start_link(Module, fun () -> init(Module) end).
@@ -158,13 +159,7 @@ do_populate_ets_table(M, JSON, Settings) ->
                       ok;
                   false ->
                       ets:insert(M, {Key, NewValue}),
-                      case M =:= index_settings_manager of
-                          true ->
-                              gen_event:notify(index_events,
-                                               {index_settings_change, Key, NewValue});
-                          false ->
-                              ok
-                      end
+                      M:on_update(Key, NewValue)
               end
       end, lens_get_many(Settings, Dict)),
 

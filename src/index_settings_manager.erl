@@ -31,7 +31,8 @@
 
 -export([cfg_key/0,
          is_enabled/0,
-         known_settings/0]).
+         known_settings/0,
+         on_update/2]).
 
 -import(json_settings_manager,
         [id_lens/1]).
@@ -52,6 +53,9 @@ cfg_key() ->
 
 is_enabled() ->
     cluster_compat_mode:is_cluster_40().
+
+on_update(Key, Value) ->
+    gen_event:notify(index_events, {index_settings_change, Key, Value}).
 
 update(Key, Value) ->
     json_settings_manager:update(?MODULE, [{Key, Value}]).
