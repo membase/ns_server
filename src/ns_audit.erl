@@ -282,10 +282,13 @@ to_binary({list, List}) ->
     [to_binary(A) || A <- List];
 to_binary(A) when is_list(A) ->
     iolist_to_binary(A);
-to_binary(A) when is_tuple(A) ->
-    iolist_to_binary(io_lib:format("~p", [A]));
+to_binary({propset, Props}) when is_list(Props) ->
+    {[kv_to_binary(A) || A <- Props]};
 to_binary(A) ->
     A.
+
+kv_to_binary({K, V}) ->
+    {key_to_binary(K), to_binary(V)}.
 
 now_to_iso8601(Now = {_, _, Microsecs}) ->
     LocalNow = calendar:now_to_local_time(Now),
@@ -668,7 +671,7 @@ client_cert_auth(Req, ClientCertAuth) ->
               true ->
                   State = lists:keyfind(state, 1, ClientCertAuth),
                   {PrefixesKey, Triples} = lists:keyfind(prefixes, 1, ClientCertAuth),
-                  NewTriples = [{list, T} || T <- Triples],
+                  NewTriples = [{propset, T} || T <- Triples],
                   [State, {PrefixesKey, {list, NewTriples}}];
               false ->
                   ClientCertAuth
