@@ -58,6 +58,21 @@
         </div>
       </div>
 
+      <div class="formrow">
+        <label for="xdcr_advaced_settings_type">XDCR Protocol</label>
+        <select
+           id="xdcr_advaced_settings_type"
+           ng-model="xdcrCreateDialogCtl.replication.type">
+          <option value="capi">Version 1</option>
+          <option value="xmem">Version 2</option>
+        </select>
+        <div
+           class="error"
+           ng-show="xdcrCreateDialogCtl.errors.type">
+          {{xdcrCreateDialogCtl.errors.type}}
+        </div>
+      </div>
+
       <div
          class="formrow checkbox-list"
          ng-show="xdcrCreateDialogCtl.mnPoolDefault.value.isEnterprise && xdcrCreateDialogCtl.mnPoolDefault.value.goxdcrEnabled">
@@ -124,15 +139,6 @@
         </div>
         <div
            ng-show="xdcrCreateDialogCtl.showAdvancedSettings">
-          <div class="formrow">
-            <label for="xdcr_advaced_settings_type">XDCR Protocol</label>
-            <select
-               id="xdcr_advaced_settings_type"
-               ng-model="xdcrCreateDialogCtl.replication.type">
-              <option value="capi">Version 1</option>
-              <option value="xmem">Version 2</option>
-            </select>
-          </div>
           <div
              mn-xdcr-settings="xdcrCreateDialogCtl.replication"
              mn-pool-default="xdcrCreateDialogCtl.mnPoolDefault.value"
