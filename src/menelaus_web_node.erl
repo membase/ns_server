@@ -97,9 +97,9 @@ build_memory_quota_info(Config) ->
     CompatVersion = cluster_compat_mode:get_compat_version(Config),
     lists:map(
       fun (Service) ->
-              {ok, Quota} = ns_storage_conf:get_memory_quota(Config, Service),
-              {ns_storage_conf:service_to_quota_json_name(Service), Quota}
-      end, ns_storage_conf:quota_aware_services(CompatVersion)).
+              {ok, Quota} = memory_quota:get_quota(Config, Service),
+              {memory_quota:service_to_json_name(Service), Quota}
+      end, memory_quota:aware_services(CompatVersion)).
 
 build_nodes_info(CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
     F = build_nodes_info_fun(CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr),

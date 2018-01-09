@@ -307,8 +307,8 @@ validate_pool_settings_post(Config, CompatVersion, Args) ->
 
 validate_memory_quota(Config, CompatVersion, R0) ->
     QuotaFields =
-        [{ns_storage_conf:service_to_quota_json_name(Service), Service} ||
-            Service <- ns_storage_conf:quota_aware_services(CompatVersion)],
+        [{memory_quota:service_to_json_name(Service), Service} ||
+            Service <- memory_quota:aware_services(CompatVersion)],
     ValidationResult =
         lists:foldl(
           fun ({Key, _}, Acc) ->
@@ -345,7 +345,7 @@ do_validate_memory_quota(Config, Quotas, R0) ->
                   {Node, NodeServices, MemoryData}
           end, Nodes),
 
-    case ns_storage_conf:check_quotas(NodeInfos, Config, Quotas) of
+    case memory_quota:check_quotas(NodeInfos, Config, Quotas) of
         ok ->
             return_value(quotas, Quotas, R0);
         {error, Error} ->
@@ -367,7 +367,7 @@ quota_error_msg({service_quota_too_low, Service, Quota, MinAllowed}) ->
 
     Msg = io_lib:format("The ~p service quota (~bMB) cannot be less than ~bMB~s.",
                         [Service, Quota, MinAllowed, Details]),
-    {ns_storage_conf:service_to_quota_json_name(Service), Msg}.
+    {memory_quota:service_to_json_name(Service), Msg}.
 
 handle_pool_settings_post(Req) ->
     do_handle_pool_settings_post_loop(Req, 10).
@@ -394,7 +394,7 @@ do_handle_pool_settings_post(Req) ->
 do_handle_pool_settings_post_body(Req, Config, CompatVersion, Values) ->
     case lists:keyfind(quotas, 1, Values) of
         {_, Quotas} ->
-            case ns_storage_conf:set_quotas(Config, Quotas) of
+            case memory_quota:set_quotas(Config, Quotas) of
                 ok ->
                     ok;
                 retry_needed ->
@@ -422,10 +422,10 @@ do_handle_pool_settings_post_body(Req, Config, CompatVersion, Values) ->
 
 do_audit_cluster_settings(Req) ->
     %% this is obviously raceful, but since it's just audit...
-    {ok, KvQuota} = ns_storage_conf:get_memory_quota(kv),
-    {ok, IndexQuota} = ns_storage_conf:get_memory_quota(index),
-    {ok, FTSQuota} = ns_storage_conf:get_memory_quota(fts),
-    {ok, CBASQuota} = ns_storage_conf:get_memory_quota(cbas),
+    {ok, KvQuota} = memory_quota:get_quota(kv),
+    {ok, IndexQuota} = memory_quota:get_quota(index),
+    {ok, FTSQuota} = memory_quota:get_quota(fts),
+    {ok, CBASQuota} = memory_quota:get_quota(cbas),
     ClusterName = get_cluster_name(),
 
     ns_audit:cluster_settings(Req, KvQuota, IndexQuota, FTSQuota, CBASQuota, ClusterName).

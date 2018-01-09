@@ -460,19 +460,19 @@ setup_services_check_quota(Services, Params) ->
                  "false" ->
                      lists:map(
                        fun(Service) ->
-                               {ok, Quota} = ns_storage_conf:get_memory_quota(Service),
+                               {ok, Quota} = memory_quota:get_quota(Service),
                                {Service, Quota}
-                       end, ns_storage_conf:quota_aware_services(
+                       end, memory_quota:aware_services(
                               cluster_compat_mode:get_compat_version()));
                  "true" ->
-                     do_update_with_default_quotas(ns_storage_conf:default_quotas(Services))
+                     do_update_with_default_quotas(memory_quota:default_quotas(Services))
              end,
 
     case Quotas of
         {error, _Msg} = E ->
             E;
         _ ->
-            case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
+            case memory_quota:check_this_node_quotas(Services, Quotas) of
                 ok ->
                     {ok, Services};
                 {error, {total_quota_too_high, _, TotalQuota, MaxAllowed}} ->
@@ -491,7 +491,7 @@ do_update_with_default_quotas(Quotas) ->
 do_update_with_default_quotas(_, 0) ->
     {error, <<"Could not update the config with default memory quotas">>};
 do_update_with_default_quotas(Quotas, RetriesLeft) ->
-    case ns_storage_conf:set_quotas(ns_config:get(), Quotas) of
+    case memory_quota:set_quotas(ns_config:get(), Quotas) of
         ok ->
             Quotas;
         retry_needed ->

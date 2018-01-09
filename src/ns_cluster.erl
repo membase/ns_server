@@ -991,7 +991,7 @@ do_engage_cluster_inner_tail(NodeKVList, Address, UserSupplied, Services) ->
     end.
 
 json_field(Service) ->
-    list_to_binary(atom_to_list(ns_storage_conf:service_to_quota_json_name(Service))).
+    list_to_binary(atom_to_list(memory_quota:service_to_json_name(Service))).
 
 check_memory_size(NodeKVList, Services) ->
     Quotas =
@@ -1007,9 +1007,9 @@ check_memory_size(NodeKVList, Services) ->
                       false ->
                           Acc
                   end
-          end, [], ns_storage_conf:quota_aware_services(cluster_compat_mode:get_compat_version())),
+          end, [], memory_quota:aware_services(cluster_compat_mode:get_compat_version())),
 
-    case ns_storage_conf:check_this_node_quotas(Services, Quotas) of
+    case memory_quota:check_this_node_quotas(Services, Quotas) of
         ok ->
             ok;
         {error, {total_quota_too_high, _, TotalQuota, MaxQuota}} ->

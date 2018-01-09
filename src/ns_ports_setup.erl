@@ -610,7 +610,7 @@ fts_spec(Config) ->
                                  "-tlsCertFile=" ++ ns_ssl_services_setup:memcached_cert_path(),
                                  "-tlsKeyFile=" ++ ns_ssl_services_setup:memcached_key_path()]
                         end,
-            {ok, FTSMemoryQuota} = ns_storage_conf:get_memory_quota(Config, fts),
+            {ok, FTSMemoryQuota} = memory_quota:get_quota(Config, fts),
             MaxReplicasAllowed = case cluster_compat_mode:is_enterprise() of
                                      true -> 3;
                                      false -> 0
@@ -724,7 +724,7 @@ cbas_spec(Config) ->
                                  "-tlsCertFile=" ++ ns_ssl_services_setup:ssl_cert_key_path(),
                                  "-tlsKeyFile=" ++ ns_ssl_services_setup:ssl_cert_key_path()]
                         end,
-            {ok, MemoryQuota} = ns_storage_conf:get_memory_quota(Config, cbas),
+            {ok, MemoryQuota} = memory_quota:get_quota(Config, cbas),
             Spec = {cbas, Cmd,
                     [
                      "-uuid=" ++ binary_to_list(NodeUUID),

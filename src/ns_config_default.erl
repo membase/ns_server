@@ -84,7 +84,7 @@ default() ->
     ensure_data_dir(),
     DataDir = get_data_dir(),
 
-    DefaultQuotas = ns_storage_conf:default_quotas([kv, cbas, fts]),
+    DefaultQuotas = memory_quota:default_quotas([kv, cbas, fts]),
     {_, KvQuota} = lists:keyfind(kv, 1, DefaultQuotas),
     {_, FTSQuota} = lists:keyfind(fts, 1, DefaultQuotas),
     {_, CBASQuota} = lists:keyfind(cbas, 1, DefaultQuotas),
