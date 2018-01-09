@@ -189,7 +189,8 @@ build_services(Node, Config, EnabledServices) ->
              cbas ->
                  [
                   {cbas, ns_config:search(Config, {node, Node, cbas_http_port}, undefined)},
-                  {cbasCc, ns_config:search(Config, {node, Node, cbas_cc_http_port}, undefined)}
+                  {cbasCc, ns_config:search(Config, {node, Node, cbas_cc_http_port}, undefined)},
+                  {cbasAdmin, ns_config:search(Config, {node, Node, cbas_admin_port}, undefined)}
                  ] ++ case ns_config:search(Config, {node, Node, cbas_ssl_port}, undefined) of
                          undefined ->
                              [];
