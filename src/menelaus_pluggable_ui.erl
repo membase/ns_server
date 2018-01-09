@@ -198,7 +198,7 @@ proxy_req(RestPrefix, Path, Plugins, Req) ->
                     server_error(Req, Service, Error)
             end;
         false ->
-            server_error(Req, RestPrefix, unknown_service)
+            send_server_error(Req, <<"Not found.">>)
     end.
 
 address_and_port_for(Service, local) ->
@@ -325,9 +325,7 @@ stream_body(Pid, Resp) ->
 server_error(Req, Service, service_not_running) ->
     Msg = list_to_binary("Service " ++ atom_to_list(Service)
                          ++ " not running on this node"),
-    send_server_error(Req, Msg);
-server_error(Req, RestPrefix, unknown_service) ->
-    send_server_error(Req, <<"Not found.">>).
+    send_server_error(Req, Msg).
 
 send_server_error(Req, Msg) ->
     menelaus_util:reply_text(Req, Msg, 404).
