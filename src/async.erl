@@ -168,6 +168,9 @@ async_init(Parent, ParentController, Opts, Fun) ->
     MonitorPids = proplists:get_value(monitor_pids, Opts, []),
     lists:foreach(erlang:monitor(process, _), MonitorPids),
 
+    Adopters = proplists:get_value(adopters, Opts, []),
+    lists:foreach(register_for_adoption(_), Adopters),
+
     Type = proplists:get_value(type, Opts, wait),
     async_loop_wait_result(Type, Child, Reply, []).
 
@@ -383,9 +386,12 @@ get_controller() ->
     erlang:get('$async_controller').
 
 handle_initiate_adoption(Controller, From) ->
-    {ok, Executor} = register_with_async(Controller),
-    erlang:monitor(process, Executor),
+    register_for_adoption(Controller),
     reply(From, ok).
+
+register_for_adoption(Controller) ->
+    {ok, Executor} = register_with_async(Controller),
+    erlang:monitor(process, Executor).
 
 maybe_log_down_message({'DOWN', _MRef, process, Pid, Reason}) ->
     case misc:is_normal_termination(Reason) of
