@@ -167,30 +167,35 @@ check_this_node_quotas(Services, Quotas0) ->
 
     check_node_total_quota(node(), TotalQuota, MemoryData).
 
+service_to_store_method(kv) ->
+    {key, memory_quota};
+service_to_store_method(index) ->
+    {manager, index_settings_manager};
+service_to_store_method(fts) ->
+    {key, fts_memory_quota};
+service_to_store_method(cbas) ->
+    {key, cbas_memory_quota}.
+
 get_quota(Service) ->
     get_quota(ns_config:latest(), Service).
 
-service_to_quota_key(kv) ->
-    memory_quota;
-service_to_quota_key(fts) ->
-    fts_memory_quota;
-service_to_quota_key(cbas) ->
-    cbas_memory_quota.
-
-get_quota(Config, index) ->
-    NotFound = make_ref(),
-    case index_settings_manager:get_from_config(Config, memoryQuota, NotFound) of
-        NotFound ->
-            not_found;
-        Quota ->
-            {ok, Quota}
-    end;
 get_quota(Config, Service) ->
-    case ns_config:search(Config, service_to_quota_key(Service)) of
-        {value, Quota} ->
-            {ok, Quota};
-        false ->
-            not_found
+    case service_to_store_method(Service) of
+        {key, Key}->
+            case ns_config:search(Config, Key) of
+                {value, Quota} ->
+                    {ok, Quota};
+                false ->
+                    not_found
+            end;
+        {manager, Manager} ->
+            NotFound = make_ref(),
+            case Manager:get_from_config(Config, memoryQuota, NotFound) of
+                NotFound ->
+                    not_found;
+                Quota ->
+                    {ok, Quota}
+            end
     end.
 
 set_quotas(Config, Quotas) ->
@@ -212,13 +217,15 @@ set_quotas(Config, Quotas) ->
             retry_needed
     end.
 
-do_set_memory_quota(index, Quota, Cfg, SetFn) ->
-    Txn = index_settings_manager:update_txn([{memoryQuota, Quota}]),
-
-    {commit, NewCfg, _} = Txn(Cfg, SetFn),
-    NewCfg;
 do_set_memory_quota(Service, Quota, Cfg, SetFn) ->
-    SetFn(service_to_quota_key(Service), Quota, Cfg).
+    case service_to_store_method(Service) of
+        {key, Key}->
+            SetFn(Key, Quota, Cfg);
+        {manager, Manager} ->
+            Txn = Manager:update_txn([{memoryQuota, Quota}]),
+            {commit, NewCfg, _} = Txn(Cfg, SetFn),
+            NewCfg
+    end.
 
 default_quota(Service, Memory, Max) ->
     Quota = calculate_default_quota(Service, Memory),
