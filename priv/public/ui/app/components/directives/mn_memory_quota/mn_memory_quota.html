@@ -5,7 +5,7 @@
 </div>
 <div ng-if="config.displayedServices.kv">
   <div class="row formrow">
-    <div class="width-6">
+    <div class="width-5">
       <input
          ng-if="config.services"
          ng-model="config.services.model.kv"
@@ -15,10 +15,10 @@
       <label
          for="kv_ram_quota"
          class="checkbox">
-        Data Service
+        Data
       </label>
     </div>
-    <div class="form-inline width-6 text-right">
+    <div class="form-inline width-7 text-right">
       <input
          type="number"
          mn-focus
@@ -37,7 +37,7 @@
 
 <div ng-if="config.displayedServices.index">
   <div class="row formrow">
-    <div class="width-6">
+    <div class="width-5">
       <input
          ng-if="config.services"
          ng-model="config.services.model.index"
@@ -47,10 +47,10 @@
       <label
          for="index_ram_quota"
          class="checkbox">
-        Index Service
+        Index
       </label>
     </div>
-    <div class="form-inline width-6 text-right">
+    <div class="form-inline width-7 text-right">
       <input
          type="number"
          min="0"
@@ -70,7 +70,7 @@
 
 <div ng-if="config.displayedServices.fts">
   <div class="row formrow">
-    <div class="width-6">
+    <div class="width-5">
       <input
          ng-if="config.services"
          ng-model="config.services.model.fts"
@@ -80,10 +80,10 @@
       <label
          for="fts_ram_quota"
          class="checkbox">
-        Search Service
+        Search
       </label>
     </div>
-    <div class="form-inline width-6 text-right">
+    <div class="form-inline width-7 text-right">
       <input
          type="number"
          mn-focus="config.services.model.kv === false && config.services.model.index  === false"
@@ -102,7 +102,7 @@
 
 <div ng-if="config.displayedServices.cbas">
   <div class="row formrow">
-    <div class="width-6">
+    <div class="width-5">
       <input
          ng-if="config.services"
          ng-model="config.services.model.cbas"
@@ -112,10 +112,10 @@
       <label
          for="cbas_ram_quota"
          class="checkbox">
-        Analytics Service
+        Analytics
       </label>
     </div>
-    <div class="form-inline width-6 text-right">
+    <div class="form-inline width-7 text-right">
       <input
          type="number"
          mn-focus="config.services.model.kv === false && config.services.model.index  === false"
@@ -134,7 +134,7 @@
 
 <div ng-if="config.displayedServices.n1ql">
   <div class="row formrow">
-    <div class="width-6">
+    <div class="width-5">
       <input
          ng-if="config.services"
          ng-model="config.services.model.n1ql"
@@ -144,10 +144,10 @@
       <label
          for="n1ql_ram_quota"
          class="checkbox">
-        Query Service
+        Query
       </label>
     </div>
-    <small class="form-inline width-6 text-center">
+    <small class="form-inline width-7 text-center">
       - - - - - - -
     </small>
   </div>
@@ -161,7 +161,7 @@
 
 <div ng-if="config.displayedServices.eventing">
   <div class="row formrow">
-    <div class="width-6">
+    <div class="width-5">
       <input
          ng-if="config.services"
          ng-model="config.services.model.eventing"
@@ -171,7 +171,7 @@
       <label
          for="eventing_ram_quota"
          class="checkbox">
-        Eventing Service
+        Events
       </label>
     </div>
     <div class="form-inline width-6 text-right">

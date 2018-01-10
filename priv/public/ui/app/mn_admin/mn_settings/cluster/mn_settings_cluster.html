@@ -3,7 +3,7 @@
   <form
      ng-submit="settingsClusterCtl.saveVisualInternalSettings()"
      class="forms">
-    <div class="formrow width-480 margin-bottom-2">
+    <div class="fix-width-5 margin-bottom-2">
       <h4>Cluster Name &nbsp <small>(0 — 256 chars)</small></h4>
       <input
          id="cluster-name-field"
@@ -17,11 +17,11 @@
     </div>
 
     <div class="formrow">
-      <h4>Couchbase Memory Quotas &nbsp;<small>in megabytes per server node</small></h4>
+      <h4>Service Memory Quotas &nbsp;<small>in megabytes per server node</small></h4>
     </div>
     <div
        rbac="rbac"
-       class="width-480 margin-bottom-2"
+       class="fix-width-5 margin-bottom-2"
        mn-memory-quota="settingsClusterCtl.memoryQuotaConfig"
        errors="settingsClusterCtl.memoryQuotaErrors">
     </div>

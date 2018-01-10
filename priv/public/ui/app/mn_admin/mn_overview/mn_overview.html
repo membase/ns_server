@@ -5,13 +5,13 @@
 </mn-element-cargo>
 
 <div mn-spinner="(rbac.cluster.bucket['.'].stats.read && !overviewCtl.mnOverviewStats) || !overviewCtl.mnOverviewConfig || !overviewCtl.nodes || (rbac.cluster.bucket['.'].settings.read && !buckets.details)">
-
   <div class="row items-top margin-top-1 service-widget-row resp-margin-xsml">
     <div
        class="service-widget"
+       ui-sref="app.admin.buckets"
        ng-class="['dynamic_' + overviewCtl.nodes.kv.statusClass]">
-      <h4>Data Service</h4>
-      <a ui-sref="app.admin.servers.list">
+      <h4>Data</h4>
+      <a ng-click="$event.stopPropagation()" ui-sref="app.admin.servers.list">
         {{overviewCtl.nodes.kv.length || '0'}}
         node{{overviewCtl.getEndings(overviewCtl.nodes.kv.length)}}
       </a>
@@ -21,9 +21,12 @@
         {{count + ' node' + overviewCtl.getEndings(count) + ' ' + nodeStatuses}}
       </div>
     </div>
-    <div class="service-widget" ng-class="['dynamic_' + overviewCtl.nodes.index.statusClass]">
-      <h4>Index Service</h4>
-      <a ui-sref="app.admin.servers.list">
+    <div
+       class="service-widget"
+       ui-sref="app.admin.indexes.gsi"
+       ng-class="['dynamic_' + overviewCtl.nodes.index.statusClass]">
+      <h4>Index</h4>
+      <a ng-click="$event.stopPropagation()" ui-sref="app.admin.servers.list">
         {{overviewCtl.nodes.index.length || '0'}}
         node{{overviewCtl.getEndings(overviewCtl.nodes.index.length)}}
       </a>
@@ -35,9 +38,10 @@
     </div>
     <div
        class="service-widget"
+       ui-sref="app.admin.search.fts_list"
        ng-class="['dynamic_' + overviewCtl.nodes.fts.statusClass]">
-      <h4>Search Service</h4>
-      <a ui-sref="app.admin.servers.list">
+      <h4>Search</h4>
+      <a ng-click="$event.stopPropagation()" ui-sref="app.admin.servers.list">
         {{overviewCtl.nodes.fts.length || '0'}}
         node{{overviewCtl.getEndings(overviewCtl.nodes.fts.length)}}
       </a>
@@ -49,9 +53,10 @@
     </div>
     <div
        class="service-widget"
+       ui-sref="app.admin.query.workbench"
        ng-class="['dynamic_' + overviewCtl.nodes.n1ql.statusClass]">
-      <h4>Query Service</h4>
-      <a ui-sref="app.admin.servers.list">
+      <h4>Query</h4>
+      <a ng-click="$event.stopPropagation()" ui-sref="app.admin.servers.list">
         {{overviewCtl.nodes.n1ql.length || '0'}}
         node{{overviewCtl.getEndings(overviewCtl.nodes.n1ql.length)}}
       </a>
@@ -63,9 +68,10 @@
     </div>
     <div
        class="service-widget"
+       ui-sref="app.admin.eventing.summary"
        ng-class="['dynamic_' + overviewCtl.nodes.eventing.statusClass]">
-      <h4>Eventing Service</h4>
-      <a ui-sref="app.admin.servers.list">
+      <h4>Events</h4>
+      <a ng-click="$event.stopPropagation()" ui-sref="app.admin.servers.list">
         {{overviewCtl.nodes.eventing.length || '0'}}
         node{{overviewCtl.getEndings(overviewCtl.nodes.eventing.length)}}
       </a>
@@ -77,9 +83,10 @@
     </div>
     <div
        class="service-widget"
+       ui-sref="app.admin.cbas.workbench"
        ng-class="['dynamic_' + overviewCtl.nodes.cbas.statusClass]">
-      <h4>Analytics Service</h4>
-      <a ui-sref="app.admin.servers.list">
+      <h4>Analytics</h4>
+      <a ng-click="$event.stopPropagation()" ui-sref="app.admin.servers.list">
         {{overviewCtl.nodes.cbas.length || '0'}}
         node{{overviewCtl.getEndings(overviewCtl.nodes.cbas.length)}}
       </a>
@@ -91,21 +98,22 @@
     </div>
     <div
        ng-show="rbac.cluster.xdcr.remote_clusters.read"
+       ui-sref="app.admin.replications"
        class="service-widget"
        ng-class="['dynamic_' + (adminCtl.tasks.tasksXDCR.length ? 'healthy' : 'inactive')]">
       <h4>XDCR</h4>
-      <a ui-sref="app.admin.replications">
+      <a>
         {{overviewCtl.xdcrReferences.filtered.length}}
         remote cluster{{overviewCtl.getEndings(overviewCtl.xdcrReferences.filtered.length)}}
       </a>
-      <a ui-sref="app.admin.replications">
+      <a>
         {{adminCtl.tasks.tasksXDCR.length}}
         replication{{overviewCtl.getEndings(adminCtl.tasks.tasksXDCR.length)}}
       </a>
     </div>
   </div>
 
-  <div class="row resp-wrap-med">
+  <div class="row max-width-12 resp-wrap-med">
     <div
        class="column width-6 margin-top-2">
       <h4>Data Service Memory</h4>
@@ -132,10 +140,10 @@
     <div
        ng-if="rbac.cluster.bucket['.'].stats.read"
        class="row flex-left items-top resp-wrap-med">
-      <div ng-show="buckets.details.length" class="margin-top-2">
+      <div ng-show="buckets.details.length" class="margin-top-2 fix-width-5">
         <h4>Buckets Operations Per Second</h4>
           <span ng-show="!overviewCtl.mnOverviewStats.opsGraphConfig.stats.length">
-            (No samples, yet)
+            loading stats...
           </span>
         <div
            ng-if="overviewCtl.mnOverviewStats.opsGraphConfig.stats.length"
@@ -144,10 +152,10 @@
            style="height: 150px; width: 360px; margin-right: 2rem;"
            class="text-smaller"></div>
       </div>
-      <div ng-show="buckets.details.length" class="margin-top-2">
+      <div ng-show="buckets.details.length" class="margin-top-2 fix-width-5">
         <h4>Disk Fetches Per Second</h4>
           <span ng-show="!overviewCtl.mnOverviewStats.readsGraphConfig.stats.length">
-            (No samples, yet)
+            loading stats...
           </span>
 
         <div
@@ -158,9 +166,12 @@
            class="text-smaller"></div>
       </div>
     </div>
-    <div class="zero-content" ng-show="!buckets.details.length">
+    <div class="zero-content max-width-12 " ng-show="!buckets.details.length">
       You have no data buckets.
-      <span ng-show="rbac.cluster.buckets.create">Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one, or load a <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.</span>
+      <span ng-show="rbac.cluster.buckets.create">
+        Go to <a ui-sref="app.admin.buckets">Buckets</a> to add one, or load a
+        <a ui-sref="app.admin.settings.sampleBuckets">sample bucket</a> with data & indexes.
+      </span>
     </div>
   </div>
 </div>

@@ -1406,10 +1406,14 @@ input[type="checkbox"]:checked + label:before {
 }
 
 /* service widgets displaying status & details for each service + XDCR -- */
+.service-widget-row {
+  max-width: 1280px;
+}
 .service-widget {
   padding: 0 0 0 .5rem;
   flex: 0 1 auto;
   margin-right: 1.5rem;
+  cursor: pointer;
 }
 .service-widget > a,
 .service-widget > .error {
@@ -1417,7 +1421,7 @@ input[type="checkbox"]:checked + label:before {
 }
 .service-widget > a {
   display:block;
-  color: #000;
+  color: #333;
   white-space: nowrap;
 }
 .service-widget > a:hover {
