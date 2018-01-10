@@ -123,6 +123,8 @@
     </div>
   </div>
 
+  <div ng-if="indexSettings.storageMode == 'memory_optimized'" class="zero-content margin-bottom-1"><strong>NOTE</strong>&nbsp; Auto-compaction index fragmentation settings are not necessary for memory-optimized indexes.</div>
+
   <h4 ng-if="!isBucketsSettings && poolDefault.compat.atLeast40 && indexSettings && indexSettings.storageMode !== 'memory_optimized'">Index Fragmentation</h4>
   <div
      ng-if="!isBucketsSettings && poolDefault.compat.atLeast40 && indexSettings && indexSettings.storageMode !== 'memory_optimized'">
