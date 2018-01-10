@@ -45,9 +45,6 @@
     function isKVNode(node) {
       return node.services.indexOf("kv") > -1;
     }
-    function isCBASNode(node) {
-      return node.services.indexOf("cbas") > -1;
-    }
     function getRamUsageConf(node) {
       var total = node.memoryTotal;
       var free = node.memoryFree;
@@ -72,8 +69,7 @@
       return cpuUsageConf;
     }
     function isFailOverDisabled(node) {
-      return isLastActiveData(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode)
-          || isCBASNode(node);  // MB-25552 - [CX] Failover not supported for CBAS nodes in DP3
+      return isLastActiveData(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode);
     }
     function disableRemoveBtn(node) {
       return isLastActiveData(node) || isActiveUnhealthy(node) || ($scope.adminCtl.tasks && $scope.adminCtl.tasks.inRecoveryMode);
