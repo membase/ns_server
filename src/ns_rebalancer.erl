@@ -63,22 +63,18 @@
 %% API
 %%
 
-run_failover(Node) ->
+run_failover(Nodes) ->
     misc:executing_on_new_process(
       fun () ->
               ok = check_no_tap_buckets(),
 
-              case check_failover_possible(Node) of
+              case check_failover_possible(Nodes) of
                   ok ->
-                      ns_rebalancer:orchestrate_failover(Node);
+                      ns_rebalancer:orchestrate_failover(Nodes);
                   Error ->
                       Error
               end
       end).
-
-orchestrate_failover(Node)
-  when is_atom(Node) ->
-    orchestrate_failover([Node]);
 
 orchestrate_failover(Nodes) ->
     ale:info(?USER_LOGGER, "Starting failing over ~p", [Nodes]),
@@ -154,22 +150,22 @@ failover_service(Config, Service, Nodes) ->
 get_failover_vbuckets(Config, Node) ->
     ns_config:search(Config, {node, Node, failover_vbuckets}, []).
 
-validate_autofailover(Node) ->
+validate_autofailover(Nodes) ->
     BucketPairs = ns_bucket:get_buckets(),
     UnsafeBuckets =
         [BucketName
          || {BucketName, BucketConfig} <- BucketPairs,
-            validate_autofailover_bucket(BucketConfig, Node) =:= false],
+            validate_autofailover_bucket(BucketConfig, Nodes) =:= false],
     case UnsafeBuckets of
         [] -> ok;
         _ -> {error, UnsafeBuckets}
     end.
 
-validate_autofailover_bucket(BucketConfig, Node) ->
+validate_autofailover_bucket(BucketConfig, Nodes) ->
     case proplists:get_value(type, BucketConfig) of
         membase ->
             Map = proplists:get_value(map, BucketConfig),
-            Map1 = mb_map:promote_replicas(Map, [Node]),
+            Map1 = mb_map:promote_replicas(Map, Nodes),
             case Map1 of
                 undefined ->
                     true;
@@ -1295,7 +1291,7 @@ run_graceful_failover(Node) ->
         false ->
             erlang:exit(non_kv_node)
     end,
-    case check_failover_possible(Node) of
+    case check_failover_possible([Node]) of
         ok ->
             ok;
         Error ->
@@ -1329,7 +1325,7 @@ run_graceful_failover(Node) ->
                                              I / NumBuckets, NumBuckets),
               I+1
       end, 0, InterestingBuckets),
-    orchestrate_failover(Node).
+    orchestrate_failover([Node]).
 
 do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
     run_janitor_pre_rebalance(BucketName),
@@ -1375,21 +1371,22 @@ check_graceful_failover_possible_rec(Node, [{BucketName, BucketConfig} | RestBuc
             check_graceful_failover_possible_rec(Node, RestBucketConfigs)
     end.
 
-check_failover_possible(Node) ->
-    case ns_cluster_membership:active_nodes() of
-        [Node] -> %% Node is bound
+check_failover_possible(Nodes) ->
+    ActiveNodes = lists:sort(ns_cluster_membership:active_nodes()),
+    FailoverNodes = lists:sort(Nodes),
+    case ActiveNodes of
+        FailoverNodes ->
             last_node;
-        ActiveNodes ->
-            case lists:member(Node, ActiveNodes) of
-                true ->
+        _ ->
+            case lists:subtract(FailoverNodes, ActiveNodes) of
+                [] ->
                     case ns_cluster_membership:service_nodes(ActiveNodes, kv) of
-                        %% Node is bound
-                        [Node] ->
+                        FailoverNodes ->
                             last_node;
                         _ ->
                             ok
                     end;
-                false ->
+                _ ->
                     unknown_node
             end
     end.

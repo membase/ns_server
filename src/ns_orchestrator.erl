@@ -624,10 +624,10 @@ idle({delete_bucket, BucketName}, _From, State) ->
 
     {reply, Reply, idle, State};
 idle({failover, Node}, _From, State) ->
-    Result = ns_rebalancer:run_failover(Node),
+    Result = ns_rebalancer:run_failover([Node]),
     {reply, Result, idle, State};
 idle({try_autofailover, Node}, From, State) ->
-    case ns_rebalancer:validate_autofailover(Node) of
+    case ns_rebalancer:validate_autofailover([Node]) of
         {error, UnsafeBuckets} ->
             {reply, {autofailover_unsafe, UnsafeBuckets}, idle, State};
         ok ->
