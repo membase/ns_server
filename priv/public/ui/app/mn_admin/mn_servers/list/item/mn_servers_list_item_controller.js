@@ -115,6 +115,7 @@
           isLastQuery: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'n1ql', true),
           isLastFts: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'fts', true),
           isLastCBAS: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'cbas', true),
+          isLastEventing: mnMemoryQuotaService.isOnlyOneNodeWithService(nodes.allNodes, node.services, 'eventing', true),
           isKv: _.indexOf(node.services, 'kv') > -1
         };
         return mnPoolDefault.export.compat.atLeast40 && mnPermissions.export.cluster.indexes.read ? mnGsiService.getIndexesState().then(function (indexStatus) {
