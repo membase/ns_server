@@ -50,9 +50,11 @@
       showKVMemoryQuota: true,
       showIndexMemoryQuota: true,
       showFTSMemoryQuota: true,
+      showEventingMemoryQuota: true,
       showCBASMemoryQuota: true,
       indexMemoryQuota: undefined,
       ftsMemoryQuota: undefined,
+      eventingMemoryQuota: undefined,
       cbasMemoryQuota: undefined,
       minMemorySize: 256,
       indexSettings: {
@@ -130,6 +132,7 @@
         newConfig.memoryQuota = selfConfig.memoryQuota;
         newConfig.indexMemoryQuota = selfConfig.indexMemoryQuota;
         newConfig.ftsMemoryQuota = selfConfig.ftsMemoryQuota;
+        newConfig.eventingMemoryQuota = selfConfig.eventingMemoryQuota;
         newConfig.cbasMemoryQuota = selfConfig.cbasMemoryQuota;
         newConfig.calculateTotal = true;
 

@@ -27,8 +27,8 @@
         password: ''
       },
       services: {
-        disabled: {kv: false, index: false, n1ql: false, fts: false, cbas: false},
-        model: {kv: true, index: true, n1ql: true, fts: false, cbas: false}
+        disabled: {kv: false, index: false, n1ql: false, fts: false, cbas: false, eventing: false},
+        model: {kv: true, index: true, n1ql: true, fts: false, cbas: false, eventing: false}
       },
       firstTimeAddedServices: undefined
     };
@@ -36,17 +36,19 @@
       maxMemorySize: undefined,
       totalMemorySize: undefined,
       memoryQuota: undefined,
-      displayedServices: {kv: true, index: true, fts: true, cbas: true, n1ql: true},
+      displayedServices: {kv: true, index: true, fts: true, cbas: true, n1ql: true, eventing: true},
       services: {
-        disabled: {kv: true, index: false, n1ql: false, fts: false, cbas: false},
-        model: {kv: true, index: true, n1ql: true, fts: false, cbas: false}
+        disabled: {kv: true, index: false, n1ql: false, fts: false, cbas: false, eventing: false},
+        model: {kv: true, index: true, n1ql: true, fts: false, cbas: false, eventing: false}
       },
       showKVMemoryQuota: true,
       showIndexMemoryQuota: true,
       showFTSMemoryQuota: true,
+      showEventingMemoryQuota: true,
       showCBASMemoryQuota: true,
       indexMemoryQuota: undefined,
       ftsMemoryQuota: undefined,
+      eventingMemoryQuota: undefined,
       cbasMemoryQuota: undefined,
       minMemorySize: 256,
       indexSettings: {
@@ -68,6 +70,7 @@
         newConfig.indexMemoryQuota = selfConfig.indexMemoryQuota;
         newConfig.ftsMemoryQuota = selfConfig.ftsMemoryQuota;
         newConfig.cbasMemoryQuota = selfConfig.cbasMemoryQuota;
+        newConfig.eventingMemoryQuota = selfConfig.eventingMemoryQuota;
 
         rv.startNewClusterConfig = newConfig;
         rv.hostname = selfConfig.hostname;

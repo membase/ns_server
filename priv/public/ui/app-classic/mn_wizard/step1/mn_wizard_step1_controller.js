@@ -58,6 +58,7 @@
       var data = _.clone(vm.config.startNewClusterConfig);
       !vm.config.startNewClusterConfig.services.model.index && (delete data.indexMemoryQuota);
       !vm.config.startNewClusterConfig.services.model.fts && (delete data.ftsMemoryQuota);
+      !vm.config.startNewClusterConfig.services.model.eventing && (delete data.eventingMemoryQuota);
       !vm.config.startNewClusterConfig.services.model.cbas && (delete data.cbasMemoryQuota);
       return addErrorHandler(mnSettingsClusterService.postPoolsDefault(data), "postMemory");
     }

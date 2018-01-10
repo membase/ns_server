@@ -174,9 +174,14 @@
         Eventing Service
       </label>
     </div>
-    <small class="form-inline width-6 text-center">
-      - - - - - - -
-    </small>
+    <div class="form-inline width-6 text-right">
+      <input
+         type="number"
+         mn-focus="config.services.model.kv === false && config.services.model.index  === false"
+         ng-disabled="config.services && !config.services.model.eventing || (rbac && !rbac.cluster.pools.write)"
+         ng-model="config.eventingMemoryQuota">
+      <small>MB</small>
+    </div>
   </div>
 
   <div
@@ -192,7 +197,8 @@
   <strong>TOTAL QUOTA</strong> &nbsp; {{ ((!config.displayedServices.kv || (config.services && !config.services.model.kv)) ? 0 : config.memoryQuota) +
       ((!config.displayedServices.index || (config.services && !config.services.model.index)) ? 0 : config.indexMemoryQuota) +
       ((!config.displayedServices.fts || (config.services && !config.services.model.fts)) ? 0 : config.ftsMemoryQuota) +
-      ((!config.displayedServices.cbas || (config.services && !config.services.model.cbas)) ? 0 : config.cbasMemoryQuota) }}MB
+      ((!config.displayedServices.cbas || (config.services && !config.services.model.cbas)) ? 0 : config.cbasMemoryQuota) +
+      ((!config.displayedServices.eventing || (config.services && !config.services.model.eventing)) ? 0 : config.eventingMemoryQuota) }}MB
 </div>
 
 <div
