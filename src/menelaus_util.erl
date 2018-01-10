@@ -67,6 +67,7 @@
          validate_any_value/2,
          validate_any_value/3,
          validate_by_fun/3,
+         validate_one_of/3,
          validate_required/2,
          validate_prohibited/2,
          execute_if_validated/3,
@@ -478,6 +479,20 @@ validate_by_fun(Fun, Name, {_, InList, _} = State) ->
                     return_value(Name, V, State);
                 {error, Error} ->
                     return_error(Name, Error, State)
+            end
+    end.
+
+validate_one_of(Name, List, {OutList, _, _} = State) ->
+    Value = proplists:get_value(atom_to_list(Name), OutList),
+    case Value of
+        undefined ->
+            State;
+        _ ->
+            case lists:member(Value, List) of
+                    true ->
+                        return_value(Name, Value, State);
+                    false ->
+                        return_error(Name, "The value is not one of expected values", State)
             end
     end.
 

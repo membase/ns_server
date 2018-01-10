@@ -15,7 +15,48 @@
 %%
 -module(menelaus_web_cluster_logs).
 
--export([handle_start_collect_logs/1, handle_cancel_collect_logs/1]).
+-export([handle_start_collect_logs/1,
+         handle_cancel_collect_logs/1,
+         handle_settings_log_redaction/1,
+         handle_settings_log_redaction_post/1]).
+
+-import(menelaus_util,
+        [reply_json/2,
+         assert_is_enterprise/0,
+         assert_is_vulcan/0,
+         validate_has_params/1,
+         validate_one_of/3,
+         validate_unsupported_params/1,
+         execute_if_validated/3]).
+
+handle_settings_log_redaction(Req) ->
+    assert_is_enterprise(),
+    assert_is_vulcan(),
+
+    {value, Config} = ns_config:search(ns_config:get(), log_redaction_default_cfg),
+    Level = proplists:get_value(redact_level, Config),
+    Settings = [{redact_level, Level}],
+    reply_json(Req, {struct, Settings}).
+
+handle_settings_log_redaction_post(Req) ->
+    assert_is_enterprise(),
+    assert_is_vulcan(),
+
+    execute_if_validated(
+      fun (Values) ->
+              do_handle_settings_log_redaction_post_body(Req, Values)
+      end, Req, validate_settings_log_redaction_post(Req:parse_post())).
+
+validate_settings_log_redaction_post(Args) ->
+    R0 = validate_has_params({Args, [], []}),
+    R1 = validate_one_of(redact_level, ["none", "partial"], R0),
+    validate_unsupported_params(R1).
+
+do_handle_settings_log_redaction_post_body(Req, Values) ->
+    Level = proplists:get_value(redact_level, Values),
+    Settings = [{redact_level, list_to_atom(Level)}],
+    ns_config:set(log_redaction_default_cfg, Settings),
+    reply_json(Req, 200).
 
 handle_start_collect_logs(Req) ->
     Params = Req:parse_post(),

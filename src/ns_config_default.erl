@@ -456,6 +456,8 @@ default() ->
        {max_indexer_ram, 75}
       ]},
      {replication, [{enabled, true}]},
+     {log_redaction_default_cfg, [{redact_level, none}]},
+
      {auto_failover_cfg, [{enabled, false},
                           % timeout is the time (in seconds) a node needs to be
                           % down before it is automatically faileovered
