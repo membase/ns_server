@@ -78,10 +78,12 @@ service_to_json_name(index) ->
 service_to_json_name(fts) ->
     ftsMemoryQuota;
 service_to_json_name(cbas) ->
-    cbasMemoryQuota.
+    cbasMemoryQuota;
+service_to_json_name(eventing) ->
+    eventingMemoryQuota.
 
 services_ranking() ->
-    [kv, cbas, index, fts].
+    [kv, cbas, index, fts, eventing].
 
 aware_services(CompatVersion) ->
     [S || S <- ns_cluster_membership:supported_services_for_version(CompatVersion),
@@ -142,7 +144,10 @@ min_quota(index) ->
 min_quota(fts) ->
     256;
 min_quota(cbas) ->
-    1024.
+    1024;
+min_quota(eventing) ->
+    256.
+
 
 check_service_quota(kv, Quota, Config) ->
     BucketsQuota = get_total_buckets_ram_quota(Config) div ?MIB,
@@ -174,7 +179,9 @@ service_to_store_method(index) ->
 service_to_store_method(fts) ->
     {key, fts_memory_quota};
 service_to_store_method(cbas) ->
-    {key, cbas_memory_quota}.
+    {key, cbas_memory_quota};
+service_to_store_method(eventing) ->
+    {manager, eventing_settings_manager}.
 
 get_quota(Service) ->
     get_quota(ns_config:latest(), Service).
@@ -249,6 +256,8 @@ calculate_default_quota(index, Memory) ->
 calculate_default_quota(fts, Memory) ->
     min(Memory div 5, ?MAX_DEFAULT_FTS_QUOTA);
 calculate_default_quota(cbas, Memory) ->
+    Memory div 5;
+calculate_default_quota(eventing, Memory) ->
     Memory div 5.
 
 default_quotas(Services) ->

@@ -299,7 +299,7 @@
           "mandatory_fields" : {
               "timestamp" : "",
               "real_userid" : {"source" : "", "user" : ""},
-              "quotas" : {"kv" : 1, "index" : 1, "fts" : 1, "cbas" : 1},
+              "quotas" : {"kv" : 1, "index" : 1, "fts" : 1, "cbas" : 1, "eventing" : 1},
               "cluster_name" : "",
               "remote" : {"ip" : "", "port" : 1}
           },

@@ -143,6 +143,9 @@ child_specs() ->
      {query_settings_manager, {query_settings_manager, start_link, []},
       permanent, 1000, worker, [query_settings_manager]},
 
+     {eventing_settings_manager, {eventing_settings_manager, start_link, []},
+      permanent, 1000, worker, [work_queue]},
+
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
       [menelaus_sup]},

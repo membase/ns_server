@@ -109,4 +109,5 @@ upgrade_config_from_5_0_to_5_1(Config) ->
 upgrade_config_from_5_1_to_vulcan(Config) ->
     ?log_info("Performing online config upgrade to Vulcan"),
     menelaus_web_auto_failover:config_upgrade_to_vulcan(Config) ++
-        query_settings_manager:config_upgrade_to_vulcan().
+        query_settings_manager:config_upgrade_to_vulcan() ++
+        eventing_settings_manager:config_upgrade_to_vulcan().
