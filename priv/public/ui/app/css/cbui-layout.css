@@ -168,6 +168,9 @@ footer {
   order: 1 !important;
 }
 /* flex-grow factors --------------------------------------------------- */
+.flex-basis-2 {
+  flex-basis: 2rem !important;
+}
 .flex-grow-0 {
   flex-grow: 0;
 }

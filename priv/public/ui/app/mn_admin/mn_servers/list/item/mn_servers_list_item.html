@@ -3,21 +3,21 @@
    ng-click="rbac.cluster.nodes.read && serversCtl.toggleDetails(node.hostname)"
    ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]">
   <div class="cbui-tablerow">
-    <span class="cbui-table-cell flex-grow-2-5 cbui-tablerow-title row flex-left">
+    <span class="cbui-table-cell flex-grow-2-5 cbui-tablerow-title flex-left">
       <span class="ellipsis padding-right-min cursor-text" title="{{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}" ng-click="$event.stopPropagation();">
       {{node.hostname | mnStripPortHTML:serversCtl.nodes.allNodes}}
       </span>
-      <span
-         class="label lt-blue"
-         ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable"
-         title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
-        {{serversCtl.getGroupsByHostname[node.hostname].name | mnLimitTo: 20}}{{serversCtl.getGroupsByHostname[node.hostname].name.length > 20 ? '...' : ''}}
-      </span>
     </span>
-    <span class="cbui-table-cell flex-grow-1-5 resp-hide-xsml">
+    <span
+       class="cbui-table-cell flex-grow-1-5 flex-left"
+       ng-show="rbac.cluster.server_groups.read && serversCtl.mnPoolDefault.value.isGroupsAvailable"
+       title="{{serversCtl.getGroupsByHostname[node.hostname].name}}">
+        {{serversCtl.getGroupsByHostname[node.hostname].name | mnLimitTo: 20}}
+    </span>
+    <span class="cbui-table-cell flex-grow-3 wrap resp-hide-xsml">
       <span ng-repeat="service in node.services | mnFormatServicesArray | orderBy" class="label neutral nocaps">{{service}}</span>
     </span>
-    <span class="cbui-table-cell flex-grow-half resp-hide-sml">
+    <span class="cbui-table-cell flex-grow-half flex-basis-2 resp-hide-sml">
       <span ng-show="!serversItemCtl.getCpuUsageConf.exist">
         ---
       </span>
@@ -25,7 +25,7 @@
         {{serversItemCtl.getCpuUsageConf.value | mnTruncateTo3Digits}}%
       </span>
     </span>
-    <span class="cbui-table-cell flex-grow-half resp-hide-sml">
+    <span class="cbui-table-cell flex-grow-half flex-basis-2 resp-hide-sml">
       <span ng-show="!serversItemCtl.getRamUsageConf.exist">
         ---
       </span>
@@ -33,7 +33,7 @@
         {{serversItemCtl.getRamUsageConf.value | mnTruncateTo3Digits}}%
       </span>
     </span>
-    <span class="cbui-table-cell flex-grow-half resp-hide-med">
+    <span class="cbui-table-cell flex-grow-half flex-basis-2 resp-hide-med">
       <span ng-show="!serversItemCtl.getSwapUsageConf.exist">
         ---
       </span>
@@ -41,7 +41,7 @@
         {{serversItemCtl.getSwapUsageConf.value | mnTruncateTo3Digits}}%
       </span>
     </span>
-    <span class="cbui-table-cell flex-grow-half resp-hide-med">
+    <span class="cbui-table-cell resp-hide-med">
       <span ng-show="!serversItemCtl.couchDiskUsage">
         ---
       </span>

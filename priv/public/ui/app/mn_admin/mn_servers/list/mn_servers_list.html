@@ -11,19 +11,21 @@
            class="sorter margin-right-4">
           name
         </span>
+      </span>
+      <span class="cbui-table-cell flex-grow-1-5">
         <span mn-sortable-title="group" sort-function="serversCtl.sortByGroup(value)" class="sorter">
           {{ poolDefault.isGroupsAvailable && rbac.cluster.server_groups.read ? "group" : " " }}
         </span>
       </span>
-      <span class="cbui-table-cell flex-grow-1-5 resp-hide-xsml">
+      <span class="cbui-table-cell flex-grow-3 resp-hide-xsml">
         <span mn-sortable-title="services" class="sorter">
           services
         </span>
       </span>
-      <span class="cbui-table-cell flex-grow-half resp-hide-sml">CPU</span>
-      <span class="cbui-table-cell flex-grow-half resp-hide-sml">RAM</span>
-      <span class="cbui-table-cell flex-grow-half resp-hide-med">swap</span>
-      <span class="cbui-table-cell flex-grow-half resp-hide-med">disk used</span>
+      <span class="cbui-table-cell flex-grow-half flex-basis-2 resp-hide-sml">CPU</span>
+      <span class="cbui-table-cell flex-grow-half flex-basis-2 resp-hide-sml">RAM</span>
+      <span class="cbui-table-cell flex-grow-half flex-basis-2 resp-hide-med">swap</span>
+      <span class="cbui-table-cell resp-hide-med">disk used</span>
       <span class="cbui-table-cell resp-hide-med">items</span>
       <span class="cbui-table-cell resp-hide-sml"></span>
     </div>
