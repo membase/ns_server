@@ -487,7 +487,7 @@ read_key_fast(Key, Default) ->
 get_timeout(Operation, Default) ->
     search_node_with_default({timeout, Operation}, Default).
 
-search_node(Key) -> search_node(?MODULE:get(), Key).
+search_node(Key) -> search_node(latest(), Key).
 
 search('latest-config-marker', Key) ->
     search(Key);
