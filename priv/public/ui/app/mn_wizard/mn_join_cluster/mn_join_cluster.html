@@ -140,6 +140,42 @@
 
         <div class="formrow">
           <div class="row">
+            <label for="setup_cbas_dirs_input0">Analytics Disk Paths</label>
+            <small class="text-smaller">Paths cannot be changed after setup</small>
+          </div>
+          <div
+             class="formrow"
+             ng-repeat="dir in clusterConfigurationCtl.config.cbasDirs track by $index">
+            <input
+               type="text"
+               autocorrect="off"
+               spellcheck="false"
+               autocapitalize="off"
+               ng-attr-id="{{'setup_cbas_dirs_input' + $index}}"
+               ng-model="clusterConfigurationCtl.config.cbasDirs[$index]"
+               ng-change="clusterConfigurationCtl.onCbasDirsChange($index)">
+            <p>
+              Free: {{clusterConfigurationCtl['cbasDirsTotal' + $index]}}
+            </p>
+          </div>
+        </div>
+
+        <div class="row formrow flex-right">
+          <button
+             class="outline btn-small"
+             title="Add field"
+             ng-click="clusterConfigurationCtl.addCbasPath();"
+             type="button">+</button>
+          <button
+             class="outline btn-small"
+             title="Remove field"
+             ng-disabled="clusterConfigurationCtl.config.cbasDirs.length === 1"
+             ng-click="clusterConfigurationCtl.config.cbasDirs.pop();"
+             type="button">-</button>
+        </div>
+
+        <div class="formrow">
+          <div class="row">
             <div class="column width-9">
               <label for="setup_query_temp_input">Query Temp Disk Path</label>
               <input
@@ -174,6 +210,7 @@
            ng-show="!!clusterConfigurationCtl.postQuerySettingsErrors.queryTmpSpaceSize">
           {{clusterConfigurationCtl.postQuerySettingsErrors.queryTmpSpaceSize}}
         </div>
+
       </div>
     </div>
     <div class="panel-footer">

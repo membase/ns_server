@@ -9,7 +9,10 @@ mn.services.MnWizard = (function () {
     ]),
     storage: new ng.forms.FormGroup({
       path: new ng.forms.FormControl(null),
-      index_path: new ng.forms.FormControl(null)
+      index_path: new ng.forms.FormControl(null),
+      cbas_path: new ng.forms.FormArray([
+        new ng.forms.FormControl()
+      ])
     })
   });
 
@@ -223,24 +226,12 @@ mn.services.MnWizard = (function () {
     this.stream.initHddStorage =
       this.stream
       .getSelfConfig
-      .pluck("storage", "hdd", 0);
-
-    var storageGroup =
-        this.wizardForm
-        .newClusterConfig
-        .get("clusterStorage.storage");
-
-    this.stream.lookUpDBPath = this.createLookUpStream(
-      storageGroup
-        .valueChanges
-        .pluck("path")
-        .distinctUntilChanged());
-
-    this.stream.lookUpIndexPath = this.createLookUpStream(
-      storageGroup
-        .valueChanges
-        .pluck("index_path")
-        .distinctUntilChanged());
+      .pluck("storage", "hdd", 0)
+      .map(function (rv) {
+        rv.cbas_path = rv.cbas_dirs;
+        delete rv.cbas_dirs;
+        return rv;
+      });
 
     this.stream.totalRAMMegs =
       this.stream

@@ -21,6 +21,8 @@ mn.components.MnNodeStorageConfig =
 
     MnNodeStorageConfig.prototype.ngOnInit = ngOnInit;
     MnNodeStorageConfig.prototype.ngOnChanges = ngOnChanges;
+    MnNodeStorageConfig.prototype.addCbasPathField = addCbasPathField;
+    MnNodeStorageConfig.prototype.removeCbasPathField = removeCbasPathField;
 
     return MnNodeStorageConfig;
 
@@ -33,11 +35,22 @@ mn.components.MnNodeStorageConfig =
       this.changeDetector.detectChanges();
     }
 
+    function addCbasPathField() {
+      var last = this.group.get('storage.cbas_path').length - 1;
+
+      this.group
+        .get('storage.cbas_path')
+        .push(new ng.forms.FormControl(this.group.get('storage.cbas_path').value[last]));
+    }
+
+    function removeCbasPathField() {
+      var last = this.group.get('storage.cbas_path').length - 1;
+      this.group.get('storage.cbas_path').removeAt(last);
+    }
+
     function MnNodeStorageConfig(mnWizardService, changeDetector) {
       this.focusField = true;
       this.changeDetector = changeDetector;
-      this.lookUpIndexPath = mnWizardService.stream.lookUpIndexPath;
-      this.lookUpDBPath = mnWizardService.stream.lookUpDBPath;
       this.hostnameHttp = mnWizardService.stream.hostnameHttp;
       this.diskStorageHttp = mnWizardService.stream.diskStorageHttp;
     }

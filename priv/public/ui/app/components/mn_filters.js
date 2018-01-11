@@ -73,7 +73,7 @@
       function serialize(toSerialize, prefix, topLevel) {
         if (angular.isArray(toSerialize)) {
           angular.forEach(toSerialize, function (value, index) {
-            serialize(value, prefix + '[' + (angular.isObject(value) ? index : '') + ']');
+            serialize(value, prefix + (angular.isObject(value) ? '[' + index + ']' : ''));
           });
         } else if (angular.isObject(toSerialize) && !angular.isDate(toSerialize)) {
           angular.forEach(toSerialize, function (value, key) {

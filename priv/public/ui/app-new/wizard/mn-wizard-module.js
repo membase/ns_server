@@ -100,7 +100,8 @@ mn.modules.MnWizard =
           mn.components.MnQuerySettingsConfig,
           mn.components.MnServicesConfig,
           mn.components.MnStorageMode,
-          mn.components.MnJoinCluster
+          mn.components.MnJoinCluster,
+          mn.components.MnPathField
         ],
         imports: [
           ng.platformBrowser.BrowserModule,
