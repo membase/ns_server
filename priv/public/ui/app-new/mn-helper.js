@@ -245,6 +245,65 @@ mn.helper.MnDestroyableComponent = (function () {
 
 var mn = mn || {};
 mn.helper = mn.helper || {};
+mn.helper.jQueryLikeParamSerializer = (function () {
+
+  jQueryParam.prototype.serializeValue = serializeValue;
+  jQueryParam.prototype.serialize = serialize;
+  jQueryParam.prototype.toString = toString;
+
+  return jQueryParam;
+
+  //function is borrowed from the Angular source code because we want to
+  //use $httpParamSerializerJQLik but with properly encoded params via
+  //encodeURIComponent since it uses correct application/x-www-form-urlencoded
+  //encoding algorithm, in accordance with
+  //https://www.w3.org/TR/html5/forms.html#url-encoded-form-data.
+  //And HttpParams doesn't accept array e.g my_key=value1&my_key=value2
+  //https://github.com/angular/angular/issues/19071
+  function jQueryParam(params) {
+    if (!params) {
+      return this;
+    }
+    this.parts = [];
+    this.serialize(params, '', true);
+  }
+
+  function toString() {
+    return this.parts.join("&");
+  }
+
+  function serialize(toSerialize, prefix, topLevel) {
+    if (_.isArray(toSerialize)) {
+      _.forEach(toSerialize, (function (value, index) {
+        this.serialize(value, prefix + (_.isObject(value) ? '[' + index + ']' : ''));
+      }).bind(this));
+    } else if (_.isObject(toSerialize) && !_.isDate(toSerialize)) {
+      _.forEach(toSerialize, (function (value, key) {
+        this.serialize(value, prefix +
+                       (topLevel ? '' : '[') +
+                       key +
+                       (topLevel ? '' : ']'));
+      }).bind(this));
+    } else {
+      this.parts.push(encodeURIComponent(prefix) + '=' + encodeURIComponent(this.serializeValue(toSerialize)));
+    }
+  }
+
+  function serializeValue(v) {
+    if (_.isObject(v)) {
+      return _.isDate(v) ? v.toISOString() : JSON.stringify(v);
+    }
+    if (v === null || _.isUndefined(v)) {
+      return "";
+    }
+    return v;
+  }
+
+})();
+
+
+var mn = mn || {};
+mn.helper = mn.helper || {};
 mn.helper.MnHttpEncoder = (function (_super) {
   "use strict";
 

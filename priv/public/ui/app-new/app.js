@@ -30,9 +30,8 @@
 
     if (req.method === 'POST' || req.method === 'PUT') {
       if (_.isObject(mnReq.body) && !_.isArray(mnReq.body)) {
-        params = new ng.common.http.HttpParams({encoder: new mn.helper.MnHttpEncoder()});
-        _.forEach(mnReq.body, function (v, k) {
-          params = params.set(k, v);
+        params = new ng.common.http.HttpParams({
+          fromString: new mn.helper.jQueryLikeParamSerializer(mnReq.body).toString()
         });
       } else {
         params = mnReq.body;
