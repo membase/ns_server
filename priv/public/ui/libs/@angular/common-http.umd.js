@@ -1,32 +1,29 @@
 /**
- * @license Angular v5.0.0
- * (c) 2010-2017 Google, Inc. https://angular.io/
+ * @license Angular v5.2.0
+ * (c) 2010-2018 Google, Inc. https://angular.io/
  * License: MIT
  */
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('@angular/core'), require('rxjs/observable/of'), require('rxjs/operator/concatMap'), require('rxjs/operator/filter'), require('rxjs/operator/map'), require('tslib'), require('@angular/common'), require('rxjs/Observable')) :
-	typeof define === 'function' && define.amd ? define('@angular/common/http', ['exports', '@angular/core', 'rxjs/observable/of', 'rxjs/operator/concatMap', 'rxjs/operator/filter', 'rxjs/operator/map', 'tslib', '@angular/common', 'rxjs/Observable'], factory) :
-	(factory((global.ng = global.ng || {}, global.ng.common = global.ng.common || {}, global.ng.common.http = global.ng.common.http || {}),global.ng.core,global.Rx.Observable,global.Rx.Observable.prototype,global.Rx.Observable.prototype,global.Rx.Observable.prototype,global.ng.common,global.Rx));
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('@angular/core'), require('rxjs/observable/of'), require('rxjs/operator/concatMap'), require('rxjs/operator/filter'), require('rxjs/operator/map'), require('@angular/common'), require('rxjs/Observable')) :
+	typeof define === 'function' && define.amd ? define('@angular/common/http', ['exports', '@angular/core', 'rxjs/observable/of', 'rxjs/operator/concatMap', 'rxjs/operator/filter', 'rxjs/operator/map', '@angular/common', 'rxjs/Observable'], factory) :
+	(factory((global.ng = global.ng || {}, global.ng.common = global.ng.common || {}, global.ng.common.http = {}),global.ng.core,global.Rx.Observable,global.Rx.Observable.prototype,global.Rx.Observable.prototype,global.Rx.Observable.prototype,global.ng.common,global.Rx));
 }(this, (function (exports,_angular_core,rxjs_observable_of,rxjs_operator_concatMap,rxjs_operator_filter,rxjs_operator_map,_angular_common,rxjs_Observable) { 'use strict';
 
-           var extendStatics = Object.setPrototypeOf ||
-               ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-               function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-
-           function __extends(d, b) {
-             extendStatics(d, b);
-             function __() { this.constructor = d; }
-             d.prototype = b === null ? Object.create(b) :
-               (__.prototype = b.prototype, new __());
-           }
 /**
- * @license Angular v5.0.0
- * (c) 2010-2017 Google, Inc. https://angular.io/
+ * @license Angular v5.2.0
+ * (c) 2010-2018 Google, Inc. https://angular.io/
  * License: MIT
  */
 /**
  * @fileoverview added by tsickle
  * @suppress {checkTypes} checked by tsc
+ */
+/**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
  */
 /**
  * Transforms an `HttpRequest` into a stream of `HttpEvent`s, one of which will likely be a
@@ -41,7 +38,16 @@
  * \@stable
  * @abstract
  */
-var HttpHandler = (function () {
+var extendStatics = Object.setPrototypeOf ||
+    ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+    function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+
+function __extends(d, b) {
+    extendStatics(d, b);
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+}
+var HttpHandler = /** @class */ (function () {
     function HttpHandler() {
     }
     return HttpHandler;
@@ -57,7 +63,7 @@ var HttpHandler = (function () {
  * \@stable
  * @abstract
  */
-var HttpBackend = (function () {
+var HttpBackend = /** @class */ (function () {
     function HttpBackend() {
     }
     return HttpBackend;
@@ -68,13 +74,20 @@ var HttpBackend = (function () {
  * @suppress {checkTypes} checked by tsc
  */
 /**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
  * @record
  */
 /**
  * Immutable set of Http headers, with lazy parsing.
  * \@stable
  */
-var HttpHeaders = (function () {
+var HttpHeaders = /** @class */ (function () {
     function HttpHeaders(headers) {
         var _this = this;
         /**
@@ -375,6 +388,13 @@ var HttpHeaders = (function () {
  * @suppress {checkTypes} checked by tsc
  */
 /**
+ * @license
+ * Copyright Google Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be
+ * found in the LICENSE file at https://angular.io/license
+ */
+/**
  * A codec for encoding and decoding parameters in URLs.
  *
  * Used by `HttpParams`.
@@ -390,7 +410,7 @@ var HttpHeaders = (function () {
  *
  * \@stable
  */
-var HttpUrlEncodingCodec = (function () {
+var HttpUrlEncodingCodec = /** @class */ (function () {
     function HttpUrlEncodingCodec() {
     }
     /**
@@ -481,7 +501,7 @@ function standardEncoding(v) {
  *
  * \@stable
  */
-var HttpParams = (function () {
+var HttpParams = /** @class */ (function () {
     function HttpParams(options) {
         if (options === void 0) { options = /** @type {?} */ ({}); }
         var _this = this;
@@ -677,7 +697,7 @@ var HttpParams = (function () {
         }
         if (this.cloneFrom !== null) {
             this.cloneFrom.init();
-            this.cloneFrom.keys().forEach(function (key) { return /** @type {?} */ ((_this.map)).set(key, /** @type {?} */ ((/** @type {?} */ ((/** @type {?} */ ((_this.cloneFrom)).map)).get(key)))); }); /** @type {?} */
+            this.cloneFrom.keys().forEach(function (key) { return ((_this.map)).set(key, /** @type {?} */ ((/** @type {?} */ ((/** @type {?} */ ((_this.cloneFrom)).map)).get(key)))); }); /** @type {?} */
             ((this.updates)).forEach(function (update) {
                 switch (update.op) {
                     case 'a':
@@ -780,7 +800,7 @@ function isFormData(value) {
  *
  * \@stable
  */
-var HttpRequest = (function () {
+var HttpRequest = /** @class */ (function () {
     function HttpRequest(method, url, third, fourth) {
         this.url = url;
         /**
@@ -817,7 +837,7 @@ var HttpRequest = (function () {
         // the body argument is to use a known no-body method like GET.
         if (mightHaveBody(this.method) || !!fourth) {
             // Body is the third argument, options are the fourth.
-            this.body = /** @type {?} */ (third) || null;
+            this.body = (third !== undefined) ? /** @type {?} */ (third) : null;
             options = fourth;
         }
         else {
@@ -1113,7 +1133,7 @@ HttpEventType[HttpEventType.User] = "User";
  * \@stable
  * @abstract
  */
-var HttpResponseBase = (function () {
+var HttpResponseBase = /** @class */ (function () {
     /**
      * Super-constructor for all responses.
      *
@@ -1143,8 +1163,8 @@ var HttpResponseBase = (function () {
  *
  * \@stable
  */
-var HttpHeaderResponse = (function (_super) {
-     __extends(HttpHeaderResponse, _super);
+var HttpHeaderResponse = /** @class */ (function (_super) {
+    __extends(HttpHeaderResponse, _super);
     /**
      * Create a new `HttpHeaderResponse` with the given parameters.
      */
@@ -1192,7 +1212,7 @@ var HttpHeaderResponse = (function (_super) {
  *
  * \@stable
  */
-var HttpResponse = (function (_super) {
+var HttpResponse = /** @class */ (function (_super) {
     __extends(HttpResponse, _super);
     /**
      * Construct a new `HttpResponse`.
@@ -1201,7 +1221,7 @@ var HttpResponse = (function (_super) {
         if (init === void 0) { init = {}; }
         var _this = _super.call(this, init) || this;
         _this.type = HttpEventType.Response;
-        _this.body = init.body || null;
+        _this.body = init.body !== undefined ? init.body : null;
         return _this;
     }
     /**
@@ -1237,7 +1257,7 @@ var HttpResponse = (function (_super) {
  *
  * \@stable
  */
-var HttpErrorResponse = (function (_super) {
+var HttpErrorResponse = /** @class */ (function (_super) {
     __extends(HttpErrorResponse, _super);
     function HttpErrorResponse(init) {
         var _this =
@@ -1303,7 +1323,7 @@ function addBody(options, body) {
  *
  * \@stable
  */
-var HttpClient = (function () {
+var HttpClient = /** @class */ (function () {
     function HttpClient(handler) {
         this.handler = handler;
     }
@@ -1424,13 +1444,11 @@ var HttpClient = (function () {
             // provided.
             // Figure out the headers.
             var /** @type {?} */ headers = undefined;
-            if (!!options.headers !== undefined) {
-                if (options.headers instanceof HttpHeaders) {
-                    headers = options.headers;
-                }
-                else {
-                    headers = new HttpHeaders(options.headers);
-                }
+            if (options.headers instanceof HttpHeaders) {
+                headers = options.headers;
+            }
+            else {
+                headers = new HttpHeaders(options.headers);
             }
             // Sort out parameters.
             var /** @type {?} */ params = undefined;
@@ -1443,7 +1461,7 @@ var HttpClient = (function () {
                 }
             }
             // Construct the request.
-            req = new HttpRequest(first, /** @type {?} */ ((url)), options.body || null, {
+            req = new HttpRequest(first, /** @type {?} */ ((url)), (options.body !== undefined ? options.body : null), {
                 headers: headers,
                 params: params,
                 reportProgress: options.reportProgress,
@@ -1772,7 +1790,7 @@ var HttpClient = (function () {
  *
  * \@stable
  */
-var HttpInterceptorHandler = (function () {
+var HttpInterceptorHandler = /** @class */ (function () {
     function HttpInterceptorHandler(next, interceptor) {
         this.next = next;
         this.interceptor = interceptor;
@@ -1797,7 +1815,7 @@ var HttpInterceptorHandler = (function () {
  * \@stable
  */
 var HTTP_INTERCEPTORS = new _angular_core.InjectionToken('HTTP_INTERCEPTORS');
-var NoopInterceptor = (function () {
+var NoopInterceptor = /** @class */ (function () {
     function NoopInterceptor() {
     }
     /**
@@ -1852,7 +1870,7 @@ var JSONP_ERR_WRONG_RESPONSE_TYPE = 'JSONP requests must use Json response type.
  * \@stable
  * @abstract
  */
-var JsonpCallbackContext = (function () {
+var JsonpCallbackContext = /** @class */ (function () {
     function JsonpCallbackContext() {
     }
     return JsonpCallbackContext;
@@ -1863,7 +1881,7 @@ var JsonpCallbackContext = (function () {
  *
  * \@stable
  */
-var JsonpClientBackend = (function () {
+var JsonpClientBackend = /** @class */ (function () {
     function JsonpClientBackend(callbackMap, document) {
         this.callbackMap = callbackMap;
         this.document = document;
@@ -2032,7 +2050,7 @@ var JsonpClientBackend = (function () {
  *
  * \@stable
  */
-var JsonpInterceptor = (function () {
+var JsonpInterceptor = /** @class */ (function () {
     function JsonpInterceptor(jsonp) {
         this.jsonp = jsonp;
     }
@@ -2096,7 +2114,7 @@ function getResponseUrl(xhr) {
  * \@stable
  * @abstract
  */
-var XhrFactory = (function () {
+var XhrFactory = /** @class */ (function () {
     function XhrFactory() {
     }
     return XhrFactory;
@@ -2106,7 +2124,7 @@ var XhrFactory = (function () {
  *
  * \@stable
  */
-var BrowserXhr = (function () {
+var BrowserXhr = /** @class */ (function () {
     function BrowserXhr() {
     }
     /**
@@ -2129,7 +2147,7 @@ var BrowserXhr = (function () {
  *
  * \@stable
  */
-var HttpXhrBackend = (function () {
+var HttpXhrBackend = /** @class */ (function () {
     function HttpXhrBackend(xhrFactory) {
         this.xhrFactory = xhrFactory;
     }
@@ -2235,27 +2253,27 @@ var HttpXhrBackend = (function () {
                 var /** @type {?} */ ok = status >= 200 && status < 300;
                 // Check whether the body needs to be parsed as JSON (in many cases the browser
                 // will have done that already).
-                if (ok && req.responseType === 'json' && typeof body === 'string') {
-                    // Attempt the parse. If it fails, a parse error should be delivered to the user.
+                if (req.responseType === 'json' && typeof body === 'string') {
+                    // Save the original body, before attempting XSSI prefix stripping.
+                    var /** @type {?} */ originalBody = body;
                     body = body.replace(XSSI_PREFIX, '');
                     try {
-                        body = JSON.parse(body);
+                        // Attempt the parse. If it fails, a parse error should be delivered to the user.
+                        body = body !== '' ? JSON.parse(body) : null;
                     }
                     catch (/** @type {?} */ error) {
-                        // Even though the response status was 2xx, this is still an error.
-                        ok = false;
-                        // The parse error contains the text of the body that failed to parse.
-                        body = /** @type {?} */ ({ error: error, text: body });
-                    }
-                }
-                else if (!ok && req.responseType === 'json' && typeof body === 'string') {
-                    try {
-                        // Attempt to parse the body as JSON.
-                        body = JSON.parse(body);
-                    }
-                    catch (/** @type {?} */ error) {
-                        // Cannot be certain that the body was meant to be parsed as JSON.
-                        // Leave the body as a string.
+                        // Since the JSON.parse failed, it's reasonable to assume this might not have been a
+                        // JSON response. Restore the original body (including any XSSI prefix) to deliver
+                        // a better error response.
+                        body = originalBody;
+                        // If this was an error request to begin with, leave it as a string, it probably
+                        // just isn't JSON. Otherwise, deliver the parsing error to the user.
+                        if (ok) {
+                            // Even though the response status was 2xx, this is still an error.
+                            ok = false;
+                            // The parse error contains the text of the body that failed to parse.
+                            body = /** @type {?} */ ({ error: error, text: body });
+                        }
                     }
                 }
                 if (ok) {
@@ -2404,7 +2422,7 @@ var XSRF_HEADER_NAME = new _angular_core.InjectionToken('XSRF_HEADER_NAME');
  * \@stable
  * @abstract
  */
-var HttpXsrfTokenExtractor = (function () {
+var HttpXsrfTokenExtractor = /** @class */ (function () {
     function HttpXsrfTokenExtractor() {
     }
     return HttpXsrfTokenExtractor;
@@ -2412,7 +2430,7 @@ var HttpXsrfTokenExtractor = (function () {
 /**
  * `HttpXsrfTokenExtractor` which retrieves the token from a cookie.
  */
-var HttpXsrfCookieExtractor = (function () {
+var HttpXsrfCookieExtractor = /** @class */ (function () {
     function HttpXsrfCookieExtractor(doc, platform, cookieName) {
         this.doc = doc;
         this.platform = platform;
@@ -2456,7 +2474,7 @@ var HttpXsrfCookieExtractor = (function () {
 /**
  * `HttpInterceptor` which adds an XSRF token to eligible outgoing requests.
  */
-var HttpXsrfInterceptor = (function () {
+var HttpXsrfInterceptor = /** @class */ (function () {
     function HttpXsrfInterceptor(tokenService, headerName) {
         this.tokenService = tokenService;
         this.headerName = headerName;
@@ -2555,7 +2573,7 @@ function jsonpCallbackContext() {
  *
  * \@stable
  */
-var HttpClientXsrfModule = (function () {
+var HttpClientXsrfModule = /** @class */ (function () {
     function HttpClientXsrfModule() {
     }
     /**
@@ -2626,7 +2644,7 @@ var HttpClientXsrfModule = (function () {
  *
  * \@stable
  */
-var HttpClientModule = (function () {
+var HttpClientModule = /** @class */ (function () {
     function HttpClientModule() {
     }
     HttpClientModule.decorators = [
@@ -2665,7 +2683,7 @@ var HttpClientModule = (function () {
  *
  * \@stable
  */
-var HttpClientJsonpModule = (function () {
+var HttpClientJsonpModule = /** @class */ (function () {
     function HttpClientJsonpModule() {
     }
     HttpClientJsonpModule.decorators = [
