@@ -34,13 +34,13 @@ mn.helper = mn.helper || {};
 mn.helper.httpErrorScenario = (function () {
   return function (obs) {
     return obs
-      .map(function (rv) {
+      .switchMap(function (rv) {
         if (rv instanceof ng.common.http.HttpErrorResponse) {
-          return rv;
+          return Rx.Observable.of(rv);
         } else if (mn.helper.isJson(rv)) {
-          return new ng.common.http.HttpErrorResponse({error: rv});
+          return Rx.Observable.of(new ng.common.http.HttpErrorResponse({error: rv}));
         } else {
-          return Rx.Onservable.never();
+          return Rx.Observable.never();
         }
       })
       .pluck("error")
