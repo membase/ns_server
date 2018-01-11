@@ -25,11 +25,11 @@
 
 <div
    class="error error-form"
-   [hidden]="!(querySettingsHttp.error | async)?.errors.queryTmpSpaceDir">
-  {{(querySettingsHttp.error | async)?.errors.queryTmpSpaceDir}}
+   [hidden]="!(querySettingsHttp.error | async)?.errors?.queryTmpSpaceDir">
+  {{(querySettingsHttp.error | async)?.errors?.queryTmpSpaceDir}}
 </div>
 <div
    class="error error-form"
-   [hidden]="!(querySettingsHttp.error | async)?.errors.queryTmpSpaceSize">
-  {{(querySettingsHttp.error | async)?.errors.queryTmpSpaceSize}}
+   [hidden]="!(querySettingsHttp.error | async)?.errors?.queryTmpSpaceSize">
+  {{(querySettingsHttp.error | async)?.errors?.queryTmpSpaceSize}}
 </div>
