@@ -19,11 +19,12 @@
 
 -export([start_keeper/0, get_status/1, get_indexes/0, get_indexes_version/0]).
 
--export([get_type/0, get_remote_indexes/1, get_local_status/0, restart/0, get_status_mapping/0,
+-export([get_type/0, get_remote_indexes/1, get_local_status/0, restart/0,
          get_gauges/0, get_counters/0, get_computed/0, grab_stats/0, prefix/0,
          per_index_stat/2, global_index_stat/1, compute_gauges/1,
          get_service_gauges/0, service_stat_prefix/0, service_event_name/0,
-         compute_service_gauges/1, get_service_counters/0]).
+         compute_service_gauges/1, get_service_counters/0,
+         process_status/1]).
 
 get_status(Timeout) ->
     index_status_keeper:get_status(?MODULE, Timeout).
@@ -52,7 +53,7 @@ get_local_status() ->
 restart() ->
     ns_ports_setup:restart_port_by_name(indexer).
 
-get_status_mapping() ->
+status_mapping() ->
     AddType = case cluster_compat_mode:is_cluster_45() of
                   true ->
                       [{storageMode, <<"indexType">>}];
@@ -66,6 +67,10 @@ get_status_mapping() ->
      {definition, <<"definition">>},
      {progress, <<"completion">>},
      {hosts, <<"hosts">>} | AddType].
+
+process_status(Status) ->
+    index_status_keeper:process_indexer_status(?MODULE, Status,
+                                               status_mapping()).
 
 start_keeper() ->
     index_status_keeper:start_link(?MODULE).

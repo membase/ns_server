@@ -21,7 +21,7 @@
 
 %% API
 -export([start_link/1, update/2, get_status/2,
-         get_indexes/1, get_indexes_version/1]).
+         get_indexes/1, get_indexes_version/1, process_indexer_status/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -180,7 +180,7 @@ grab_status(#state{indexer = Indexer,
                    source = local}) ->
     case Indexer:get_local_status() of
         {ok, {[_|_] = Status}} ->
-            process_status(Indexer, Status);
+            Indexer:process_status(Status);
         {ok, Other} ->
             ?log_error("Got invalid status from the ~p:~n~p", [Indexer, Other]),
             {error, bad_status};
@@ -220,7 +220,7 @@ grab_status(#state{indexer = Indexer,
             end
     end.
 
-process_status(Indexer, Status) ->
+process_indexer_status(Mod, Status, Mapping) ->
     case lists:keyfind(<<"code">>, 1, Status) of
         {_, <<"success">>} ->
             RawIndexes =
@@ -231,25 +231,26 @@ process_status(Indexer, Status) ->
                         V
                 end,
 
-            {ok, process_indexes(Indexer, RawIndexes)};
+            {ok, process_indexes(RawIndexes, Mapping)};
         _ ->
-            ?log_error("Indexer returned unsuccessful status:~n~p", [Status]),
+            ?log_error("Indexer ~p returned unsuccessful status:~n~p",
+                       [Mod, Status]),
             {error, bad_status}
     end.
 
-process_indexes(Indexer, Indexes) ->
-    KeysMappingAtomToBin = Indexer:get_status_mapping(),
+process_indexes(Indexes, Mapping) ->
     lists:map(
       fun ({Index}) ->
-              lists:foldl(fun ({Key, BinKey}, Acc) when is_atom(Key) ->
-                                  {_, Val} = lists:keyfind(BinKey, 1, Index),
-                                  [{Key, Val} | Acc];
-                              ({ListOfKeys, BinKey}, Acc) when is_list(ListOfKeys) ->
-                                  {_, Val} = lists:keyfind(BinKey, 1, Index),
-                                  lists:foldl(fun (Key, Acc1) ->
-                                                      [{Key, Val} | Acc1]
-                                              end, Acc, ListOfKeys)
-                          end, [], KeysMappingAtomToBin)
+              lists:foldl(
+                fun ({Key, BinKey}, Acc) when is_atom(Key) ->
+                        {_, Val} = lists:keyfind(BinKey, 1, Index),
+                        [{Key, Val} | Acc];
+                    ({ListOfKeys, BinKey}, Acc) when is_list(ListOfKeys) ->
+                        {_, Val} = lists:keyfind(BinKey, 1, Index),
+                        lists:foldl(fun (Key, Acc1) ->
+                                            [{Key, Val} | Acc1]
+                                    end, Acc, ListOfKeys)
+                end, [], Mapping)
       end, Indexes).
 
 get_source(Indexer) ->
