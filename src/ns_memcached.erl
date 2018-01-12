@@ -1300,119 +1300,73 @@ ensure_bucket_config(Sock, _Bucket, memcached, _MaxSize) ->
                       end, not_present),
     ok.
 
-maybe_set_num_threads(Bucket, ReloadBuckets, NewNumThreads, ActualNumThreadsBin) ->
-    NewNumThreadsBin = list_to_binary(integer_to_list(NewNumThreads)),
-    case ReloadBuckets andalso NewNumThreadsBin =/= ActualNumThreadsBin of
-        true ->
-            ale:info(?USER_LOGGER,
-                     "Bucket priority changed from ~s to ~s for bucket ~p",
-                     [ActualNumThreadsBin, NewNumThreadsBin, Bucket]),
-            {ok, needs_restart};
-        false ->
-            ok
+check_for_change(Bucket, NewVal, OldVal, Name, Body) ->
+    case NewVal of
+        OldVal ->
+            ok;
+        X when is_binary(X) ->
+            ?log_info("Changing ~p from ~s to ~s for bucket ~p",
+                      [Name, OldVal, NewVal, Bucket]),
+            Body()
     end.
 
+maybe_needs_restart(Bucket, NewVal, OldVal, Name) ->
+    check_for_change(Bucket, NewVal, OldVal, Name,
+                     fun() -> {ok, needs_restart} end).
+
+maybe_set_engine_param(Sock, Bucket, Key, NewVal, OldVal, Name, Type) ->
+    check_for_change(Bucket, NewVal, OldVal, Name,
+                     fun() ->
+                             ok = mc_client_binary:set_engine_param(Sock, Key, NewVal, Type)
+                     end).
+
+maybe_set_num_threads(_, false, _, _) ->
+    ok;
+maybe_set_num_threads(Bucket, true, NewNumThreads, ActualNumThreadsBin) ->
+    NewNumThreadsBin = list_to_binary(integer_to_list(NewNumThreads)),
+    maybe_needs_restart(Bucket, NewNumThreadsBin, ActualNumThreadsBin, "bucket priority").
+
+maybe_set_item_eviction_policy(_, false, _, _) ->
+    ok;
 maybe_set_item_eviction_policy(_, _, undefined, _) ->
     ok;
-maybe_set_item_eviction_policy(Bucket, ReloadBuckets, NewPolicy, ActualPolicyBin) ->
+maybe_set_item_eviction_policy(Bucket, true, NewPolicy, ActualPolicyBin) ->
     NewPolicyBin = atom_to_binary(NewPolicy, latin1),
-    case ReloadBuckets andalso NewPolicyBin =/= ActualPolicyBin of
-        true ->
-            ale:info(?USER_LOGGER,
-                     "Eviction policy changed from '~s' to '~s' for bucket ~p",
-                     [ActualPolicyBin, NewPolicyBin, Bucket]),
-            {ok, needs_restart};
-        false ->
-            ok
-    end.
+    maybe_needs_restart(Bucket, NewPolicyBin, ActualPolicyBin, "eviction policy").
+
+maybe_set_db_dir(Bucket, NewDBDir, ActualDBDirBin) ->
+    NewDBDirBin = list_to_binary(NewDBDir),
+    maybe_needs_restart(Bucket, NewDBDirBin, ActualDBDirBin, "dbname").
 
 maybe_set_ephemeral_full_policy(_, _, undefined, _) ->
     ok;
 maybe_set_ephemeral_full_policy(Sock, Bucket, NewPolicy, ActualPolicyBin) ->
     NewPolicyBin = atom_to_binary(NewPolicy, latin1),
-    case NewPolicyBin =/= ActualPolicyBin of
-        true ->
-            ok = mc_client_binary:set_engine_param(Sock,
-                                                   <<"ephemeral_full_policy">>,
-                                                   NewPolicyBin,
-                                                   flush),
-            ?log_info("Ephemeral full policy changed from '~s' to '~s' for bucket ~p",
-                      [ActualPolicyBin, NewPolicyBin, Bucket]),
-            ok;
-        false ->
-            ok
-    end.
+    maybe_set_engine_param(Sock, Bucket, <<"ephemeral_full_policy">>,
+                           NewPolicyBin, ActualPolicyBin, "ephemeral full policy", flush).
 
 maybe_set_ephemeral_metadata_purge_age(_, _, undefined, _) ->
     ok;
-maybe_set_ephemeral_metadata_purge_age(Sock, Bucket, NewPurgeAge, CurrPurgeAge) ->
+maybe_set_ephemeral_metadata_purge_age(Sock, Bucket, NewPurgeAge, ActualPurgeAgeBin) ->
     NewPurgeAgeBin = list_to_binary(integer_to_list(NewPurgeAge)),
-    case NewPurgeAgeBin =/= CurrPurgeAge of
-        true ->
-            ok = mc_client_binary:set_flush_param(Sock,
-                                                  <<"ephemeral_metadata_purge_age">>,
-                                                  NewPurgeAgeBin),
-            ?log_info("Ephemeral metadata purge age changed from '~s' to '~s' for bucket ~p",
-                      [CurrPurgeAge, NewPurgeAgeBin, Bucket]),
-            ok;
-        false ->
-            ok
-    end.
+    maybe_set_engine_param(Sock, Bucket, <<"ephemeral_metadata_purge_age">>,
+                           NewPurgeAgeBin, ActualPurgeAgeBin,
+                           "ephemeral metadata purge age", flush).
 
 maybe_set_drift_thresholds(_Sock, _Bucket, undefined, _, _) ->
     ok;
-maybe_set_drift_thresholds(Sock, Bucket, {DAT, DBT}, ActualDAT, ActualDBT) ->
+maybe_set_drift_thresholds(Sock, Bucket, {DAT, DBT}, ActualDATBin, ActualDBTBin) ->
     DATBin = list_to_binary(integer_to_list(misc:msecs_to_usecs(DAT))),
     DBTBin = list_to_binary(integer_to_list(misc:msecs_to_usecs(DBT))),
-    DATChanged = (DATBin =/= ActualDAT),
-    DBTChanged = (DBTBin =/= ActualDBT),
-
-    case DATChanged of
-        true ->
-            ok = mc_client_binary:set_engine_param(Sock,
-                                                   <<"hlc_drift_ahead_threshold_us">>,
-                                                   DATBin,
-                                                   vbucket),
-            ?log_info("Drift ahead threshold changed from '~s' to '~s' for bucket ~p",
-                      [ActualDAT, DATBin, Bucket]);
-        false ->
-            ok
-    end,
-
-    case DBTChanged of
-        true ->
-            ok = mc_client_binary:set_engine_param(Sock,
-                                                   <<"hlc_drift_behind_threshold_us">>,
-                                                   DBTBin,
-                                                   vbucket),
-            ?log_info("Drift behind threshold changed from '~s' to '~s' for bucket ~p",
-                      [ActualDBT, DBTBin, Bucket]);
-        false ->
-            ok
-    end.
+    maybe_set_engine_param(Sock, Bucket, <<"hlc_drift_ahead_threshold_us">>, DATBin,
+                           ActualDATBin, "drift ahead threshold", vbucket),
+    maybe_set_engine_param(Sock, Bucket, <<"hlc_drift_behind_threshold_us">>, DBTBin,
+                           ActualDBTBin, "drift behind threshold", vbucket).
 
 maybe_set_max_size(Sock, Bucket, NewMaxSize, ActualMaxSizeBin) ->
     NewMaxSizeBin = list_to_binary(integer_to_list(NewMaxSize)),
-    case ActualMaxSizeBin of
-        NewMaxSizeBin ->
-            ok;
-        X1 when is_binary(X1) ->
-            ?log_info("Changing max_size of ~p from ~s to ~s", [Bucket, X1,
-                                                                NewMaxSizeBin]),
-            ok = mc_client_binary:set_flush_param(Sock, <<"max_size">>, NewMaxSizeBin)
-    end.
-
-maybe_set_db_dir(Bucket, NewDBDir, ActualDBDirBin) ->
-    NewDBDirBin = list_to_binary(NewDBDir),
-    case ActualDBDirBin of
-        NewDBDirBin ->
-            ok;
-        X2 when is_binary(X2) ->
-            ?log_info("Changing dbname of ~p from ~s to ~s", [Bucket, X2,
-                                                              NewDBDirBin]),
-            %% Just exit; this will delete and recreate the bucket
-            {ok, needs_restart}
-    end.
+    maybe_set_engine_param(Sock, Bucket, <<"max_size">>, NewMaxSizeBin, ActualMaxSizeBin,
+                           "max size", flush).
 
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).

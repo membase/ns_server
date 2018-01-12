@@ -43,7 +43,6 @@
          refresh_ssl_certs/1,
          noop/1,
          select_bucket/2,
-         set_flush_param/3,
          set_vbucket/3,
          stats/1,
          stats/4,
@@ -340,9 +339,6 @@ select_bucket(Sock, BucketName) ->
             ok;
         Response -> process_error_response(Response)
     end.
-
-set_flush_param(Sock, Key, Value) ->
-    set_engine_param(Sock, Key, Value, flush).
 
 engine_param_type_to_int(flush) ->
     1;
