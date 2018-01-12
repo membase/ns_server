@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(indexer_fts).
+-module(service_fts).
 
 -export([start_keeper/0, get_indexes/0]).
 

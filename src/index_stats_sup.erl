@@ -60,22 +60,24 @@ handle_cfg_event(Event) ->
             work_queue:submit_work(index_stats_worker, fun refresh_children/0)
     end.
 
-compute_wanted_children(Indexer, Config) ->
-    case ns_cluster_membership:should_run_service(Config, Indexer:get_type(), node()) of
+compute_wanted_children(Service, Config) ->
+    case ns_cluster_membership:should_run_service(Config, Service:get_type(),
+                                                  node()) of
         false ->
             [];
         true ->
-            StaticChildren = [{Indexer, index_stats_collector}],
+            StaticChildren = [{Service, index_stats_collector}],
 
             %% Stats archiver and reader for Service specific stats
-            ServiceChildren = [{Indexer, Mod, Indexer:service_event_name()}
+            ServiceChildren = [{Service, Mod, Service:service_event_name()}
                                || Mod <- [stats_archiver, stats_reader]],
 
             BucketCfgs = ns_bucket:get_buckets(Config),
-            BucketNames = [Name || {Name, BConfig} <- BucketCfgs,
-                                   lists:keyfind(type, 1, BConfig) =:= {type, membase}],
+            BucketNames =
+                [Name || {Name, BConfig} <- BucketCfgs,
+                         lists:keyfind(type, 1, BConfig) =:= {type, membase}],
             PerBucketChildren =
-                [{Indexer, Mod, Name}
+                [{Service, Mod, Name}
                  || Name <- BucketNames,
                     Mod <- [stats_archiver, stats_reader]],
 
@@ -83,12 +85,14 @@ compute_wanted_children(Indexer, Config) ->
     end.
 
 refresh_children() ->
-    RunningChildren0 = [Id || {Id, _, _, _} <- supervisor:which_children(index_stats_children_sup)],
+    RunningChildren0 =
+        [Id || {Id, _, _, _} <-
+                   supervisor:which_children(index_stats_children_sup)],
     RunningChildren = lists:sort(RunningChildren0),
     Config = ns_config:get(),
-    WantedChildren0 = compute_wanted_children(indexer_fts, Config) ++
-        compute_wanted_children(indexer_gsi, Config) ++
-        compute_wanted_children(indexer_cbas, Config),
+    WantedChildren0 = compute_wanted_children(service_fts, Config) ++
+        compute_wanted_children(service_index, Config) ++
+        compute_wanted_children(service_cbas, Config),
     WantedChildren = lists:sort(WantedChildren0),
     ToStart = ordsets:subtract(WantedChildren, RunningChildren),
     ToStop = ordsets:subtract(RunningChildren, WantedChildren),
@@ -96,14 +100,17 @@ refresh_children() ->
     lists:foreach(fun start_child/1, ToStart),
     ok.
 
-child_spec({Indexer, Mod, Name}) when Name =:= "@index" orelse Name =:= "@fts" orelse Name =:= "@cbas" ->
-    {{Indexer, Mod, Name}, {Mod, start_link, [Name]},
+child_spec({Service, Mod, Name}) when Name =:= "@index" orelse
+                                      Name =:= "@fts" orelse
+                                      Name =:= "@cbas" ->
+    {{Service, Mod, Name}, {Mod, start_link, [Name]},
      permanent, 1000, worker, []};
-child_spec({Indexer, Mod, Name}) when Mod =:= stats_archiver; Mod =:= stats_reader ->
-    {{Indexer, Mod, Name}, {Mod, start_link, [Indexer:prefix() ++ Name]},
+child_spec({Service, Mod, Name}) when Mod =:= stats_archiver;
+                                      Mod =:= stats_reader ->
+    {{Service, Mod, Name}, {Mod, start_link, [Service:prefix() ++ Name]},
      permanent, 1000, worker, []};
-child_spec({Indexer, Mod}) ->
-    {{Indexer, Mod}, {Mod, start_link, [Indexer]}, permanent, 1000, worker, []}.
+child_spec({Service, Mod}) ->
+    {{Service, Mod}, {Mod, start_link, [Service]}, permanent, 1000, worker, []}.
 
 start_child(Id) ->
     {ok, _Pid} = supervisor:start_child(index_stats_children_sup, child_spec(Id)).

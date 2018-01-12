@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(indexer_cbas).
+-module(service_cbas).
 
 -export([get_type/0, restart/0,
          get_gauges/0, get_counters/0, get_computed/0, grab_stats/0, prefix/0,

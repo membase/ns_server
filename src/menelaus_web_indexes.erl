@@ -212,7 +212,7 @@ integer_settings() ->
 
 handle_index_status(Req) ->
     menelaus_util:assert_is_40(),
-    {ok, Indexes0, Stale, Version} = indexer_gsi:get_indexes(),
+    {ok, Indexes0, Stale, Version} = service_index:get_indexes(),
     Indexes = [{Props} || Props <- Indexes0],
 
     Warnings =

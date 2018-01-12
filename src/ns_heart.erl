@@ -267,8 +267,8 @@ grab_latest_stats(Bucket) ->
 add_interesting_index_stats(BucketName, BucketStats) ->
     IndexStats = grab_latest_stats("@index-" ++ BucketName),
 
-    DataSizeKey = indexer_gsi:global_index_stat(<<"data_size">>),
-    DiskSizeKey = indexer_gsi:global_index_stat(<<"disk_size">>),
+    DataSizeKey = service_index:global_index_stat(<<"data_size">>),
+    DiskSizeKey = service_index:global_index_stat(<<"disk_size">>),
 
     DataSize = proplists:get_value(DataSizeKey, IndexStats, 0),
     DiskSize = proplists:get_value(DiskSizeKey, IndexStats, 0),
@@ -371,7 +371,7 @@ grab_index_status() ->
     case ns_cluster_membership:should_run_service(index, node()) of
         true ->
             try
-                {ok, Status} = indexer_gsi:get_status(2000),
+                {ok, Status} = service_index:get_status(2000),
                 Status
             catch T:E ->
                     ?log_debug("ignoring failure to get index status: ~p~n~p",

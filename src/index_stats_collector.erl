@@ -27,7 +27,7 @@
 %% callbacks
 -export([init/1, handle_info/2, grab_stats/1, process_stats/5]).
 
--record(state, {indexer :: atom(),
+-record(state, {service :: atom(),
                 default_stats,
                 buckets}).
 
@@ -39,17 +39,18 @@
           status = []
          }).
 
-server_name(Indexer) ->
-    list_to_atom(?MODULE_STRING "-" ++ atom_to_list(Indexer:get_type())).
+server_name(Service) ->
+    list_to_atom(?MODULE_STRING "-" ++ atom_to_list(Service:get_type())).
 
-ets_name(Indexer) ->
-    list_to_atom(?MODULE_STRING "_names-" ++ atom_to_list(Indexer:get_type())).
+ets_name(Service) ->
+    list_to_atom(?MODULE_STRING "_names-" ++ atom_to_list(Service:get_type())).
 
-start_link(Indexer) ->
-    base_stats_collector:start_link({local, server_name(Indexer)}, ?MODULE, Indexer).
+start_link(Service) ->
+    base_stats_collector:start_link({local, server_name(Service)}, ?MODULE,
+                                    Service).
 
-init(Indexer) ->
-    ets:new(ets_name(Indexer), [protected, named_table]),
+init(Service) ->
+    ets:new(ets_name(Service), [protected, named_table]),
 
     Self = self(),
     ns_pubsub:subscribe_link(
@@ -66,11 +67,12 @@ init(Indexer) ->
     Buckets = lists:map(fun list_to_binary/1,
                         ns_bucket:get_bucket_names_of_type(membase, couchstore) ++
                             ns_bucket:get_bucket_names_of_type(membase, ephemeral)),
-    Defaults = [{Indexer:global_index_stat(atom_to_binary(Stat, latin1)), 0}
-                || Stat <- Indexer:get_gauges() ++ Indexer:get_counters() ++ Indexer:get_computed()],
+    Defaults = [{Service:global_index_stat(atom_to_binary(Stat, latin1)), 0}
+                || Stat <- Service:get_gauges() ++ Service:get_counters() ++
+                       Service:get_computed()],
 
 
-    {ok, #state{indexer = Indexer,
+    {ok, #state{service = Service,
                 buckets = Buckets,
                 default_stats = finalize_index_stats(Defaults)}}.
 
@@ -87,27 +89,31 @@ find_type(Name, [{Type, Metrics} | Rest]) ->
             find_type(Name, Rest)
     end.
 
-do_recognize_name(_Indexer, <<"needs_restart">>) ->
+do_recognize_name(_Service, <<"needs_restart">>) ->
     {#stats_accumulators.status, index_needs_restart};
-do_recognize_name(_Indexer, <<"num_connections">>) ->
+do_recognize_name(_Service, <<"num_connections">>) ->
     {#stats_accumulators.status, index_num_connections};
-do_recognize_name(Indexer, K) ->
-    Type = find_type(K, [{#stats_accumulators.sys_gauges, Indexer:get_service_gauges()},
-                         {#stats_accumulators.sys_counters, Indexer:get_service_counters()}]),
+do_recognize_name(Service, K) ->
+    Type = find_type(K, [{#stats_accumulators.sys_gauges,
+                          Service:get_service_gauges()},
+                         {#stats_accumulators.sys_counters,
+                          Service:get_service_counters()}]),
     case Type of
         not_found ->
-            do_recognize_bucket_metric(Indexer, K);
+            do_recognize_bucket_metric(Service, K);
         _ ->
-            NewKey = list_to_binary(Indexer:service_stat_prefix() ++
+            NewKey = list_to_binary(Service:service_stat_prefix() ++
                                         binary_to_list(K)),
             {Type, NewKey}
     end.
 
-do_recognize_bucket_metric(Indexer, K) ->
+do_recognize_bucket_metric(Service, K) ->
     case binary:split(K, <<":">>, [global]) of
         [Bucket, Index, Metric] ->
-            Type = find_type(Metric, [{#stats_accumulators.gauges, Indexer:get_gauges()},
-                                      {#stats_accumulators.counters, Indexer:get_counters()}]),
+            Type = find_type(Metric, [{#stats_accumulators.gauges,
+                                       Service:get_gauges()},
+                                      {#stats_accumulators.counters,
+                                       Service:get_counters()}]),
 
             case Type of
                 not_found ->
@@ -119,14 +125,14 @@ do_recognize_bucket_metric(Indexer, K) ->
             undefined
     end.
 
-recognize_name(Indexer, Ets, K) ->
+recognize_name(Service, Ets, K) ->
     case ets:lookup(Ets, K) of
         [{K, Type, NewK}] ->
             {Type, NewK};
         [{K, undefined}] ->
             undefined;
         [] ->
-            case do_recognize_name(Indexer, K) of
+            case do_recognize_name(Service, K) of
                 undefined ->
                     ets:insert(Ets, {K, undefined}),
                     undefined;
@@ -136,54 +142,59 @@ recognize_name(Indexer, Ets, K) ->
             end
     end.
 
-massage_stats(Indexer, Ets, GrabbedStats) ->
-    massage_stats(Indexer, Ets, GrabbedStats, #stats_accumulators{}).
+massage_stats(Service, Ets, GrabbedStats) ->
+    massage_stats(Service, Ets, GrabbedStats, #stats_accumulators{}).
 
-massage_stats(_Indexer, _Ets, [], Acc) ->
+massage_stats(_Service, _Ets, [], Acc) ->
     Acc;
-massage_stats(Indexer, Ets, [{K, V} | Rest], Acc) ->
-    case recognize_name(Indexer, Ets, K) of
+massage_stats(Service, Ets, [{K, V} | Rest], Acc) ->
+    case recognize_name(Service, Ets, K) of
         undefined ->
-            massage_stats(Indexer, Ets, Rest, Acc);
+            massage_stats(Service, Ets, Rest, Acc);
         {Pos, NewK} ->
             massage_stats(
-              Indexer, Ets, Rest, setelement(Pos, Acc, [{NewK, V} | element(Pos, Acc)]))
+              Service, Ets, Rest,
+              setelement(Pos, Acc, [{NewK, V} | element(Pos, Acc)]))
     end.
 
-grab_stats(#state{indexer = Indexer}) ->
-    case ns_cluster_membership:should_run_service(ns_config:latest(), Indexer:get_type(), node()) of
+grab_stats(#state{service = Service}) ->
+    case ns_cluster_membership:should_run_service(ns_config:latest(),
+                                                  Service:get_type(), node()) of
         true ->
-            do_grab_stats(Indexer);
+            do_grab_stats(Service);
         false ->
             []
     end.
 
-do_grab_stats(Indexer) ->
-    case Indexer:grab_stats() of
+do_grab_stats(Service) ->
+    case Service:grab_stats() of
         {ok, {[_|_] = Stats}} ->
             Stats;
         {ok, Other} ->
-            ?log_error("Got invalid stats response for ~p:~n~p", [Indexer, Other]),
+            ?log_error("Got invalid stats response for ~p:~n~p",
+                       [Service, Other]),
             [];
         {error, _} ->
             []
     end.
 
-process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{indexer = Indexer,
-                                                             buckets = KnownBuckets,
-                                                             default_stats = Defaults} = State) ->
+process_stats(TS, GrabbedStats, PrevCounters, PrevTS,
+              #state{service = Service,
+                     buckets = KnownBuckets,
+                     default_stats = Defaults} = State) ->
     MassagedStats =
-        massage_stats(Indexer, ets_name(Indexer), GrabbedStats),
+        massage_stats(Service, ets_name(Service), GrabbedStats),
 
     CalculateStats =
         fun (GaugesPos, CountersPos, ComputeGauges) ->
                 Gauges0 = element(GaugesPos, MassagedStats),
-                Gauges = Indexer:ComputeGauges(Gauges0) ++ Gauges0,
+                Gauges = Service:ComputeGauges(Gauges0) ++ Gauges0,
                 Counters = element(CountersPos, MassagedStats),
                 base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS)
         end,
 
-    index_status_keeper:update(Indexer, MassagedStats#stats_accumulators.status),
+    index_status_keeper:update(Service,
+                               MassagedStats#stats_accumulators.status),
 
     {Stats, SortedBucketCounters} =
         CalculateStats(#stats_accumulators.gauges, #stats_accumulators.counters, compute_gauges),
@@ -191,39 +202,43 @@ process_stats(TS, GrabbedStats, PrevCounters, PrevTS, #state{indexer = Indexer,
         CalculateStats(#stats_accumulators.sys_gauges, #stats_accumulators.sys_counters,
                        compute_service_gauges),
 
-    ServiceStats = [{Indexer:service_event_name(),
+    ServiceStats = [{Service:service_event_name(),
                      finalize_index_stats(ServiceStats1)}],
-    Prefix = Indexer:prefix(),
+    Prefix = Service:prefix(),
     AggregatedStats =
         [{Prefix ++ binary_to_list(Bucket), Values} ||
-            {Bucket, Values} <- aggregate_index_stats(Indexer, Stats, KnownBuckets, Defaults)] ++
+            {Bucket, Values} <-
+                aggregate_index_stats(
+                  Service, Stats, KnownBuckets, Defaults)] ++
         ServiceStats,
 
     AllCounters = SortedBucketCounters ++ SortedServiceCounters,
     SortedCounters = lists:sort(AllCounters),
     {AggregatedStats, SortedCounters, State}.
 
-aggregate_index_stats(Indexer, Stats, Buckets, Defaults) ->
-    do_aggregate_index_stats(Indexer, Stats, Buckets, Defaults, []).
+aggregate_index_stats(Service, Stats, Buckets, Defaults) ->
+    do_aggregate_index_stats(Service, Stats, Buckets, Defaults, []).
 
-do_aggregate_index_stats(_Indexer, [], Buckets, Defaults, Acc) ->
+do_aggregate_index_stats(_Service, [], Buckets, Defaults, Acc) ->
     [{B, Defaults} || B <- Buckets] ++ Acc;
-do_aggregate_index_stats(Indexer, [{{Bucket, _, _}, _} | _] = Stats,
+do_aggregate_index_stats(Service, [{{Bucket, _, _}, _} | _] = Stats,
                          Buckets, Defaults, Acc) ->
-    {BucketStats, RestStats} = aggregate_index_bucket_stats(Indexer, Bucket, Stats, Defaults),
+    {BucketStats, RestStats} =
+        aggregate_index_bucket_stats(Service, Bucket, Stats, Defaults),
 
     OtherBuckets = lists:delete(Bucket, Buckets),
-    do_aggregate_index_stats(Indexer, RestStats, OtherBuckets, Defaults,
+    do_aggregate_index_stats(Service, RestStats, OtherBuckets, Defaults,
                              [{Bucket, BucketStats} | Acc]).
 
-aggregate_index_bucket_stats(Indexer, Bucket, Stats, Defaults) ->
-    do_aggregate_index_bucket_stats(Indexer, Defaults, Bucket, Stats).
+aggregate_index_bucket_stats(Service, Bucket, Stats, Defaults) ->
+    do_aggregate_index_bucket_stats(Service, Defaults, Bucket, Stats).
 
-do_aggregate_index_bucket_stats(_Indexer, Acc, _, []) ->
+do_aggregate_index_bucket_stats(_Service, Acc, _, []) ->
     {finalize_index_stats(Acc), []};
-do_aggregate_index_bucket_stats(Indexer, Acc, Bucket, [{{Bucket, Index, Name}, V} | Rest]) ->
-    Global = Indexer:global_index_stat(Name),
-    PerIndex = Indexer:per_index_stat(Index, Name),
+do_aggregate_index_bucket_stats(Service, Acc, Bucket,
+                                [{{Bucket, Index, Name}, V} | Rest]) ->
+    Global = Service:global_index_stat(Name),
+    PerIndex = Service:per_index_stat(Index, Name),
 
     Acc1 =
         case lists:keyfind(Global, 1, Acc) of
@@ -235,8 +250,8 @@ do_aggregate_index_bucket_stats(Indexer, Acc, Bucket, [{{Bucket, Index, Name}, V
 
     Acc2 = [{PerIndex, V} | Acc1],
 
-    do_aggregate_index_bucket_stats(Indexer, Acc2, Bucket, Rest);
-do_aggregate_index_bucket_stats(_Indexer, Acc, _, Stats) ->
+    do_aggregate_index_bucket_stats(Service, Acc2, Bucket, Rest);
+do_aggregate_index_bucket_stats(_Service, Acc, _, Stats) ->
     {finalize_index_stats(Acc), Stats}.
 
 finalize_index_stats(Acc) ->
@@ -249,7 +264,7 @@ aggregate_index_stats_test() ->
           {{<<"b">>, <<"idx2">>, <<"m2">>}, 4},
           {{<<"b">>, <<"idx3">>, <<"m1">>}, 5},
           {{<<"b">>, <<"idx3">>, <<"m2">>}, 6}],
-    Out = aggregate_index_stats(indexer_gsi, In, [], []),
+    Out = aggregate_index_stats(service_index, In, [], []),
 
     AStats0 = [{<<"index/idx1/m1">>, 1},
                {<<"index/idx1/m2">>, 2},

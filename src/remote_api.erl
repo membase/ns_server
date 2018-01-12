@@ -48,9 +48,9 @@ init([]) ->
     {ok, {}}.
 
 handle_call(get_indexes, _From, State) ->
-    {reply, indexer_gsi:get_indexes(), State};
+    {reply, service_index:get_indexes(), State};
 handle_call(get_fts_indexes, _From, State) ->
-    {reply, indexer_fts:get_indexes(), State};
+    {reply, service_fts:get_indexes(), State};
 handle_call(Request, {Pid, _} = _From, State) ->
     ?log_warning("Got unknown call ~p from ~p (node ~p)", [Request, Pid, node(Pid)]),
     {reply, unhandled, State}.

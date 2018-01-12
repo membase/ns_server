@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(indexer_gsi).
+-module(service_index).
 
 -include_lib("eunit/include/eunit.hrl").
 

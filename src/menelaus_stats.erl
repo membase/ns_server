@@ -631,19 +631,19 @@ parse_stats_params(Params) ->
     {ClientTStamp, {Step, Period, Count}}.
 
 global_index_stat(StatName) ->
-    indexer_gsi:global_index_stat(StatName).
+    service_index:global_index_stat(StatName).
 
 per_index_stat(Index, Metric) ->
-    indexer_gsi:per_index_stat(Index, Metric).
+    service_index:per_index_stat(Index, Metric).
 
 global_fts_stat(StatName) ->
-    indexer_fts:global_index_stat(StatName).
+    service_fts:global_index_stat(StatName).
 
 per_fts_stat(Index, Metric) ->
-    indexer_fts:per_index_stat(Index, Metric).
+    service_fts:per_index_stat(Index, Metric).
 
 per_bucket_cbas_stat(StatName) ->
-    indexer_cbas:global_index_stat(StatName).
+    service_cbas:global_index_stat(StatName).
 
 computed_stats_lazy_proplist("@system") ->
     [];
@@ -740,7 +740,7 @@ computed_stats_lazy_proplist("@index-"++BucketId) ->
                   [{per_index_stat(Index, <<"avg_item_size">>), AvgItemSize},
                    {per_index_stat(Index, <<"avg_scan_latency">>), AvgScanLatency},
                    {per_index_stat(Index, <<"num_docs_pending+queued">>), AllPendingDocs}]
-          end, get_indexes(indexer_gsi, BucketId));
+          end, get_indexes(service_index, BucketId));
 computed_stats_lazy_proplist("@fts-"++BucketId) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
@@ -756,7 +756,7 @@ computed_stats_lazy_proplist("@fts-"++BucketId) ->
                                      end),
 
               [{per_fts_stat(Index, <<"avg_queries_latency">>), AvgQueriesLatency}]
-      end, get_indexes(indexer_fts, BucketId));
+      end, get_indexes(service_fts, BucketId));
 computed_stats_lazy_proplist("@fts") ->
     [];
 computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
@@ -1514,7 +1514,7 @@ do_couchbase_index_stats_descriptions(BucketId, IndexNodes) ->
                 XNodes ->
                     XNodes
             end,
-    AllIndexes = do_get_indexes(indexer_gsi, BucketId, Nodes),
+    AllIndexes = do_get_indexes(service_index, BucketId, Nodes),
     [{struct, [{blockName, <<"Index Stats: ", Id/binary>>},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
@@ -1595,7 +1595,7 @@ do_couchbase_fts_stats_descriptions(BucketId, FtsNodes) ->
                 XNodes ->
                     XNodes
             end,
-    AllIndexes = do_get_indexes(indexer_fts, BucketId, Nodes),
+    AllIndexes = do_get_indexes(service_fts, BucketId, Nodes),
     [{struct, [{blockName, <<"Full Text Search Stats: ", Id/binary>>},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
@@ -2784,14 +2784,14 @@ output_ui_stats(Req, Stats, Directory, Wnd, Bucket, StatName, NewHaveStamp, Extr
          {lastTStamp, {NewHaveStamp}} | Extra],
     menelaus_util:reply_json(Req, {J}).
 
-get_indexes(Indexer, BucketId) ->
-    simple_memoize({indexes, Indexer:get_type(), BucketId},
+get_indexes(Service, BucketId) ->
+    simple_memoize({indexes, Service:get_type(), BucketId},
                    fun () ->
-                           Nodes = section_nodes(Indexer:prefix() ++ BucketId),
-                           do_get_indexes(Indexer, BucketId, Nodes)
+                           Nodes = section_nodes(Service:prefix() ++ BucketId),
+                           do_get_indexes(Service, BucketId, Nodes)
                    end, 5000).
 
-do_get_indexes(Indexer, BucketId0, Nodes) ->
+do_get_indexes(Service, BucketId0, Nodes) ->
     WantedHosts0 =
         [begin
              {_, Host} = misc:node_name_host(N),
@@ -2801,7 +2801,7 @@ do_get_indexes(Indexer, BucketId0, Nodes) ->
     WantedHosts = lists:usort(WantedHosts0),
 
     BucketId = list_to_binary(BucketId0),
-    {ok, Indexes, _Stale, _Version} = index_status_keeper:get_indexes(Indexer),
+    {ok, Indexes, _Stale, _Version} = index_status_keeper:get_indexes(Service),
     [begin
          {index, Name} = lists:keyfind(index, 1, I),
          Name

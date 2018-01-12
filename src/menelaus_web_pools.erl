@@ -217,7 +217,7 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
     TasksURI = bin_concat_path(["pools", Id, "tasks"],
                                [{"v", ns_doctor:get_tasks_version()}]),
 
-    {ok, IndexesVersion0} = indexer_gsi:get_indexes_version(),
+    {ok, IndexesVersion0} = service_index:get_indexes_version(),
     IndexesVersion = list_to_binary(integer_to_list(IndexesVersion0)),
 
     GroupsV = erlang:phash2(ns_config:search(Config, server_groups)),
