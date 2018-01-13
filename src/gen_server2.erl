@@ -28,12 +28,14 @@
 
 %% gen_server2-specific APIs
 -export([async_job/2, async_job/3, async_job/4]).
+-export([abort_queue/1, abort_queue/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
 -include("cut.hrl").
+-include("ns_common.hrl").
 
 -type handler_result() :: {noreply, NewState :: any()} |
                           {stop, Reason :: any(), NewState :: any()}.
@@ -138,6 +140,19 @@ async_job(Queue, Name, Body, HandleResult) ->
     enqueue_job(Queue, Name, Body, HandleResult),
     maybe_start_job(Queue),
     Queue.
+
+abort_queue(Queue) ->
+    _ = abort_jobs(Queue),
+    ok.
+
+abort_queue(Queue, AbortMarker, State) ->
+    Jobs = abort_jobs(Queue),
+    lists:foreach(
+      fun (Job) ->
+              %% assuming that aborted jobs can't modify the state
+              {noreply, State} =
+                  (Job#async_job.handle_result)(AbortMarker, State)
+      end, Jobs).
 
 %% gen_server callbacks
 init([Module, Args]) ->
@@ -320,4 +335,18 @@ chain_handle_results([Job | Rest], Result, State) ->
             chain_handle_results(Rest, Result, NewState);
         {stop, _, _} = Stop ->
             Stop
+    end.
+
+abort_jobs(Queue) ->
+    case take_active_job(Queue) of
+        {ok, Job} ->
+            erlang:demonitor(Job#async_job.mref, [flush]),
+            async:abort(Job#async_job.pid),
+            ?flush({'$gen_server2', job_result, Queue, _}),
+
+            Waiting = get_state({queue, Queue}, queue:new()),
+            del_state({queue, Queue}),
+            [Job | queue:to_list(Waiting)];
+        not_found ->
+            []
     end.
