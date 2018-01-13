@@ -27,7 +27,7 @@
 -export([enter_loop/3, enter_loop/4, enter_loop/5]).
 
 %% gen_server2-specific APIs
--export([async_job/2, async_job/3]).
+-export([async_job/2, async_job/3, async_job/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -45,6 +45,7 @@
 -record(async_job, { body          :: body_fun(),
                      handle_result :: handle_result_fun(),
                      queue         :: term(),
+                     name          :: term(),
 
                      pid  :: undefined | pid(),
                      mref :: undefined | reference() }).
@@ -128,10 +129,13 @@ enter_loop(Mod, Options, State, ServerName, Timeout) ->
 %% gen_server2-specific APIs
 async_job(Body, HandleResult) ->
     Ref = make_ref(),
-    async_job(Ref, Body, HandleResult).
+    async_job(Ref, Ref, Body, HandleResult).
 
 async_job(Queue, Body, HandleResult) ->
-    enqueue_job(Queue, Body, HandleResult),
+    async_job(Queue, make_ref(), Body, HandleResult).
+
+async_job(Queue, Name, Body, HandleResult) ->
+    enqueue_job(Queue, Name, Body, HandleResult),
     maybe_start_job(Queue),
     Queue.
 
@@ -149,9 +153,13 @@ handle_cast(Msg, State) ->
 handle_info({'$gen_server2', job_result, Queue, Result}, State) ->
     {ok, Job} = take_active_job(Queue),
     erlang:demonitor(Job#async_job.mref, [flush]),
+
+    %% reuse the result for all following jobs with the same name on the same
+    %% queue
+    MoreJobs = dequeue_same_name_jobs(Job#async_job.name, Queue),
     maybe_start_job(Queue),
 
-    (Job#async_job.handle_result)(Result, State);
+    chain_handle_results([Job | MoreJobs], Result, State);
 handle_info({'DOWN', MRef, process, _Pid, _Reason} = Info, State) ->
     case get_active_job(#async_job.mref, MRef) of
         {ok, Job} ->
@@ -229,14 +237,23 @@ take_active_job(Queue) ->
             not_found
     end.
 
-enqueue_job(Queue, Body, HandleResult) ->
+enqueue_job(Queue, Name, Body, HandleResult) ->
     Job = #async_job{body          = Body,
                      handle_result = HandleResult,
-                     queue         = Queue},
+                     queue         = Queue,
+                     name          = Name},
 
     update_state({queue, Queue},
                  queue:in(Job, _),
                  queue:new()).
+
+set_queue(Queue, Value) ->
+    case queue:is_empty(Value) of
+        true ->
+            del_state({queue, Queue});
+        false ->
+            set_state({queue, Queue}, Value)
+    end.
 
 dequeue_job(Queue) ->
     case get_state({queue, Queue}) of
@@ -245,15 +262,32 @@ dequeue_job(Queue) ->
         Q ->
             true = queue:is_queue(Q),
             {{value, Job}, NewQ} = queue:out(Q),
-
-            case queue:is_empty(NewQ) of
-                true ->
-                    del_state({queue, Queue});
-                false ->
-                    set_state({queue, Queue}, NewQ)
-            end,
+            set_queue(Queue, NewQ),
 
             {ok, Job}
+    end.
+
+dequeue_same_name_jobs(Name, Queue) ->
+    Jobs = get_state({queue, Queue}, queue:new()),
+
+    {Matching, Rest} = out_while(?cut(_#async_job.name =:= Name), Jobs),
+    set_queue(Queue, Rest),
+    queue:to_list(Matching).
+
+out_while(Pred, Q) ->
+    out_while(Pred, Q, queue:new()).
+
+out_while(Pred, Q, AccQ) ->
+    case queue:out(Q) of
+        {empty, _} ->
+            {AccQ, Q};
+        {{value, V}, NewQ} ->
+            case Pred(V) of
+                true ->
+                    out_while(Pred, NewQ, queue:in(V, AccQ));
+                false ->
+                    {AccQ, Q}
+            end
     end.
 
 maybe_start_job(Queue) ->
@@ -277,3 +311,13 @@ start_job(Queue, #async_job{body = Body} = Job) ->
                     end),
 
     set_active_job(Queue, Job#async_job{pid = Pid, mref = MRef}).
+
+chain_handle_results([], _Result, State) ->
+    {noreply, State};
+chain_handle_results([Job | Rest], Result, State) ->
+    case (Job#async_job.handle_result)(Result, State) of
+        {noreply, NewState} ->
+            chain_handle_results(Rest, Result, NewState);
+        {stop, _, _} = Stop ->
+            Stop
+    end.
