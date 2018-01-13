@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(index_stats_collector).
+-module(service_stats_collector).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -193,8 +193,8 @@ process_stats(TS, GrabbedStats, PrevCounters, PrevTS,
                 base_stats_collector:calculate_counters(TS, Gauges, Counters, PrevCounters, PrevTS)
         end,
 
-    index_status_keeper:update(Service,
-                               MassagedStats#stats_accumulators.status),
+    service_status_keeper:update(Service,
+                                 MassagedStats#stats_accumulators.status),
 
     {Stats, SortedBucketCounters} =
         CalculateStats(#stats_accumulators.gauges, #stats_accumulators.counters, compute_gauges),

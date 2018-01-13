@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(index_status_keeper_sup).
+-module(service_status_keeper_sup).
 
 -behavior(supervisor).
 
@@ -26,12 +26,12 @@ start_link() ->
 
 init([]) ->
     Children =
-        [{index_status_keeper_worker,
-          {work_queue, start_link, [index_status_keeper_worker]},
+        [{service_status_keeper_worker,
+          {work_queue, start_link, [service_status_keeper_worker]},
           permanent, 1000, worker, []},
-         {index_status_keeper, {service_index, start_keeper, []},
+         {service_status_keeper_index, {service_index, start_keeper, []},
           permanent, 1000, worker, []},
-         {index_status_keeper_fts, {service_fts, start_keeper, []},
+         {service_status_keeper_fts, {service_fts, start_keeper, []},
           permanent, 1000, worker, []}],
     {ok, {{one_for_all,
            misc:get_env_default(max_r, 3),

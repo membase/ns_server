@@ -2801,7 +2801,8 @@ do_get_indexes(Service, BucketId0, Nodes) ->
     WantedHosts = lists:usort(WantedHosts0),
 
     BucketId = list_to_binary(BucketId0),
-    {ok, Indexes, _Stale, _Version} = index_status_keeper:get_indexes(Service),
+    {ok, Indexes, _Stale, _Version} =
+        service_status_keeper:get_indexes(Service),
     [begin
          {index, Name} = lists:keyfind(index, 1, I),
          Name

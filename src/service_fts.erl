@@ -25,7 +25,7 @@
          compute_service_gauges/1, get_service_counters/0]).
 
 get_indexes() ->
-    index_status_keeper:get_indexes(?MODULE).
+    service_status_keeper:get_indexes(?MODULE).
 
 get_type() ->
     fts.
@@ -51,11 +51,11 @@ status_mapping() ->
      {hosts, <<"hosts">>}].
 
 process_status(Status) ->
-    index_status_keeper:process_indexer_status(?MODULE, Status,
-                                               status_mapping()).
+    service_status_keeper:process_indexer_status(?MODULE, Status,
+                                                 status_mapping()).
 
 start_keeper() ->
-    index_status_keeper:start_link(?MODULE).
+    service_status_keeper:start_link(?MODULE).
 
 get_gauges() ->
     [num_mutations_to_index, doc_count, num_recs_to_persist, num_bytes_used_disk,

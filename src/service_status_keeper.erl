@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%
--module(index_status_keeper).
+-module(service_status_keeper).
 
 -include("ns_common.hrl").
 
@@ -28,10 +28,10 @@
          terminate/2, code_change/3]).
 
 -define(REFRESH_INTERVAL,
-        ns_config:get_timeout(index_status_keeper_refresh, 5000)).
--define(WORKER, index_status_keeper_worker).
+        ns_config:get_timeout(service_status_keeper_refresh, 5000)).
+-define(WORKER, service_status_keeper_worker).
 -define(STALE_THRESHOLD,
-        ns_config:read_key_fast(index_status_keeper_stale_threshold, 2)).
+        ns_config:read_key_fast(service_status_keeper_stale_threshold, 2)).
 
 server_name(Service) ->
     list_to_atom(?MODULE_STRING "-" ++ atom_to_list(Service:get_type())).

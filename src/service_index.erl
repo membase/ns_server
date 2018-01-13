@@ -27,13 +27,13 @@
          process_status/1]).
 
 get_status(Timeout) ->
-    index_status_keeper:get_status(?MODULE, Timeout).
+    service_status_keeper:get_status(?MODULE, Timeout).
 
 get_indexes() ->
-    index_status_keeper:get_indexes(?MODULE).
+    service_status_keeper:get_indexes(?MODULE).
 
 get_indexes_version() ->
-    index_status_keeper:get_indexes_version(?MODULE).
+    service_status_keeper:get_indexes_version(?MODULE).
 
 get_type() ->
     index.
@@ -69,11 +69,11 @@ status_mapping() ->
      {hosts, <<"hosts">>} | AddType].
 
 process_status(Status) ->
-    index_status_keeper:process_indexer_status(?MODULE, Status,
-                                               status_mapping()).
+    service_status_keeper:process_indexer_status(?MODULE, Status,
+                                                 status_mapping()).
 
 start_keeper() ->
-    index_status_keeper:start_link(?MODULE).
+    service_status_keeper:start_link(?MODULE).
 
 get_gauges() ->
     [disk_size, data_size, num_docs_pending, num_docs_queued,

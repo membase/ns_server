@@ -252,7 +252,7 @@ child_specs() ->
      {goxdcr_status_keeper, {goxdcr_status_keeper, start_link, []},
       permanent, 1000, worker, [goxdcr_status_keeper]},
 
-     {index_stats_sup, {index_stats_sup, start_link, []},
+     {services_stats_sup, {services_stats_sup, start_link, []},
       permanent, infinity, supervisor, []},
 
      {compaction_daemon, {compaction_daemon, start_link, []},
