@@ -21,7 +21,7 @@
 
 %% API
 -export([start_link/1, update/2, get_status/2,
-         get_indexes/1, get_indexes_version/1, process_indexer_status/3]).
+         get_items/1, get_version/1, process_indexer_status/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -45,18 +45,18 @@ update(Service, Status) ->
 get_status(Service, Timeout) ->
     gen_server:call(server_name(Service), get_status, Timeout).
 
-get_indexes(Service) ->
-    gen_server:call(server_name(Service), get_indexes).
+get_items(Service) ->
+    gen_server:call(server_name(Service), get_items).
 
-get_indexes_version(Service) ->
-    gen_server:call(server_name(Service), get_indexes_version).
+get_version(Service) ->
+    gen_server:call(server_name(Service), get_version).
 
 -record(state, {service :: atom(),
                 num_connections,
 
-                indexes,
-                indexes_stale :: true | {false, non_neg_integer()},
-                indexes_version,
+                items,
+                stale :: true | {false, non_neg_integer()},
+                version,
 
                 restart_pending,
                 source :: local | {remote, [node()], non_neg_integer()}}).
@@ -74,14 +74,13 @@ init(Service) ->
                    restart_pending = false,
                    source = get_source(Service)},
 
-    {ok, set_indexes([], State)}.
+    {ok, set_items([], State)}.
 
-handle_call(get_indexes, _From, #state{indexes = Indexes,
-                                       indexes_stale = StaleInfo,
-                                       indexes_version = Version} = State) ->
-    {reply, {ok, Indexes, is_stale(StaleInfo), Version}, State};
-handle_call(get_indexes_version, _From,
-            #state{indexes_version = Version} = State) ->
+handle_call(get_items, _From, #state{items = Items,
+                                     stale = StaleInfo,
+                                     version = Version} = State) ->
+    {reply, {ok, Items, is_stale(StaleInfo), Version}, State};
+handle_call(get_version, _From, #state{version = Version} = State) ->
     {reply, {ok, Version}, State};
 handle_call(get_status, _From,
             #state{num_connections = NumConnections} = State) ->
@@ -107,10 +106,10 @@ handle_cast({update, _}, State) ->
 handle_cast({refresh_done, Result}, State) ->
     NewState =
         case Result of
-            {ok, Indexes} ->
-                set_indexes(Indexes, State);
-            {stale, Indexes} ->
-                set_stale(Indexes, State);
+            {ok, Items} ->
+                set_items(Items, State);
+            {stale, Items} ->
+                set_stale(Items, State);
             {error, _} ->
                 increment_stale(State)
         end,
@@ -196,8 +195,8 @@ grab_status(#state{service = Service,
         _ ->
             Node = lists:nth(random:uniform(NodesCount), Nodes),
 
-            try Service:get_remote_indexes(Node) of
-                {ok, Indexes, Stale, _Version} ->
+            try Service:get_remote_items(Node) of
+                {ok, Items, Stale, _Version} ->
                     %% note that we're going to recompute the version instead
                     %% of using the one from the remote node; that's because
                     %% the version should be completely opaque; if we were to
@@ -206,17 +205,19 @@ grab_status(#state{service = Service,
                     %% nodes
                     case Stale of
                         true ->
-                            {stale, Indexes};
+                            {stale, Items};
                         false ->
-                            {ok, Indexes}
+                            {ok, Items}
                     end;
                 Error ->
-                    ?log_error("Couldn't get indexes from node ~p: ~p", [Node, Error]),
+                    ?log_error("Couldn't get items from node ~p: ~p",
+                               [Node, Error]),
                     {error, failed}
             catch
                 T:E ->
-                    ?log_error("Got exception while getting indexes from node ~p: ~p",
-                               [Node, {T, E}]),
+                    ?log_error(
+                       "Got exception while getting items from node ~p: ~p",
+                       [Node, {T, E}]),
                     {error, failed}
             end
     end.
@@ -299,27 +300,27 @@ handle_node_disco_event(Event, Pid) ->
     end,
     Pid.
 
-set_indexes(Indexes, #state{indexes_version = OldVersion} = State) ->
-    Version = compute_version(Indexes, false),
+set_items(Items, #state{version = OldVersion} = State) ->
+    Version = compute_version(Items, false),
 
     case Version =:= OldVersion of
         true ->
             State;
         false ->
-            notify_change(State#state{indexes = Indexes,
-                                      indexes_stale = {false, 0},
-                                      indexes_version = Version})
+            notify_change(State#state{items = Items,
+                                      stale = {false, 0},
+                                      version = Version})
     end.
 
-set_stale(#state{indexes = Indexes} = State) ->
-    Version = compute_version(Indexes, true),
-    notify_change(State#state{indexes_stale = true,
-                              indexes_version = Version}).
+set_stale(#state{items = Items} = State) ->
+    Version = compute_version(Items, true),
+    notify_change(State#state{stale = true,
+                              version = Version}).
 
-set_stale(Indexes, State) ->
-    set_stale(State#state{indexes = Indexes}).
+set_stale(Items, State) ->
+    set_stale(State#state{items = Items}).
 
-increment_stale(#state{indexes_stale = StaleInfo} = State) ->
+increment_stale(#state{stale = StaleInfo} = State) ->
     case StaleInfo of
         true ->
             %% we're already stale; no need to do anything
@@ -331,15 +332,15 @@ increment_stale(#state{indexes_stale = StaleInfo} = State) ->
                 true ->
                     set_stale(State);
                 false ->
-                    State#state{indexes_stale = {false, NewStaleCount}}
+                    State#state{stale = {false, NewStaleCount}}
             end
     end.
 
-compute_version(Indexes, IsStale) ->
-    erlang:phash2({Indexes, IsStale}).
+compute_version(Items, IsStale) ->
+    erlang:phash2({Items, IsStale}).
 
 notify_change(#state{service = Service,
-                     indexes_version = Version} = State) ->
+                     version = Version} = State) ->
     gen_event:notify(index_events, {indexes_change, Service:get_type(),
                                     Version}),
     State.

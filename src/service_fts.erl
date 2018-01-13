@@ -17,7 +17,7 @@
 
 -export([start_keeper/0, get_indexes/0]).
 
--export([get_type/0, get_remote_indexes/1, get_local_status/0, restart/0,
+-export([get_type/0, get_remote_items/1, get_local_status/0, restart/0,
          process_status/1,
          get_gauges/0, get_counters/0, get_computed/0, grab_stats/0, prefix/0,
          per_index_stat/2, global_index_stat/1, compute_gauges/1,
@@ -25,7 +25,7 @@
          compute_service_gauges/1, get_service_counters/0]).
 
 get_indexes() ->
-    service_status_keeper:get_indexes(?MODULE).
+    service_status_keeper:get_items(?MODULE).
 
 get_type() ->
     fts.
@@ -36,7 +36,7 @@ get_port() ->
 get_timeout() ->
     ns_config:get_timeout(fts_rest_request, 10000).
 
-get_remote_indexes(Node) ->
+get_remote_items(Node) ->
     remote_api:get_fts_indexes(Node).
 
 get_local_status() ->
