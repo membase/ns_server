@@ -15,15 +15,23 @@
 %%
 -module(menelaus_web_queries).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
--export([handle_settings_get/1, handle_settings_post/1]).
+-export([handle_settings_get/1,
+         handle_curl_whitelist_post/1,
+         handle_curl_whitelist_get/1,
+         handle_settings_post/1]).
 
 -import(menelaus_util,
         [reply_json/2,
          assert_is_vulcan/0,
-         validate_any_value/3,
          validate_dir/2,
+         validate_required/2,
+         validate_boolean/2,
+         validate_json_object/2,
          validate_has_params/1,
+         validate_any_value/2,
+         validate_any_value/3,
          validate_integer/2,
          validate_by_fun/3,
          validate_unsupported_params/1,
@@ -36,7 +44,8 @@ handle_settings_get(Req) ->
     reply_json(Req, {Config}).
 
 get_settings() ->
-    query_settings_manager:get(generalSettings).
+    query_settings_manager:get(generalSettings) ++
+    query_settings_manager:get(curlWhitelistSettings).
 
 validate_settings_post(Args) ->
     NearInfinity = 1 bsl 64 - 1,
@@ -85,3 +94,38 @@ handle_settings_post(Req) ->
               end,
               reply_json(Req, {get_settings()})
       end, Req, validate_settings_post(Req:parse_post())).
+
+validate_array(Array) ->
+    case lists:all(fun is_binary/1, Array) of
+        false -> {error, <<"Invalid array">>};
+        true -> {value, Array}
+    end.
+
+settings_curl_whitelist_validators() ->
+    [validate_required(all_access, _),
+     validate_boolean(all_access, _),
+     validate_any_value(allowed_urls, _),
+     validate_any_value(disallowed_urls, _),
+     validate_by_fun(fun validate_array/1, allowed_urls, _),
+     validate_by_fun(fun validate_array/1, disallowed_urls, _),
+     validate_unsupported_params(_)].
+
+get_curl_whitelist_settings() ->
+    Config = query_settings_manager:get(curlWhitelistSettings),
+    %% queryCurlWhitelist should always be present.
+    proplists:get_value(queryCurlWhitelist, Config).
+
+handle_curl_whitelist_post(Req) ->
+    assert_is_vulcan(),
+    execute_if_validated(
+      fun (Values) ->
+              ok = update_settings(curlWhitelistSettings,
+                                   [{queryCurlWhitelist, {Values}}]),
+              reply_json(Req, get_curl_whitelist_settings())
+      end, Req,
+      validate_json_object(Req:recv_body(),
+                           settings_curl_whitelist_validators())).
+
+handle_curl_whitelist_get(Req) ->
+    assert_is_vulcan(),
+    reply_json(Req, get_curl_whitelist_settings()).

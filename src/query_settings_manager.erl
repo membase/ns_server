@@ -64,21 +64,34 @@ config_upgrade_to_vulcan() ->
                                                 dict:new(), known_settings())}].
 
 known_settings() ->
-    [{generalSettings, general_settings_lens()}].
+    [{generalSettings, general_settings_lens()},
+     {curlWhitelistSettings, curl_whitelist_settings_lens()}].
 
 default_settings_for_vulcan() ->
-    [{generalSettings, general_settings_defaults()}].
+    [{generalSettings, general_settings_defaults()},
+     {curlWhitelistSettings, curl_whitelist_settings_defaults()}].
 
 general_settings_lens_props() ->
     [{queryTmpSpaceDir, id_lens(<<"query.settings.tmp_space_dir">>)},
      {queryTmpSpaceSize, id_lens(<<"query.settings.tmp_space_size">>)}].
 
+curl_whitelist_settings_len_props() ->
+    [{queryCurlWhitelist, id_lens(<<"query.settings.curl_whitelist">>)}].
+
 general_settings_defaults() ->
     [{queryTmpSpaceDir, list_to_binary(path_config:component_path(tmp))},
      {queryTmpSpaceSize, ?QUERY_TMP_SPACE_MIN_SIZE}].
 
+curl_whitelist_settings_defaults() ->
+    [{queryCurlWhitelist, {[{<<"all_access">>, false},
+                            {<<"allowed_urls">>, []},
+                            {<<"disallowed_urls">>, []}]}}].
+
 general_settings_lens() ->
     json_settings_manager:props_lens(general_settings_lens_props()).
+
+curl_whitelist_settings_lens() ->
+    json_settings_manager:props_lens(curl_whitelist_settings_len_props()).
 
 -ifdef(EUNIT).
 
@@ -86,6 +99,8 @@ defaults_test() ->
     Keys = fun (L) -> lists:sort([K || {K, _} <- L]) end,
 
     ?assertEqual(Keys(known_settings()), Keys(default_settings_for_vulcan())),
+    ?assertEqual(Keys(curl_whitelist_settings_len_props()),
+                 Keys(curl_whitelist_settings_defaults())),
     ?assertEqual(Keys(general_settings_lens_props()),
                  Keys(general_settings_defaults())).
 
