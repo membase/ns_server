@@ -15,7 +15,9 @@
 %%
 -module(rest_utils).
 
--export([request/6]).
+-include("ns_common.hrl").
+
+-export([request/6, get_json_local/4]).
 
 request(Type, URL, Method, Headers, Body, Timeout) ->
     system_stats_collector:increment_counter({Type, requests}, 1),
@@ -35,3 +37,29 @@ request(Type, URL, Method, Headers, Body, Timeout) ->
     end,
 
     RV.
+
+request_local(Type, Path, Port, Method, Headers, Body, Timeout) ->
+    URL = misc:local_url(Port, Path, []),
+    User = ns_config_auth:get_user(special),
+    Pwd = ns_config_auth:get_password(special),
+
+    HeadersWithAuth = menelaus_rest:add_basic_auth(Headers, User, Pwd),
+
+    request(Type, URL, Method, HeadersWithAuth, Body, Timeout).
+
+get_json_local(Type, Path, Port, Timeout) ->
+    RV = request_local(Type, Path, Port, "GET", [], [], Timeout),
+    case RV of
+        {ok, {{200, _}, _Headers, BodyRaw}} ->
+            try
+                {ok, ejson:decode(BodyRaw)}
+            catch
+                T:E ->
+                    ?log_error("Received bad json in response from (~p) ~s: ~p",
+                               [Type, Path, {T, E}]),
+                    {error, bad_json}
+            end;
+        _ ->
+            ?log_error("Request to (~p) ~s failed: ~p", [Type, Path, RV]),
+            {error, RV}
+    end.

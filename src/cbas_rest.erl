@@ -37,4 +37,5 @@ get_timeout() ->
     30000.
 
 do_get_stats() ->
-    index_rest:get_json(cbas, "analytics/node/stats", get_port(), get_timeout()).
+    rest_utils:get_json_local(cbas, "analytics/node/stats", get_port(),
+                              get_timeout()).

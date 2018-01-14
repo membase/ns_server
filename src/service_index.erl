@@ -48,7 +48,8 @@ get_remote_items(Node) ->
     remote_api:get_indexes(Node).
 
 get_local_status() ->
-    index_rest:get_json(indexer, "getIndexStatus", get_port(), get_timeout()).
+    rest_utils:get_json_local(indexer, "getIndexStatus",
+                              get_port(), get_timeout()).
 
 restart() ->
     ns_ports_setup:restart_port_by_name(indexer).
@@ -93,7 +94,9 @@ get_computed() ->
     [disk_overhead_estimate].
 
 grab_stats() ->
-    index_rest:get_json(indexer, "stats?async=true", get_port(), get_timeout()).
+    rest_utils:get_json_local(indexer, "stats?async=true",
+                              get_port(), get_timeout()).
+
 prefix() ->
     "@" ++ atom_to_list(get_type()) ++ "-".
 

@@ -40,7 +40,7 @@ get_remote_items(Node) ->
     remote_api:get_fts_indexes(Node).
 
 get_local_status() ->
-    index_rest:get_json(fts, "api/nsstatus", get_port(), get_timeout()).
+    rest_utils:get_json_local(fts, "api/nsstatus", get_port(), get_timeout()).
 
 restart() ->
     ns_ports_setup:restart_port_by_name(fts).
@@ -76,7 +76,7 @@ get_service_counters() ->
     [].
 
 grab_stats() ->
-    index_rest:get_json(fts, "api/nsstats", get_port(), get_timeout()).
+    rest_utils:get_json_local(fts, "api/nsstats", get_port(), get_timeout()).
 
 prefix() ->
     "@" ++ atom_to_list(get_type()) ++ "-".
