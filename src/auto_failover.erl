@@ -559,10 +559,10 @@ get_down_server_group([_], _, _) ->
     %% Only one node is down. Skip the checks for server group failover.
     [];
 get_down_server_group(DownNodesInfo, Config, NonPendingNodes) ->
-    %% TODO: Temporary. Save the failoverServerGroup setting in
+    %% TODO: Temporary. Save the failover_server_group setting in
     %% the auto_failover gen_server state to avoid this lookup.
     {value, AFOConfig} = ns_config:search(Config, auto_failover_cfg),
-    case proplists:get_value(failoverServerGroup, AFOConfig, false) of
+    case proplists:get_value(failover_server_group, AFOConfig, false) of
         true ->
             case length(DownNodesInfo) > (length(NonPendingNodes)/2) of
                 true ->

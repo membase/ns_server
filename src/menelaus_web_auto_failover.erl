@@ -35,10 +35,13 @@
 -define(AUTO_FAILLOVER_MIN_CE_TIMEOUT, 30).
 -define(AUTO_FAILLOVER_MAX_TIMEOUT, 3600).
 
+%% TODO. Rename this config key to failover_on_data_disk_issues.
 -define(DATA_DISK_ISSUES_CONFIG_KEY, failoverOnDataDiskIssues).
 -define(MIN_DATA_DISK_ISSUES_TIMEPERIOD, 5). %% seconds
 -define(MAX_DATA_DISK_ISSUES_TIMEPERIOD, 3600). %% seconds
 -define(DEFAULT_DATA_DISK_ISSUES_TIMEPERIOD, 120). %% seconds
+
+-define(FAILOVER_SERVER_GROUP_CONFIG_KEY, failover_server_group).
 
 handle_settings_get(Req) ->
     {value, Config} = ns_config:search(ns_config:get(), auto_failover_cfg),
@@ -95,8 +98,8 @@ config_upgrade_to_vulcan(Config) ->
     {value, Current} = ns_config:search(Config, auto_failover_cfg),
     [Val] = disable_failover_on_disk_issues(),
     New0 = lists:keystore(?DATA_DISK_ISSUES_CONFIG_KEY, 1, Current, Val),
-    New = lists:keystore(failoverServerGroup, 1, New0,
-                         {failoverServerGroup, false}),
+    New = lists:keystore(?FAILOVER_SERVER_GROUP_CONFIG_KEY, 1, New0,
+                         {?FAILOVER_SERVER_GROUP_CONFIG_KEY, false}),
     [{set, auto_failover_cfg, New}].
 
 %% Internal Functions
@@ -134,7 +137,13 @@ parse_validate_extras(Args, CurrRV) ->
     case cluster_compat_mode:is_cluster_vulcan() andalso
         cluster_compat_mode:is_enterprise() of
         true ->
-            parse_validate_failover_disk_issues(Args, CurrRV);
+            NewRV = parse_validate_failover_disk_issues(Args, CurrRV),
+            case NewRV of
+                {error, _} ->
+                    NewRV;
+                _ ->
+                    parse_validate_server_group_failover(Args, NewRV)
+            end;
         false ->
             %% TODO - Check for unsupported params
             CurrRV
@@ -181,6 +190,18 @@ disable_failover_on_disk_issues() ->
 set_failover_on_disk_issues(Enabled, TP) ->
     [{?DATA_DISK_ISSUES_CONFIG_KEY, [{enabled, Enabled}, {timePeriod, TP}]}].
 
+parse_validate_server_group_failover(Args, CurrRV) ->
+    Key = "failoverServerGroup",
+    case parse_validate_boolean_field(Key, '_', Args) of
+        [{ok, _, Val}] ->
+            Extra = [{?FAILOVER_SERVER_GROUP_CONFIG_KEY, Val}],
+            add_extras(Extra, CurrRV);
+        [] ->
+            CurrRV;
+        _ ->
+            {error, boolean_err_msg(Key)}
+    end.
+
 add_extras(Add, CurrRV) ->
     {extras, Old} = lists:keyfind(extras, 1, CurrRV),
     lists:keyreplace(extras, 1, CurrRV, {extras, Add ++ Old}).
@@ -195,9 +216,12 @@ get_extra_settings(Config) ->
     case cluster_compat_mode:is_cluster_vulcan() andalso
         cluster_compat_mode:is_enterprise() of
         true ->
+            SGFO = proplists:get_value(?FAILOVER_SERVER_GROUP_CONFIG_KEY,
+                                       Config),
             {Enabled, TimePeriod} = get_failover_on_disk_issues(Config),
             [{?DATA_DISK_ISSUES_CONFIG_KEY,
-              {struct, [{enabled, Enabled}, {timePeriod, TimePeriod}]}}];
+              {struct, [{enabled, Enabled}, {timePeriod, TimePeriod}]}},
+             {failoverServerGroup, SGFO}];
         false ->
             []
     end.
@@ -206,7 +230,8 @@ disable_extras() ->
     case cluster_compat_mode:is_cluster_vulcan() andalso
         cluster_compat_mode:is_enterprise() of
         true ->
-            disable_failover_on_disk_issues();
+            disable_failover_on_disk_issues() ++
+                [{?FAILOVER_SERVER_GROUP_CONFIG_KEY, false}];
         false ->
             []
     end.
