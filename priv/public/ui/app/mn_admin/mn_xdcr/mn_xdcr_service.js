@@ -81,7 +81,15 @@
     }
     function saveClusterReference(cluster, name) {
       cluster = _.clone(cluster);
-      cluster.hostname && !cluster.hostname.split(":")[1] && (cluster.hostname += ":8091");
+      var re;
+      var result;
+      if (cluster.hostname) {
+        re = /^\[?([^\]]+)\]?:(\d+)$/; // ipv4/ipv6/hostname + port
+        result = re.exec(cluster.hostname);
+        if (!result) {
+          cluster.hostname += ":8091";
+        }
+      }
       if (!cluster.demandEncryption) {
         delete cluster.certificate;
         delete cluster.demandEncryption;
