@@ -68,22 +68,22 @@
           auto_failover_logic_state,
           %% Reference to the ns_tick_event. If it is nil, auto-failover is
           %% disabled.
-          tick_ref=nil :: nil | timer:tref(),
+          tick_ref = nil :: nil | timer:tref(),
           %% Time a node needs to be down until it is automatically failovered
-          timeout=nil :: nil | integer(),
+          timeout = nil :: nil | integer(),
           %% Counts the number of nodes that were already auto-failovered
-          count=0 :: non_neg_integer(),
+          count = 0 :: non_neg_integer(),
 
           %% Whether we reported to the user autofailover_unsafe condition
-          reported_autofailover_unsafe=false :: boolean(),
+          reported_autofailover_unsafe = false :: boolean(),
           %% Whether we reported that max number of auto failovers was reached
-          reported_max_reached=false :: boolean(),
+          reported_max_reached = false :: boolean(),
           %% Whether we reported that we could not auto failover because of
           %% rebalance
-          reported_rebalance_running=false :: boolean(),
+          reported_rebalance_running = false :: boolean(),
           %% Whether we reported that we could not auto failover because of
           %% recovery mode
-          reported_in_recovery=false :: boolean()
+          reported_in_recovery = false :: boolean()
          }).
 
 %%
@@ -169,8 +169,8 @@ init([]) ->
     ?log_debug("init auto_failover.", []),
     Timeout = proplists:get_value(timeout, Config),
     Count = proplists:get_value(count, Config),
-    State0 = #state{timeout=Timeout,
-                    count=Count,
+    State0 = #state{timeout = Timeout,
+                    count = Count,
                     auto_failover_logic_state = undefined},
     State1 = init_reported(State0),
     case proplists:get_value(enabled, Config) of
@@ -192,12 +192,12 @@ handle_call({enable_auto_failover, Timeout, Max}, From, State) ->
     handle_call({enable_auto_failover, Timeout, Max, []}, From, State);
 %% @doc Auto-failover isn't enabled yet (tick_ref isn't set).
 handle_call({enable_auto_failover, Timeout, Max, Extras}, _From,
-            #state{tick_ref=nil}=State) ->
+            #state{tick_ref = nil} = State) ->
     1 = Max,
     ale:info(?USER_LOGGER, "Enabled auto-failover with timeout ~p", [Timeout]),
     {ok, Ref} = timer2:send_interval(get_tick_period(), tick),
-    State2 = State#state{tick_ref=Ref, timeout=Timeout,
-                         auto_failover_logic_state=init_logic_state(Timeout)},
+    State2 = State#state{tick_ref = Ref, timeout = Timeout,
+                         auto_failover_logic_state = init_logic_state(Timeout)},
     make_state_persistent(State2, Extras),
     {reply, ok, State2};
 %% @doc Auto-failover is already enabled, just update the settings.
@@ -222,13 +222,15 @@ handle_call({enable_auto_failover, Timeout, Max, Extras}, _From,
 handle_call(disable_auto_failover, From, State) ->
     handle_call({disable_auto_failover, []}, From, State);
 %% @doc Auto-failover is already disabled, so we don't do anything
-handle_call({disable_auto_failover, _}, _From, #state{tick_ref=nil}=State) ->
+handle_call({disable_auto_failover, _}, _From,
+            #state{tick_ref = nil} = State) ->
     {reply, ok, State};
 %% @doc Auto-failover is enabled, disable it
-handle_call({disable_auto_failover, Extras}, _From, #state{tick_ref=Ref}=State) ->
+handle_call({disable_auto_failover, Extras}, _From,
+            #state{tick_ref = Ref} = State) ->
     ?log_debug("disable_auto_failover: ~p", [State]),
     {ok, cancel} = timer2:cancel(Ref),
-    State2 = State#state{tick_ref=nil, auto_failover_logic_state = undefined},
+    State2 = State#state{tick_ref = nil, auto_failover_logic_state = undefined},
     make_state_persistent(State2, Extras),
     ale:info(?USER_LOGGER, "Disabled auto-failover"),
     {reply, ok, State2};
@@ -239,11 +241,11 @@ handle_call(reset_auto_failover_count, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast(reset_auto_failover_count, #state{count=0}=State) ->
+handle_cast(reset_auto_failover_count, #state{count = 0} = State) ->
     {noreply, State};
 handle_cast(reset_auto_failover_count, State) ->
     ?log_debug("reset auto_failover count: ~p", [State]),
-    State2 = State#state{count=0,
+    State2 = State#state{count = 0,
                          auto_failover_logic_state = init_logic_state(State#state.timeout)},
     State3 = init_reported(State2),
     make_state_persistent(State3),
@@ -700,10 +702,10 @@ should_report(Flag, State) ->
     not(element(Flag, State)).
 
 init_reported(State) ->
-    State#state{reported_autofailover_unsafe=false,
-                reported_max_reached=false,
-                reported_rebalance_running=false,
-                reported_in_recovery=false}.
+    State#state{reported_autofailover_unsafe = false,
+                reported_max_reached = false,
+                reported_rebalance_running = false,
+                reported_in_recovery = false}.
 
 update_reported_flags(NewState0, UpdatedState) ->
     Flags = [#state.reported_autofailover_unsafe,
