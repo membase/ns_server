@@ -42,7 +42,9 @@ get_service_counters() ->
     ['gc-count', 'gc-time', 'io-reads', 'io-writes'].
 
 grab_stats() ->
-    cbas_rest:get_stats().
+    Port = ns_config:read_key_fast({node, node(), cbas_admin_port}, 9110),
+    Timeout = ns_config:get_timeout({cbas, stats}, 30000),
+    rest_utils:get_json_local(cbas, "analytics/node/stats", Port, Timeout).
 
 prefix() ->
     "@" ++ atom_to_list(get_type()) ++ "-".
