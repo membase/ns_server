@@ -17,7 +17,7 @@
 
 -include("ns_common.hrl").
 
--export([request/6, get_json_local/4]).
+-export([request/6, request_local/7, get_json_local/4]).
 
 request(Type, URL, Method, Headers, Body, Timeout) ->
     system_stats_collector:increment_counter({Type, requests}, 1),

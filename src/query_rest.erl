@@ -40,39 +40,28 @@ get_stats() ->
     end.
 
 do_get_stats() ->
-    RV = send("GET", "/admin/stats", 30000),
-    case RV of
-        {200, _Headers, BodyRaw} ->
-            case (catch ejson:decode(BodyRaw)) of
-                {[_|_] = Stats} ->
-                    Stats;
-                Err ->
-                    ?log_error("Failed to parse query stats: ~p", [Err]),
-                    []
-            end;
-        _ ->
-            ?log_error("Ignoring. Failed to grab stats: ~p", [RV]),
+    Port = get_query_port(ns_config:latest(), node()),
+    Timeout = ns_config:get_timeout({n1ql, stats}, 30000),
+    case rest_utils:get_json_local(n1ql, "/admin/stats", Port, Timeout) of
+        {ok, {Stats}} ->
+            Stats;
+        _Error ->
             []
     end.
 
-send(Method, Path, Timeout) ->
-    Port =  get_query_port(ns_config:latest(), node()),
-    URL = misc:local_url(Port, Path, []),
-    User = ns_config_auth:get_user(special),
-    Pwd = ns_config_auth:get_password(special),
-    Headers = menelaus_rest:add_basic_auth([], User, Pwd),
-    {ok, {{Code, _}, RespHeaders, RespBody}} =
-        rest_utils:request(query, URL, Method, Headers, [], Timeout),
-    {Code, RespHeaders, RespBody}.
-
 refresh_cert() ->
+    Port = get_query_port(ns_config:latest(), node()),
+    Timeout = ns_config:get_timeout({n1ql, refresh_cert}, 30000),
+
     ?log_debug("Tell cbq-engine to refresh ssl certificate"),
-    try send("POST", "/admin/ssl_cert", 30000) of
-        {200, _Headers, _Body} ->
+    try rest_utils:request_local(n1ql, "/admin/ssl_cert", Port, "POST", [], [],
+                                 Timeout) of
+        {ok, {{200, _}, _Headers, _Body}} ->
             ok
     catch
         error:{badmatch, {error, {econnrefused, _}}} ->
-            ?log_debug("Failed to notify cbq-engine because it is not started yet. This is usually normal")
+            ?log_debug("Failed to notify cbq-engine because it is not started "
+                       "yet. This is usually normal")
     end.
 
 maybe_refresh_cert() ->
