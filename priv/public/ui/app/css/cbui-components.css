@@ -295,8 +295,8 @@ input.filter-input {
   font-size: 1.125rem;
   color: #2ca01c;
   position: absolute;
-  top: 0;
-  left: -1.5rem;
+  top: 0.2rem;
+  left: 0.2rem;
 }
 /* alert warning icon --------------------------------------------------- */
 .alert.alert-warning p:before {
@@ -305,8 +305,8 @@ input.filter-input {
   font-size: 1.125rem;
   color: #f5a623;
   position: absolute;
-  top: 0;
-  left: -1.5rem;
+  top: 0.2rem;
+  left: 0.2rem;
 }
 /* alert error icon ----------------------------------------------------- */
 .alert.alert-error p:before {
@@ -315,8 +315,8 @@ input.filter-input {
   font-size: 1rem;
   color: #d65558;
   position: absolute;
-  top: 0;
-  left: -1.5rem;
+  top: 0.2rem;
+  left: 0.2rem;
 }
 
 /* CBUI FLEXBOX TABLES -------------------------------------------------  */
@@ -717,41 +717,40 @@ section.error {
 .animate-alert.ng-move,
 .animate-alert.ng-enter,
 .animate-alert.ng-leave {
-  transition: all ease .5s;
+  transition: all ease .8s;
 }
 .animate-alert.ng-leave.ng-leave-active,
 .animate-alert.ng-move,
 .animate-alert.ng-enter {
   opacity: 0;
-  height: 0;
+  max-height: 0;
 }
 .animate-alert.ng-leave,
 .animate-alert.ng-move.ng-move-active,
 .animate-alert.ng-enter.ng-enter-active {
   opacity: 1;
-  height: 2rem;
+  max-height: 4rem;
 }
 .alert {
   overflow: hidden;
   text-align: center;
-  line-height: 2rem;
-  height: 2rem;
   font-size: .75rem;
   font-weight: 600;
   display: block;
   color: #333;
   position: relative;
-  padding-right: 3rem;
 }
 .alert .close {
   position: absolute;
   right: 1.5rem;
+  top: 0.3rem;
   font-size: 1rem;
 }
 .alert p {
   margin: 0;
   display: inline-block;
   position: relative;
+  padding: 0.5rem 2rem;
 }
 .alert a {
   font-weight: 600;

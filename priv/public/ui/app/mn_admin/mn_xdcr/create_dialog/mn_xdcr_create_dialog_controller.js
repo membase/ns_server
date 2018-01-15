@@ -5,7 +5,7 @@
     .module('mnXDCR')
     .controller('mnXDCRCreateDialogController', mnXDCRCreateDialogController);
 
-  function mnXDCRCreateDialogController($scope, $uibModalInstance, $timeout, $window, mnPromiseHelper, mnPoolDefault, mnPools, mnXDCRService, replicationSettings) {
+  function mnXDCRCreateDialogController($scope, $uibModalInstance, $timeout, $window, mnPromiseHelper, mnPoolDefault, mnPools, mnXDCRService, replicationSettings, mnAlertsService) {
     var vm = this;
     var codemirrorInstance;
     var codemirrorMarkers = [];
@@ -95,7 +95,13 @@
         })
         .closeOnSuccess()
         .broadcast("reloadTasksPoller")
-        .showGlobalSuccess("Replication created successfully!");
+        .onSuccess(function (resp) {
+          var hasWarnings = !!(resp.data.warnings && resp.data.warnings.length);
+          mnAlertsService.formatAndSetAlerts(
+            hasWarnings ? resp.data.warnings : "Replication created successfully!",
+            hasWarnings ? 'warning': "success",
+            hasWarnings ? 0 : 2500);
+        });
     };
   }
 })();

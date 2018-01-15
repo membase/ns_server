@@ -134,10 +134,7 @@
   <div
      ng-repeat="alert in adminCtl.alerts"
      class="animate-alert alert enable-ng-animation"
-     ng-class="{
-               'alert-error': alert.type !== 'success',
-               'alert-success': alert.type === 'success'
-               }">
+     ng-class="['alert-' + alert.type]">
     <p>{{alert.msg}}</p>
     <a ng-click="adminCtl.closeAlert(alert)" class="close">X</a>
   </div>

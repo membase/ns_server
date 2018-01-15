@@ -10,7 +10,8 @@
     'mnPoolDefault',
     'mnPools',
     'mnSpinner',
-    "ui.codemirror"
+    "ui.codemirror",
+    'mnAlertsService'
   ]).controller('mnXDCRController', mnXDCRController);
 
   function mnXDCRController($scope, permissions, $uibModal, mnHelper, mnPoller, mnPoolDefault, mnXDCRService, mnTasksDetails, mnPromiseHelper) {

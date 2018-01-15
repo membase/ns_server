@@ -178,7 +178,7 @@
             return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
               return $state.go('app.admin.overview').then(function () {
                 $rootScope.$broadcast("maybeShowMemoryQuotaDialog", vm.joinClusterConfig.services.model);
-                mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success');
+                mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success', 60000);
               });
             });
           });

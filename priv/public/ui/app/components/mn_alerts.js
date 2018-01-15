@@ -54,7 +54,7 @@
 
     function setAlert(type, message, timeout, id) {
       var item = {
-        type: type,
+        type: type || 'error',
         msg: message,
         id: id
       };
@@ -79,7 +79,7 @@
       $window.scrollTo(0, 0);
     }
     function formatAndSetAlerts(incomingAlerts, type, timeout) {
-      timeout = timeout || 60000;
+      timeout = timeout || (60000 * 5);
       if ((angular.isArray(incomingAlerts) && angular.isString(incomingAlerts[0])) ||
           angular.isObject(incomingAlerts)) {
         angular.forEach(incomingAlerts, function (msg) {
