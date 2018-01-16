@@ -622,6 +622,8 @@ get_user_name_from_client_cert(Val) ->
                                        [R]),
                             failed
                     end;
+                Cert when is_binary(Cert) ->
+                    get_user_name_from_client_cert(Cert, ClientAuth);
                 _ ->
                     undefined
             end;

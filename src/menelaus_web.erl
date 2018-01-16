@@ -669,6 +669,9 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[indexes], write}, fun menelaus_web_indexes:handle_settings_post/1};
                 ["_cbauth"] ->
                     {no_check, fun menelaus_cbauth:handle_cbauth_post/1};
+                ["_cbauth", "extractUserFromCert"] ->
+                    {{[admin, internal], all},
+                     fun menelaus_cbauth:handle_extract_user_from_cert_post/1};
                 ["_log"] ->
                     {{[admin, internal], all}, fun menelaus_web_misc:handle_log_post/1};
                 ["_goxdcr", "regexpValidation"] ->

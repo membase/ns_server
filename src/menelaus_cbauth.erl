@@ -16,7 +16,8 @@
 
 -module(menelaus_cbauth).
 
--export([handle_cbauth_post/1]).
+-export([handle_cbauth_post/1,
+         handle_extract_user_from_cert_post/1]).
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -244,6 +245,7 @@ build_auth_info(#state{cert_version = CertVersion,
     AuthCheckURL = misc:local_url(Port, "/_cbauth", []),
     PermissionCheckURL = misc:local_url(Port, "/_cbauth/checkPermission", []),
     PermissionsVersion = menelaus_web_rbac:check_permissions_url_version(Config),
+    EUserFromCertURL = misc:local_url(Port, "/_cbauth/extractUserFromCert", []),
 
     [{nodes, Nodes},
      {authCheckURL, list_to_binary(AuthCheckURL)},
@@ -251,6 +253,7 @@ build_auth_info(#state{cert_version = CertVersion,
      {permissionsVersion, PermissionsVersion},
      {authVersion, auth_version(Config)},
      {certVersion, CertVersion},
+     {extractUserFromCertURL, list_to_binary(EUserFromCertURL)},
      {clientCertAuthState, list_to_binary(CcaState)},
      {clientCertAuthVersion, ClientCertAuthVersion}].
 
@@ -268,6 +271,21 @@ handle_cbauth_post(Req) ->
     {User, Domain} = menelaus_auth:get_identity(Req),
     menelaus_util:reply_json(Req, {[{user, erlang:list_to_binary(User)},
                                     {domain, Domain}]}).
+
+handle_extract_user_from_cert_post(Req) ->
+    CertBin = Req:recv_body(),
+    try
+        case menelaus_auth:extract_identity_from_cert(CertBin) of
+            {User, Domain} ->
+                menelaus_util:reply_json(Req,
+                                         {[{user, list_to_binary(User)},
+                                           {domain, Domain}]});
+            auth_failure ->
+                menelaus_util:reply_json(Req, <<"Auth failure">>, 401)
+        end
+    catch
+        _:_ -> menelaus_util:reply_json(Req, <<"Auth failure">>, 401)
+    end.
 
 is_cbauth_connection(Label) ->
     lists:suffix("-cbauth", Label).

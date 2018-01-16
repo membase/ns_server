@@ -25,6 +25,7 @@
          get_accessible_buckets/2,
          extract_auth/1,
          extract_auth_user/1,
+         extract_identity_from_cert/1,
          extract_ui_auth_token/1,
          uilogin/3,
          complete_uilogout/1,
@@ -352,6 +353,22 @@ do_verify_rest_auth(Auth, Permission) ->
                     {allowed, Identity, Token};
                 Other ->
                     Other
+            end
+    end.
+
+-spec extract_identity_from_cert(binary()) -> auth_failure | tuple().
+extract_identity_from_cert(CertDer) ->
+    case ns_ssl_services_setup:get_user_name_from_client_cert(CertDer) of
+        undefined ->
+            auth_failure;
+        failed ->
+            auth_failure;
+        UName ->
+            case authenticate({client_cert_auth, UName}) of
+                false ->
+                    auth_failure;
+                {ok, Identity} ->
+                    Identity
             end
     end.
 
