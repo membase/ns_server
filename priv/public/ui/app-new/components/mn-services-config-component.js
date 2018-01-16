@@ -17,13 +17,11 @@ mn.components.MnServicesConfig =
 
     MnServicesConfig.parameters = [
       mn.services.MnWizard,
-      mn.services.MnAdmin,
-      ng.core.ChangeDetectorRef
+      mn.services.MnAdmin
     ];
 
     MnServicesConfig.prototype.ngOnInit = ngOnInit;
     MnServicesConfig.prototype.ngOnDestroy = ngOnDestroy;
-    MnServicesConfig.prototype.ngOnChanges = ngOnChanges;
 
     return MnServicesConfig;
 
@@ -108,15 +106,9 @@ mn.components.MnServicesConfig =
       this.destroy.complete();
     }
 
-    function ngOnChanges() {
-      this.changeDetector.detectChanges();
-    }
-
-    function MnServicesConfig(mnWizardService, mnAdminService, changeDetector) {
+    function MnServicesConfig(mnWizardService, mnAdminService) {
       this.focusField = true;
       this.destroy = new Rx.Subject();
-
-      this.changeDetector = changeDetector;
       this.poolsDefaultHttp = mnAdminService.stream.poolsDefaultHttp;
     }
   })();

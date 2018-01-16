@@ -16,8 +16,7 @@ mn.components.MnPathField =
     ];
 
     MnPathField.parameters = [
-      mn.services.MnWizard,
-      ng.core.ChangeDetectorRef
+      mn.services.MnWizard
     ];
 
     MnPathField.prototype.ngOnInit = ngOnInit;
@@ -32,9 +31,8 @@ mn.components.MnPathField =
       }.bind(this), 0);
     }
 
-    function MnPathField(mnWizardService, changeDetector) {
+    function MnPathField(mnWizardService) {
       this.focusField = true;
-      this.changeDetector = changeDetector;
       this.createLookUpStream = mnWizardService.createLookUpStream.bind(mnWizardService);
     }
   })();

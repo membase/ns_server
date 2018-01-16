@@ -15,20 +15,12 @@ mn.components.MnQuerySettingsConfig =
     ];
 
     MnQuerySettingsConfig.parameters = [
-      mn.services.MnWizard,
-      ng.core.ChangeDetectorRef
+      mn.services.MnWizard
     ];
-
-    MnQuerySettingsConfig.prototype.ngOnChanges = ngOnChanges;
 
     return MnQuerySettingsConfig;
 
-    function ngOnChanges() {
-      this.changeDetector.detectChanges();
-    }
-
-    function MnQuerySettingsConfig(mnWizardService, changeDetector) {
-      this.changeDetector = changeDetector;
+    function MnQuerySettingsConfig(mnWizardService) {
       this.querySettingsHttp = mnWizardService.stream.querySettingsHttp;
     }
   })();
