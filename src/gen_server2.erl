@@ -80,6 +80,13 @@
                       Extra :: term()) ->
     {ok, NewState :: term()} | {error, Reason :: term()}.
 
+%% This one is an optional callback, but erlang doesn't have a way to
+%% express that.
+%%
+%% -callback handle_job_death(Queue :: term(), Name :: term(), Reason :: term()) ->
+%%     {continue, Reply :: term()} |
+%%     {stop, Reason :: term()}.
+
 %% Standard gen_server APIs
 start(Module, Args, Options) ->
     gen_server:start(?MODULE, [Module, Args], Options).
@@ -170,19 +177,16 @@ handle_cast(Msg, State) ->
     (get_module()):handle_cast(Msg, State).
 
 handle_info({'$gen_server2', job_result, Queue, Result}, State) ->
-    {ok, Job} = take_active_job(Queue),
-    erlang:demonitor(Job#async_job.mref, [flush]),
-
-    %% reuse the result for all following jobs with the same name on the same
-    %% queue
-    MoreJobs = dequeue_same_name_jobs(Job#async_job.name, Queue),
-    maybe_start_job(Queue),
-
-    chain_handle_results([Job | MoreJobs], Result, State);
+    handle_job_result(Queue, Result, State);
 handle_info({'DOWN', MRef, process, _Pid, _Reason} = Info, State) ->
     case get_active_job(#async_job.mref, MRef) of
         {ok, Job} ->
-            {stop, {async_job_died, Job, Info}, State};
+            case call_handle_job_death(Job, Reason) of
+                {continue, Reply} ->
+                    handle_job_result(Job#async_job.queue, Reply, State);
+                {stop, StopReason} ->
+                    {stop, StopReason, State}
+            end;
         not_found ->
             (get_module()):handle_info(Info, State)
     end;
@@ -354,3 +358,23 @@ abort_jobs(Queue) ->
         not_found ->
             []
     end.
+
+call_handle_job_death(#async_job{queue = Queue, name = Name} = Job, Reason) ->
+    Module = get_module(),
+    case erlang:function_exported(Module, handle_job_death, 3) of
+        true ->
+            Module:handle_job_death(Queue, Name, Reason);
+        false ->
+            {stop, {async_job_died, Job, Reason}}
+    end.
+
+handle_job_result(Queue, Result, State) ->
+    {ok, Job} = take_active_job(Queue),
+    erlang:demonitor(Job#async_job.mref, [flush]),
+
+    %% reuse the result for all following jobs with the same name on the same
+    %% queue
+    MoreJobs = dequeue_same_name_jobs(Job#async_job.name, Queue),
+    maybe_start_job(Queue),
+
+    chain_handle_results([Job | MoreJobs], Result, State).
