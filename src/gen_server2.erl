@@ -29,6 +29,7 @@
 %% gen_server2-specific APIs
 -export([async_job/2, async_job/3, async_job/4]).
 -export([abort_queue/1, abort_queue/3]).
+-export([get_active_queues/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -153,6 +154,9 @@ abort_queue(Queue, AbortMarker, State) ->
               {noreply, State} =
                   (Job#async_job.handle_result)(AbortMarker, State)
       end, Jobs).
+
+get_active_queues() ->
+    lists:map(_#async_job.queue, get_active_jobs()).
 
 %% gen_server callbacks
 init([Module, Args]) ->
