@@ -1033,16 +1033,6 @@ dict_update(Key, Fun, Initial, Dict) ->
             dict:store(Key, Fun(Initial), Dict)
     end.
 
-keyupdate(Key, N, Fun, Initial, List) ->
-    {Tuple, ListRest} =
-        case lists:keytake(Key, N, List) of
-            {value, T, L} ->
-                {T, L};
-            false ->
-                {Initial, List}
-        end,
-    [Fun(Tuple) | ListRest].
-
 %% Parse version of the form 1.7.0r_252_g1e1c2c0 or 1.7.0r-252-g1e1c2c0 into a
 %% list {[1,7,0],candidate,252}.  1.8.0 introduces a license type suffix,
 %% like: 1.8.0r-25-g1e1c2c0-enterprise.  Note that we should never

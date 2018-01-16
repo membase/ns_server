@@ -43,16 +43,17 @@
 
 -module(leader_registry_server).
 
--behaviour(gen_server).
+-behaviour(gen_server2).
 
 -export([start_link/0]).
 
 %% name service API
 -export([register_name/2, unregister_name/1, whereis_name/1, send/2]).
 
-%% gen_server callbacks
+%% gen_server2 callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
+-export([handle_job_death/3]).
 
 -include("cut.hrl").
 -include("ns_common.hrl").
@@ -60,17 +61,10 @@
 -define(SERVER, leader_registry).
 -define(TABLE,  leader_registry).
 
-
--record(resolver, { name         :: atom(),
-                    pid          :: pid() | undefined,
-                    mref         :: reference() | undefined,
-                    waiters = [] :: list() }).
-
--record(state, { leader    :: node() | undefined,
-                 resolvers :: [#resolver{}]}).
+-record(state, { leader :: node() | undefined }).
 
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+    gen_server2:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% actual implementation of the APIs
 register_name(Name, Pid) ->
@@ -100,7 +94,7 @@ send(Name, Msg) ->
             exit({badarg, {Name, Msg}})
     end.
 
-%% gen_server callbacks
+%% gen_server2 callbacks
 init([]) ->
     process_flag(priority, high),
 
@@ -109,7 +103,7 @@ init([]) ->
                              fun (Event) ->
                                      case Event of
                                          {new_leader, _} ->
-                                             gen_server:cast(Self, Event);
+                                             gen_server2:cast(Self, Event);
                                          _ ->
                                              ok
                                      end
@@ -119,8 +113,7 @@ init([]) ->
 
     %% At this point mb_master is not running yet, so we can't get the current
     %% leader, but we'll get an event with the master pretty soon.
-    {ok, #state{leader    = undefined,
-                resolvers = []}}.
+    {ok, #state{leader = undefined}}.
 
 handle_call({if_leader, Call}, From, State) ->
     case is_leader(State) of
@@ -139,8 +132,6 @@ handle_cast({new_leader, Leader}, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({resolved_name, Name, Reply}, State) ->
-    {noreply, handle_resolved_name(Name, Reply, State)};
 handle_info({'DOWN', MRef, process, Pid, Reason}, State) ->
     {noreply, handle_down(MRef, Pid, Reason, State)};
 handle_info(_Info, State) ->
@@ -157,7 +148,7 @@ call(Request) ->
     call(node(), Request).
 
 call(Node, Request) ->
-    case gen_server:call({?SERVER, Node}, Request, infinity) of
+    case gen_server2:call({?SERVER, Node}, Request, infinity) of
         {ok, Reply} ->
             Reply;
         {error, Error} ->
@@ -165,10 +156,10 @@ call(Node, Request) ->
     end.
 
 reply(From, Reply) ->
-    gen_server:reply(From, {ok, Reply}).
+    gen_server2:reply(From, {ok, Reply}).
 
 reply_error(From, Error) ->
-    gen_server:reply(From, {error, Error}).
+    gen_server2:reply(From, {error, Error}).
 
 handle_leader_call({whereis_name, Name}, From, State) ->
     %% since this is a leader call, we can be sure that whereis_name
@@ -212,49 +203,16 @@ handle_whereis_name(Name, From, #state{leader = Leader} = State) ->
 maybe_spawn_name_resolver(_Name, From, #state{leader = undefined} = State) ->
     reply(From, undefined),
     State;
-maybe_spawn_name_resolver(Name, From, State) ->
-    misc:update_field(#state.resolvers,
-                      State,
-                      do_maybe_spawn_name_resolver(Name, From, State, _)).
+maybe_spawn_name_resolver(Name, From, #state{leader = Leader} = State) ->
+    gen_server2:async_job({resolver, Name}, Name,
+                          ?cut(call(Leader, {if_leader, {whereis_name, Name}})),
+                          fun (MaybePid, NewState) ->
+                                  reply(From, MaybePid),
+                                  maybe_cache_name(Name, MaybePid),
+                                  {noreply, NewState}
+                          end),
 
-do_maybe_spawn_name_resolver(Name, From, State, Resolvers) ->
-    update_resolver(
-      Name,
-      fun (#resolver{waiters = Waiters} = Resolver) ->
-              NewResolver = Resolver#resolver{waiters = [From | Waiters]},
-
-              case Resolver#resolver.pid of
-                  undefined ->
-                      {Pid, MRef} = spawn_name_resolver(Name, State),
-                      NewResolver#resolver{pid  = Pid,
-                                           mref = MRef};
-                  Pid when is_pid(Pid) ->
-                      NewResolver
-              end
-      end,
-      Resolvers).
-
-spawn_name_resolver(Name, #state{leader = Leader}) ->
-    true = (Leader =/= undefined),
-
-    Server = self(),
-    async:perform(
-      fun () ->
-              Reply = call(Leader, {if_leader, {whereis_name, Name}}),
-              Server ! {resolved_name, Name, Reply}
-      end).
-
-handle_resolved_name(Name, MaybePid, #state{resolvers = Resolvers} = State) ->
-    {value, Resolver, RestResolvers} = lists:keytake(Name,
-                                                     #resolver.name,
-                                                     Resolvers),
-
-    wait_for_resolver(Resolver),
-
-    lists:foreach(reply(_, MaybePid), Resolver#resolver.waiters),
-    maybe_cache_name(Name, MaybePid),
-
-    State#state{resolvers = RestResolvers}.
+    State.
 
 handle_new_leader(NewLeader, #state{leader = Leader} = State) ->
     case Leader =:= NewLeader of
@@ -262,47 +220,39 @@ handle_new_leader(NewLeader, #state{leader = Leader} = State) ->
             State;
         false ->
             ?log_debug("New leader is ~p. Invalidating name cache.", [NewLeader]),
-            invalidate_everything(State#state{leader = NewLeader})
+            invalidate_everything(State),
+            State#state{leader = NewLeader}
     end.
 
-handle_down(MRef, Pid, Reason, #state{resolvers = Resolvers} = State) ->
-    case lists:keytake(Pid, #resolver.pid, Resolvers) of
-        {value, Resolver, RestResolvers} ->
-            Name    = Resolver#resolver.name,
-            Waiters = Resolver#resolver.waiters,
+handle_job_death({resolver, Name}, _, Reason) ->
+    ?log_error("Resolver for name '~p' failed with reason ~p", [Name, Reason]),
+    {continue, undefined}.
 
-            ?log_error("Resolver ~p for name '~p' failed with reason ~p",
-                       [Pid, Name, Reason]),
-            lists:foreach(reply(_, undefined), Waiters),
-            State#state{resolvers = RestResolvers};
-        false ->
-            case ets:lookup(?TABLE, {pid, Pid}) of
-                [{_, Name}] ->
-                    ?log_info("Process ~p registered as '~p' terminated.",
-                              [Pid, Name]),
-                    invalidate_name(Name, Pid),
-                    State;
-                [] ->
-                    ?log_error("Received unexpected DOWN message: ~p",
-                               [{MRef, Pid, Reason}]),
-                    State
-            end
+handle_down(MRef, Pid, Reason, State) ->
+    case ets:lookup(?TABLE, {pid, Pid}) of
+        [{_, Name}] ->
+            ?log_info("Process ~p registered as '~p' terminated.",
+                      [Pid, Name]),
+            invalidate_name(Name, Pid),
+            State;
+        [] ->
+            ?log_error("Received unexpected DOWN message: ~p",
+                       [{MRef, Pid, Reason}]),
+            State
     end.
 
 is_leader(#state{leader = Leader}) ->
     Leader =:= node().
 
-update_resolver(Name, Fun, Resolvers) ->
-    misc:keyupdate(Name,
-                   #resolver.name,
-                   Fun,
-                   #resolver{name = Name},
-                   Resolvers).
-
 maybe_cache_name(_Name, undefined) ->
     ok;
 maybe_cache_name(Name, Pid) when is_pid(Pid) ->
-    cache_name(Name, Pid).
+    case get_cached_name(Name) of
+        not_found ->
+            cache_name(Name, Pid);
+        {ok, CachedPid} ->
+            true = (CachedPid =:= Pid)
+    end.
 
 cache_name(Name, Pid) ->
     _ = erlang:monitor(process, Pid),
@@ -310,20 +260,10 @@ cache_name(Name, Pid) ->
                                    {{pid, Pid}, Name}]),
     ok.
 
-invalidate_everything(#state{resolvers = Resolvers} = State) ->
-    lists:foreach(terminate_resolver(_), Resolvers),
-    ets:delete_all_objects(?TABLE),
-
-    State#state{resolvers = []}.
-
-terminate_resolver(#resolver{name    = Name,
-                             pid     = Pid,
-                             mref    = MRef,
-                             waiters = Waiters}) ->
-    lists:foreach(reply(_, undefined), Waiters),
-    erlang:demonitor(MRef, [flush]),
-    async:abort(Pid),
-    ?flush({resolved, Name, _}).
+invalidate_everything(State) ->
+    lists:foreach(gen_server2:abort_queue(_, undefined, State),
+                  gen_server2:get_active_queues()),
+    ets:delete_all_objects(?TABLE).
 
 invalidate_name(Name, Pid) ->
     ets:delete(?TABLE, {name, Name}),
@@ -338,13 +278,4 @@ get_cached_name(Name) ->
     catch
         error:badarg ->
             not_running
-    end.
-
-wait_for_resolver(#resolver{pid = Pid, mref = MRef} = Resolver) ->
-    receive
-        {'DOWN', MRef, process, Pid, _Reason} ->
-            ok
-    after
-        10000 ->
-            exit({resolver_didnt_terminate, Resolver})
     end.
