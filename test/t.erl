@@ -164,7 +164,7 @@ is_triq_test(Name) when is_atom(Name) ->
 fake_loggers() ->
     ok = application:start(ale),
 
-    ok = ale:start_sink(stderr, ale_stderr_sink, []),
+    ok = ale:start_sink(stderr, tty_safe_stderr_sink, []),
 
     ok = ale:set_loglevel(?ERROR_LOGGER, debug),
     ok = ale:add_sink(?ERROR_LOGGER, stderr),
