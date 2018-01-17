@@ -38,7 +38,8 @@ supported_setting_names() ->
      {privilege_debug, bool},
      {breakpad_enabled, bool},
      {breakpad_minidump_dir_path, string},
-     {dedupe_nmvb_maps, bool}].
+     {dedupe_nmvb_maps, bool},
+     {tracing_enabled, bool}].
 
 supported_extra_setting_names() ->
     [{default_reqs_per_event, {int, 0, ?MC_MAXINT}},

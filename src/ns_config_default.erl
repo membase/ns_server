@@ -315,7 +315,8 @@ default() ->
        {breakpad_enabled, true},
        %% Location that Breakpad should write minidumps upon memcached crash.
        {breakpad_minidump_dir_path, BreakpadMinidumpDir},
-       {dedupe_nmvb_maps, false}]},
+       {dedupe_nmvb_maps, false},
+       {tracing_enabled, true}]},
 
      %% Memcached config
      {{node, node(), memcached},
@@ -398,6 +399,7 @@ default() ->
         {audit_file, {"~s", [audit_file]}},
         {rbac_file, {"~s", [rbac_file]}},
         {dedupe_nmvb_maps, dedupe_nmvb_maps},
+        {tracing_enabled, tracing_enabled},
         {xattr_enabled, {memcached_config_mgr, is_enabled, [?VERSION_50]}},
 
         {logger,
@@ -650,6 +652,7 @@ upgrade_config_from_5_0_to_vulcan(Config) ->
 
 do_upgrade_config_from_5_0_to_vulcan(Config, DefaultConfig) ->
     [upgrade_key(memcached_config, DefaultConfig),
+     upgrade_key(memcached_defaults, DefaultConfig),
      upgrade_sub_keys(memcached, [other_users], Config, DefaultConfig)].
 
 encrypt_config_val(Val) ->
@@ -808,10 +811,17 @@ upgrade_4_5_to_5_0_test() ->
 upgrade_5_0_to_vulcan_test() ->
     Cfg = [[{some_key, some_value},
             {{node, node(), memcached}, [{old, info}, {other_users, old}]},
+            {{node, node(), memcached_defaults}, old_memcached_defaults},
             {{node, node(), memcached_config}, old_memcached_config}]],
+
     Default = [{{node, node(), memcached}, [{some, stuff}, {other_users, new}]},
+               {{node, node(), memcached_defaults}, [{some, stuff},
+                                                     {new_field, enable}]},
                {{node, node(), memcached_config}, new_memcached_config}],
+
     ?assertMatch([{set, {node, _, memcached_config}, new_memcached_config},
+                  {set, {node, _, memcached_defaults}, [{some, stuff},
+                                                        {new_field, enable}]},
                   {set, {node, _, memcached}, [{old, info}, {other_users, new}]}],
                  do_upgrade_config_from_5_0_to_vulcan(Cfg, Default)).
 
