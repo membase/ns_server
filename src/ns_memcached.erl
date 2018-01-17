@@ -1232,14 +1232,15 @@ ensure_bucket(Sock, Bucket) ->
                  ahead_threshold = missing_ahead_threshold,
                  behind_threshold = missing_behind_threshold,
                  ephemeral_metadata_purge_age = missing_ephemeral_metadata_purge_age,
-                 max_ttl = missing_max_ttl}).
+                 max_ttl = missing_max_ttl,
+                 compression_mode = missing_compression_mode}).
 
 -spec ensure_bucket_config(port(), bucket_name(), bucket_type(),
                            {pos_integer(), nonempty_string()}) ->
                                   ok | no_return().
 ensure_bucket_config(Sock, Bucket, membase,
                      {MaxSize, DBDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
-                      DriftThresholds, EphemeralPurgeAge, MaxTTL}) ->
+                      DriftThresholds, EphemeralPurgeAge, MaxTTL, CompMode}) ->
     {ok, #qstats{max_size = ActualMaxSize,
                  dbname = ActualDBDir,
                  max_num_workers = ActualNumThreads,
@@ -1248,7 +1249,8 @@ ensure_bucket_config(Sock, Bucket, membase,
                  ahead_threshold = ActualDAT,
                  behind_threshold = ActualDBT,
                  ephemeral_metadata_purge_age = ActualPurgeAge,
-                 max_ttl = ActualMaxTTL}} =
+                 max_ttl = ActualMaxTTL,
+                 compression_mode = ActualCompMode}} =
         mc_binary:quick_stats(
           Sock, <<>>,
           fun (<<"ep_max_size">>, V, QStats) ->
@@ -1269,6 +1271,8 @@ ensure_bucket_config(Sock, Bucket, membase,
                   QStats#qstats{ephemeral_metadata_purge_age = V};
               (<<"ep_max_ttl">>, V, QStats) ->
                   QStats#qstats{max_ttl = V};
+              (<<"ep_compression_mode">>, V, QStats) ->
+                  QStats#qstats{compression_mode = V};
               (_, _, QStats) ->
                   QStats
           end, #qstats{}),
@@ -1284,7 +1288,8 @@ ensure_bucket_config(Sock, Bucket, membase,
            maybe_set_drift_thresholds(Sock, Bucket, DriftThresholds, ActualDAT, ActualDBT),
            maybe_set_max_size(Sock, Bucket, MaxSize, ActualMaxSize),
            maybe_set_db_dir(Bucket, DBDir, ActualDBDir),
-           maybe_set_max_ttl(Sock, Bucket, MaxTTL, ActualMaxTTL)],
+           maybe_set_max_ttl(Sock, Bucket, MaxTTL, ActualMaxTTL),
+           maybe_set_compression_mode(Sock, Bucket, CompMode, ActualCompMode)],
 
     case lists:any(fun(RV) -> RV =:= {ok, needs_restart} end, Out) of
         true ->
@@ -1379,6 +1384,13 @@ maybe_set_max_ttl(Sock, Bucket, NewMaxTTL, ActualMaxTTLBin) ->
     NewMaxTTLBin = list_to_binary(integer_to_list(NewMaxTTL)),
     maybe_set_engine_param(Sock, Bucket, <<"max_ttl">>, NewMaxTTLBin, ActualMaxTTLBin,
                            "max ttl", flush).
+
+maybe_set_compression_mode(_Sock, _Bucket, undefined, _) ->
+    ok;
+maybe_set_compression_mode(Sock, Bucket, NewCompMode, ActualCompModeBin) ->
+    NewCompModeBin = list_to_binary(NewCompMode),
+    maybe_set_engine_param(Sock, Bucket, <<"compression_mode">>, NewCompModeBin,
+                           ActualCompModeBin, "compression mode", flush).
 
 server(Bucket) ->
     list_to_atom(?MODULE_STRING ++ "-" ++ Bucket).

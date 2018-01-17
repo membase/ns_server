@@ -128,6 +128,7 @@ config_string(BucketName) ->
                 DriftThresholds = drift_thresholds(BucketConfig),
                 StorageMode = storage_mode(BucketConfig),
                 MaxTTL = proplists:get_value(max_ttl, BucketConfig),
+                CompMode = proplists:get_value(compression_mode, BucketConfig),
                 %% MemQuota is our per-node bucket memory limit
                 CFG =
                     io_lib:format(
@@ -154,9 +155,10 @@ config_string(BucketName) ->
                        eviction_policy_cfg_string(BucketConfig, ItemEvictionPolicy,
                                                   EphemeralFullPolicy)]),
                 CFG1 = metadata_purge_age_cfg_string(EphemeralPurgeAge) ++ CFG,
-                CFG2 = ht_size_cfg_string(BucketConfig) ++ max_ttl_cfg_string(MaxTTL) ++ CFG1,
+                CFG2 = ht_size_cfg_string(BucketConfig) ++ max_ttl_cfg_string(MaxTTL) ++
+                    compression_mode_cfg_string(CompMode) ++ CFG1,
                 {CFG2, {MemQuota, DBSubDir, NumThreads, ItemEvictionPolicy, EphemeralFullPolicy,
-                       DriftThresholds, EphemeralPurgeAge, MaxTTL}, DBSubDir};
+                       DriftThresholds, EphemeralPurgeAge, MaxTTL, CompMode}, DBSubDir};
             memcached ->
                 {io_lib:format("cache_size=~B;uuid=~s", [MemQuota, BucketUUID]),
                  MemQuota, undefined}
@@ -340,6 +342,14 @@ max_ttl_cfg_string(MaxTTL) ->
             [];
         _ ->
             io_lib:format("max_ttl=~B;", [MaxTTL])
+    end.
+
+compression_mode_cfg_string(CompMode) ->
+    case CompMode of
+        undefined ->
+            [];
+        _ ->
+            io_lib:format("compression_mode=~s;", [CompMode])
     end.
 
 -spec storage_mode([{_,_}]) -> atom().
