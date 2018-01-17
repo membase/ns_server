@@ -366,7 +366,9 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
 
     Suffix6 = case cluster_compat_mode:is_cluster_vulcan() of
                   true ->
-                      [{maxTTL, proplists:get_value(max_ttl, BucketConfig)} | Suffix5];
+                      CompMode = proplists:get_value(compression_mode, BucketConfig),
+                      [{maxTTL, proplists:get_value(max_ttl, BucketConfig)},
+                       {compressionMode, list_to_binary(CompMode)} | Suffix5];
                   false ->
                       Suffix5
               end,
@@ -532,7 +534,8 @@ extract_bucket_props(BucketId, Props) ->
                                                                      conflict_resolution_type,
                                                                      drift_ahead_threshold_ms,
                                                                      drift_behind_threshold_ms,
-                                                                     storage_mode, max_ttl]],
+                                                                     storage_mode, max_ttl,
+                                                                     compression_mode]],
                            X =/= false],
     case not cluster_compat_mode:is_cluster_50() andalso
         BucketId =:= "default" of
@@ -964,7 +967,8 @@ validate_bucket_type_specific_params(CommonParams, Params, membase, IsNew,
          parse_validate_eviction_policy(Params, BucketConfig, IsNew),
          quota_size_error(CommonParams, membase, IsNew, BucketConfig),
          get_storage_mode(Params, BucketConfig, IsNew),
-         parse_validate_max_ttl(Params, BucketConfig, IsNew)
+         parse_validate_max_ttl(Params, BucketConfig, IsNew),
+         parse_validate_compression_mode(Params, BucketConfig, IsNew)
          | validate_bucket_auto_compaction_settings(Params)],
 
     validate_bucket_purge_interval(Params, BucketConfig, IsNew) ++
@@ -1402,6 +1406,32 @@ replicas_num_default(_) ->
 parse_validate_replica_index("0") -> {ok, replica_index, false};
 parse_validate_replica_index("1") -> {ok, replica_index, true};
 parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaIndex can only be 1 or 0">>}.
+
+parse_validate_compression_mode(Params, BucketConfig, IsNew) ->
+    CanParse = cluster_compat_mode:is_enterprise() andalso cluster_compat_mode:is_cluster_vulcan(),
+    CompMode = proplists:get_value("compressionMode", Params),
+    parse_validate_compression_mode_inner(CanParse, CompMode, BucketConfig, IsNew).
+
+parse_validate_compression_mode_inner(false, undefined, _BucketCfg, _IsNew) ->
+    ignore;
+parse_validate_compression_mode_inner(false, _CompMode, _BucketCfg, _IsNew) ->
+    case not cluster_compat_mode:is_enterprise() of
+        true ->
+            {error, compressionMode, <<"Compression mode is supported in enterprise edition only">>};
+        false ->
+            {error, compressionMode, <<"Compression mode can not be set until the cluster is fully vulcan">>}
+    end;
+parse_validate_compression_mode_inner(true, CompMode, BucketCfg, IsNew) ->
+    DefaultVal = case IsNew of
+                     true -> "off";
+                     false -> proplists:get_value(compression_mode, BucketCfg)
+                 end,
+    validate_with_missing(CompMode, DefaultVal, IsNew, fun validate_compression_mode/1).
+
+validate_compression_mode(V) when V =:= "off" orelse V =:= "passive" orelse V =:= "active" ->
+    {ok, compression_mode, V};
+validate_compression_mode(_) ->
+    {error, compressionMode, <<"compressionMode can be set to 'off', 'passive' or 'active'">>}.
 
 parse_validate_max_ttl(Params, BucketConfig, IsNew) ->
     CanParse = cluster_compat_mode:is_enterprise() andalso cluster_compat_mode:is_cluster_vulcan(),
