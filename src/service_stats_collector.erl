@@ -22,7 +22,7 @@
 -include("ns_stats.hrl").
 
 %% API
--export([start_link/1]).
+-export([start_link/1, service_prefix/1, service_event_name/1]).
 
 %% callbacks
 -export([init/1, handle_info/2, grab_stats/1, process_stats/5]).
@@ -48,6 +48,15 @@ ets_name(Service) ->
 start_link(Service) ->
     base_stats_collector:start_link({local, server_name(Service)}, ?MODULE,
                                     Service).
+
+service_prefix(Service) ->
+    "@" ++ atom_to_list(Service:get_type()) ++ "-".
+
+service_stat_prefix(Service) ->
+    atom_to_list(Service:get_type()) ++ "_".
+
+service_event_name(Service) ->
+    "@" ++ atom_to_list(Service:get_type()).
 
 init(Service) ->
     ets:new(ets_name(Service), [protected, named_table]),
@@ -102,7 +111,7 @@ do_recognize_name(Service, K) ->
         not_found ->
             do_recognize_bucket_metric(Service, K);
         _ ->
-            NewKey = list_to_binary(Service:service_stat_prefix() ++
+            NewKey = list_to_binary(service_stat_prefix(Service) ++
                                         binary_to_list(K)),
             {Type, NewKey}
     end.
@@ -202,9 +211,9 @@ process_stats(TS, GrabbedStats, PrevCounters, PrevTS,
         CalculateStats(#stats_accumulators.sys_gauges, #stats_accumulators.sys_counters,
                        compute_service_gauges),
 
-    ServiceStats = [{Service:service_event_name(),
+    ServiceStats = [{service_event_name(Service),
                      finalize_index_stats(ServiceStats1)}],
-    Prefix = Service:prefix(),
+    Prefix = service_prefix(Service),
     AggregatedStats =
         [{Prefix ++ binary_to_list(Bucket), Values} ||
             {Bucket, Values} <-

@@ -16,9 +16,10 @@
 -module(service_cbas).
 
 -export([get_type/0, restart/0,
-         get_gauges/0, get_counters/0, get_computed/0, grab_stats/0, prefix/0,
-         per_index_stat/2, global_index_stat/1, compute_gauges/1, get_service_gauges/0,
-         get_service_counters/0, service_stat_prefix/0, service_event_name/0, compute_service_gauges/1]).
+         get_gauges/0, get_counters/0, get_computed/0, grab_stats/0,
+         per_index_stat/2, global_index_stat/1, compute_gauges/1,
+         get_service_gauges/0, get_service_counters/0,
+         compute_service_gauges/1]).
 
 get_type() ->
     cbas.
@@ -45,15 +46,6 @@ grab_stats() ->
     Port = ns_config:read_key_fast({node, node(), cbas_admin_port}, 9110),
     Timeout = ns_config:get_timeout({cbas, stats}, 30000),
     rest_utils:get_json_local(cbas, "analytics/node/stats", Port, Timeout).
-
-prefix() ->
-    "@" ++ atom_to_list(get_type()) ++ "-".
-
-service_stat_prefix() ->
-    atom_to_list(get_type()) ++ "_".
-
-service_event_name() ->
-    "@" ++ atom_to_list(get_type()).
 
 per_index_stat(Index, Metric) ->
     iolist_to_binary([atom_to_list(get_type()), $/, Index, $/, Metric]).

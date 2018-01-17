@@ -71,8 +71,10 @@ compute_wanted_children(Service, Config) ->
             StaticChildren = [{Service, service_stats_collector}],
 
             %% Stats archiver and reader for Service specific stats
-            ServiceChildren = [{Service, Mod, Service:service_event_name()}
-                               || Mod <- [stats_archiver, stats_reader]],
+            ServiceChildren =
+                [{Service, Mod,
+                  service_stats_collector:service_event_name(Service)}
+                 || Mod <- [stats_archiver, stats_reader]],
 
             BucketCfgs = ns_bucket:get_buckets(Config),
             BucketNames =
@@ -109,7 +111,9 @@ child_spec({Service, Mod, Name}) when Name =:= "@index" orelse
      permanent, 1000, worker, []};
 child_spec({Service, Mod, Name}) when Mod =:= stats_archiver;
                                       Mod =:= stats_reader ->
-    {{Service, Mod, Name}, {Mod, start_link, [Service:prefix() ++ Name]},
+    {{Service, Mod, Name},
+     {Mod, start_link,
+      [service_stats_collector:service_prefix(Service) ++ Name]},
      permanent, 1000, worker, []};
 child_spec({Service, Mod}) ->
     {{Service, Mod}, {Mod, start_link, [Service]}, permanent, 1000, worker, []}.

@@ -20,9 +20,9 @@
 -export([start_keeper/0, get_status/1, get_indexes/0, get_indexes_version/0]).
 
 -export([get_type/0, get_remote_items/1, get_local_status/0, restart/0,
-         get_gauges/0, get_counters/0, get_computed/0, grab_stats/0, prefix/0,
+         get_gauges/0, get_counters/0, get_computed/0, grab_stats/0,
          per_index_stat/2, global_index_stat/1, compute_gauges/1,
-         get_service_gauges/0, service_stat_prefix/0, service_event_name/0,
+         get_service_gauges/0,
          compute_service_gauges/1, get_service_counters/0,
          process_status/1]).
 
@@ -96,15 +96,6 @@ get_computed() ->
 grab_stats() ->
     rest_utils:get_json_local(indexer, "stats?async=true",
                               get_port(), get_timeout()).
-
-prefix() ->
-    "@" ++ atom_to_list(get_type()) ++ "-".
-
-service_stat_prefix() ->
-    atom_to_list(get_type()) ++ "_".
-
-service_event_name() ->
-    "@" ++ atom_to_list(get_type()).
 
 per_index_stat(Index, Metric) ->
     iolist_to_binary([atom_to_list(get_type()), $/, Index, $/, Metric]).
