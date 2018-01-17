@@ -267,8 +267,10 @@ grab_latest_stats(Bucket) ->
 add_interesting_index_stats(BucketName, BucketStats) ->
     IndexStats = grab_latest_stats("@index-" ++ BucketName),
 
-    DataSizeKey = service_index:global_index_stat(<<"data_size">>),
-    DiskSizeKey = service_index:global_index_stat(<<"disk_size">>),
+    DataSizeKey =
+        service_stats_collector:global_stat(service_index, <<"data_size">>),
+    DiskSizeKey =
+        service_stats_collector:global_stat(service_index, <<"disk_size">>),
 
     DataSize = proplists:get_value(DataSizeKey, IndexStats, 0),
     DiskSize = proplists:get_value(DiskSizeKey, IndexStats, 0),

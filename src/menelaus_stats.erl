@@ -631,19 +631,19 @@ parse_stats_params(Params) ->
     {ClientTStamp, {Step, Period, Count}}.
 
 global_index_stat(StatName) ->
-    service_index:global_index_stat(StatName).
+    service_stats_collector:global_stat(service_index, StatName).
 
 per_index_stat(Index, Metric) ->
-    service_index:per_index_stat(Index, Metric).
+    service_stats_collector:per_item_stat(service_index, Index, Metric).
 
 global_fts_stat(StatName) ->
-    service_fts:global_index_stat(StatName).
+    service_stats_collector:global_stat(service_fts, StatName).
 
 per_fts_stat(Index, Metric) ->
-    service_fts:per_index_stat(Index, Metric).
+    service_stats_collector:per_item_stat(service_fts, Index, Metric).
 
 per_bucket_cbas_stat(StatName) ->
-    service_cbas:global_index_stat(StatName).
+    service_stats_collector:global_stat(service_cbas, StatName).
 
 computed_stats_lazy_proplist("@system") ->
     [];

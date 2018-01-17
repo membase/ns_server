@@ -20,8 +20,7 @@
 -export([get_type/0, get_remote_items/1, get_local_status/0, restart/0,
          process_status/1,
          get_gauges/0, get_counters/0, get_computed/0, grab_stats/0,
-         per_index_stat/2, global_index_stat/1, compute_gauges/1,
-         get_service_gauges/0,
+         compute_gauges/1, get_service_gauges/0,
          compute_service_gauges/1, get_service_counters/0]).
 
 get_indexes() ->
@@ -77,12 +76,6 @@ get_service_counters() ->
 
 grab_stats() ->
     rest_utils:get_json_local(fts, "api/nsstats", get_port(), get_timeout()).
-
-per_index_stat(Index, Metric) ->
-    iolist_to_binary([atom_to_list(get_type()), $/, Index, $/, Metric]).
-
-global_index_stat(StatName) ->
-    iolist_to_binary([atom_to_list(get_type()), $/, StatName]).
 
 compute_service_gauges(_Gauges) ->
     [].

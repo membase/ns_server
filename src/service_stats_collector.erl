@@ -22,7 +22,8 @@
 -include("ns_stats.hrl").
 
 %% API
--export([start_link/1, service_prefix/1, service_event_name/1]).
+-export([start_link/1, service_prefix/1, service_event_name/1,
+         global_stat/2, per_item_stat/3]).
 
 %% callbacks
 -export([init/1, handle_info/2, grab_stats/1, process_stats/5]).
@@ -58,6 +59,12 @@ service_stat_prefix(Service) ->
 service_event_name(Service) ->
     "@" ++ atom_to_list(Service:get_type()).
 
+per_item_stat(Service, Item, Metric) ->
+    iolist_to_binary([atom_to_list(Service:get_type()), $/, Item, $/, Metric]).
+
+global_stat(Service, StatName) ->
+    iolist_to_binary([atom_to_list(Service:get_type()), $/, StatName]).
+
 init(Service) ->
     ets:new(ets_name(Service), [protected, named_table]),
 
@@ -76,7 +83,7 @@ init(Service) ->
     Buckets = lists:map(fun list_to_binary/1,
                         ns_bucket:get_bucket_names_of_type(membase, couchstore) ++
                             ns_bucket:get_bucket_names_of_type(membase, ephemeral)),
-    Defaults = [{Service:global_index_stat(atom_to_binary(Stat, latin1)), 0}
+    Defaults = [{global_stat(Service, atom_to_binary(Stat, latin1)), 0}
                 || Stat <- Service:get_gauges() ++ Service:get_counters() ++
                        Service:get_computed()],
 
@@ -245,8 +252,8 @@ do_aggregate_bucket_stats(_Service, Acc, _, []) ->
     {finalize_stats(Acc), []};
 do_aggregate_bucket_stats(Service, Acc, Bucket,
                           [{{Bucket, Item, Name}, V} | Rest]) ->
-    Global = Service:global_index_stat(Name),
-    PerItem = Service:per_index_stat(Item, Name),
+    Global = global_stat(Service, Name),
+    PerItem = per_item_stat(Service, Item, Name),
 
     Acc1 =
         case lists:keyfind(Global, 1, Acc) of
