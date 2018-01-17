@@ -83,7 +83,7 @@ init(Service) ->
 
     {ok, #state{service = Service,
                 buckets = Buckets,
-                default_stats = finalize_index_stats(Defaults)}}.
+                default_stats = finalize_stats(Defaults)}}.
 
 find_type(_, []) ->
     not_found;
@@ -118,7 +118,7 @@ do_recognize_name(Service, K) ->
 
 do_recognize_bucket_metric(Service, K) ->
     case binary:split(K, <<":">>, [global]) of
-        [Bucket, Index, Metric] ->
+        [Bucket, Item, Metric] ->
             Type = find_type(Metric, [{#stats_accumulators.gauges,
                                        Service:get_gauges()},
                                       {#stats_accumulators.counters,
@@ -128,7 +128,7 @@ do_recognize_bucket_metric(Service, K) ->
                 not_found ->
                     undefined;
                 _ ->
-                    {Type, {Bucket, Index, Metric}}
+                    {Type, {Bucket, Item, Metric}}
             end;
         _ ->
             undefined
@@ -212,42 +212,41 @@ process_stats(TS, GrabbedStats, PrevCounters, PrevTS,
                        compute_service_gauges),
 
     ServiceStats = [{service_event_name(Service),
-                     finalize_index_stats(ServiceStats1)}],
+                     finalize_stats(ServiceStats1)}],
     Prefix = service_prefix(Service),
     AggregatedStats =
         [{Prefix ++ binary_to_list(Bucket), Values} ||
             {Bucket, Values} <-
-                aggregate_index_stats(
-                  Service, Stats, KnownBuckets, Defaults)] ++
+                aggregate_stats(Service, Stats, KnownBuckets, Defaults)] ++
         ServiceStats,
 
     AllCounters = SortedBucketCounters ++ SortedServiceCounters,
     SortedCounters = lists:sort(AllCounters),
     {AggregatedStats, SortedCounters, State}.
 
-aggregate_index_stats(Service, Stats, Buckets, Defaults) ->
-    do_aggregate_index_stats(Service, Stats, Buckets, Defaults, []).
+aggregate_stats(Service, Stats, Buckets, Defaults) ->
+    do_aggregate_stats(Service, Stats, Buckets, Defaults, []).
 
-do_aggregate_index_stats(_Service, [], Buckets, Defaults, Acc) ->
+do_aggregate_stats(_Service, [], Buckets, Defaults, Acc) ->
     [{B, Defaults} || B <- Buckets] ++ Acc;
-do_aggregate_index_stats(Service, [{{Bucket, _, _}, _} | _] = Stats,
-                         Buckets, Defaults, Acc) ->
+do_aggregate_stats(Service, [{{Bucket, _, _}, _} | _] = Stats,
+                   Buckets, Defaults, Acc) ->
     {BucketStats, RestStats} =
-        aggregate_index_bucket_stats(Service, Bucket, Stats, Defaults),
+        aggregate_bucket_stats(Service, Bucket, Stats, Defaults),
 
     OtherBuckets = lists:delete(Bucket, Buckets),
-    do_aggregate_index_stats(Service, RestStats, OtherBuckets, Defaults,
-                             [{Bucket, BucketStats} | Acc]).
+    do_aggregate_stats(Service, RestStats, OtherBuckets, Defaults,
+                       [{Bucket, BucketStats} | Acc]).
 
-aggregate_index_bucket_stats(Service, Bucket, Stats, Defaults) ->
-    do_aggregate_index_bucket_stats(Service, Defaults, Bucket, Stats).
+aggregate_bucket_stats(Service, Bucket, Stats, Defaults) ->
+    do_aggregate_bucket_stats(Service, Defaults, Bucket, Stats).
 
-do_aggregate_index_bucket_stats(_Service, Acc, _, []) ->
-    {finalize_index_stats(Acc), []};
-do_aggregate_index_bucket_stats(Service, Acc, Bucket,
-                                [{{Bucket, Index, Name}, V} | Rest]) ->
+do_aggregate_bucket_stats(_Service, Acc, _, []) ->
+    {finalize_stats(Acc), []};
+do_aggregate_bucket_stats(Service, Acc, Bucket,
+                          [{{Bucket, Item, Name}, V} | Rest]) ->
     Global = Service:global_index_stat(Name),
-    PerIndex = Service:per_index_stat(Index, Name),
+    PerItem = Service:per_index_stat(Item, Name),
 
     Acc1 =
         case lists:keyfind(Global, 1, Acc) of
@@ -257,23 +256,23 @@ do_aggregate_index_bucket_stats(Service, Acc, Bucket,
                 lists:keyreplace(Global, 1, Acc, {Global, OldV + V})
         end,
 
-    Acc2 = [{PerIndex, V} | Acc1],
+    Acc2 = [{PerItem, V} | Acc1],
 
-    do_aggregate_index_bucket_stats(Service, Acc2, Bucket, Rest);
-do_aggregate_index_bucket_stats(_Service, Acc, _, Stats) ->
-    {finalize_index_stats(Acc), Stats}.
+    do_aggregate_bucket_stats(Service, Acc2, Bucket, Rest);
+do_aggregate_bucket_stats(_Service, Acc, _, Stats) ->
+    {finalize_stats(Acc), Stats}.
 
-finalize_index_stats(Acc) ->
+finalize_stats(Acc) ->
     lists:keysort(1, Acc).
 
-aggregate_index_stats_test() ->
+aggregate_stats_test() ->
     In = [{{<<"a">>, <<"idx1">>, <<"m1">>}, 1},
           {{<<"a">>, <<"idx1">>, <<"m2">>}, 2},
           {{<<"b">>, <<"idx2">>, <<"m1">>}, 3},
           {{<<"b">>, <<"idx2">>, <<"m2">>}, 4},
           {{<<"b">>, <<"idx3">>, <<"m1">>}, 5},
           {{<<"b">>, <<"idx3">>, <<"m2">>}, 6}],
-    Out = aggregate_index_stats(service_index, In, [], []),
+    Out = aggregate_stats(service_index, In, [], []),
 
     AStats0 = [{<<"index/idx1/m1">>, 1},
                {<<"index/idx1/m2">>, 2},
