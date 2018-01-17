@@ -35,6 +35,7 @@
 -module(t).
 
 -include("ns_common.hrl").
+-include_lib("ale/include/ale.hrl").
 
 -export([start/0, start_eunit/0, start_triq/0, config/1]).
 
@@ -164,6 +165,9 @@ fake_loggers() ->
     ok = application:start(ale),
 
     ok = ale:start_sink(stderr, ale_stderr_sink, []),
+
+    ok = ale:set_loglevel(?ERROR_LOGGER, debug),
+    ok = ale:add_sink(?ERROR_LOGGER, stderr),
 
     lists:foreach(
       fun (Logger) ->
