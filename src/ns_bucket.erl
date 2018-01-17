@@ -1096,7 +1096,8 @@ config_upgrade_to_vulcan(Config) ->
         lists:map(
           fun ({Name, BCfg}) ->
                   BCfg1 = lists:keystore(max_ttl, 1, BCfg, {max_ttl, 0}),
-                  {Name, BCfg1}
+                  BCfg2 = lists:keystore(compression_mode, 1, BCfg1, {compression_mode, "off"}),
+                  {Name, BCfg2}
           end, Buckets),
     [{set, buckets, [{configs, NewBuckets}]}].
 
