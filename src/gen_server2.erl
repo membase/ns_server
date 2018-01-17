@@ -31,6 +31,8 @@
 -export([abort_queue/1, abort_queue/3]).
 -export([get_active_queues/0]).
 
+-export([conditional/2, conditional/4]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -52,6 +54,18 @@
 
                      pid  :: undefined | pid(),
                      mref :: undefined | reference() }).
+
+-type pred_fun()      :: fun ((State :: term()) -> false | term()).
+-type timeout_fun()   :: fun ((State :: term()) -> handler_result()).
+-type cond_body_fun() :: fun ((PredResult :: term(), State :: term()) ->
+                                     handler_result()).
+
+-record(condition, { id    :: reference(),
+                     timer :: misc:timer(),
+                     pred  :: pred_fun(),
+
+                     on_timeout :: timeout_fun(),
+                     on_success :: cond_body_fun() }).
 
 -callback init(Args :: term()) ->
     {ok, State :: term()} | {ok, State :: term(), timeout() | hibernate} |
@@ -165,20 +179,32 @@ abort_queue(Queue, AbortMarker, State) ->
 get_active_queues() ->
     lists:map(_#async_job.queue, get_active_jobs()).
 
+conditional(Pred, OnSuccess) ->
+    add_condition(Pred, OnSuccess, infinity, undefined).
+
+conditional(Pred, OnSuccess, Timeout, OnTimeout) ->
+    true = is_integer(Timeout),
+    add_condition(Pred, OnSuccess, Timeout, OnTimeout).
+
 %% gen_server callbacks
 init([Module, Args]) ->
     set_state(module, Module),
     Module:init(Args).
 
 handle_call(Request, From, State) ->
-    (get_module()):handle_call(Request, From, State).
+    check_conditions((get_module()):handle_call(Request, From, State)).
 
 handle_cast(Msg, State) ->
-    (get_module()):handle_cast(Msg, State).
+    check_conditions((get_module()):handle_cast(Msg, State)).
 
-handle_info({'$gen_server2', job_result, Queue, Result}, State) ->
+handle_info(Info, State) ->
+    check_conditions(do_handle_info(Info, State)).
+
+do_handle_info({'$gen_server2', condition_expired, Id}, State) ->
+    handle_condition_expired(Id, State);
+do_handle_info({'$gen_server2', job_result, Queue, Result}, State) ->
     handle_job_result(Queue, Result, State);
-handle_info({'DOWN', MRef, process, _Pid, _Reason} = Info, State) ->
+do_handle_info({'DOWN', MRef, process, _Pid, Reason} = Info, State) ->
     case get_active_job(#async_job.mref, MRef) of
         {ok, Job} ->
             case call_handle_job_death(Job, Reason) of
@@ -190,7 +216,7 @@ handle_info({'DOWN', MRef, process, _Pid, _Reason} = Info, State) ->
         not_found ->
             (get_module()):handle_info(Info, State)
     end;
-handle_info(Info, State) ->
+do_handle_info(Info, State) ->
     (get_module()):handle_info(Info, State).
 
 terminate(Reason, State) ->
@@ -198,7 +224,7 @@ terminate(Reason, State) ->
     async:abort_many(lists:map(_#async_job.pid, get_active_jobs())).
 
 code_change(OldVsn, State, Extra) ->
-    (get_module()):code_change(OldVsn, State, Extra).
+    check_conditions((get_module()):code_change(OldVsn, State, Extra)).
 
 %% internal
 del_state(Key) ->
@@ -378,3 +404,107 @@ handle_job_result(Queue, Result, State) ->
     maybe_start_job(Queue),
 
     chain_handle_results([Job | MoreJobs], Result, State).
+
+add_condition(Pred, OnSuccess, Timeout, OnTimeout) ->
+    Id = make_ref(),
+
+    Timer0 = misc:create_timer({'$gen_server2', condition_expired, Id}),
+    Timer  =
+        case Timeout of
+            infinity ->
+                true = (OnTimeout =:= undefined),
+                Timer0;
+            _ when is_integer(Timeout) ->
+                true = is_function(OnTimeout),
+                misc:arm_timer(Timeout, Timer0)
+        end,
+
+    Cond =
+        #condition{id         = Id,
+                   timer      = Timer,
+                   pred       = Pred,
+                   on_timeout = OnTimeout,
+                   on_success = OnSuccess},
+
+    update_state(conditions, [Cond | _], []).
+
+take_condition(Id) ->
+    case lists:keytake(Id, #condition.id, get_state(conditions)) of
+        {value, Cond, Rest} ->
+            case Rest of
+                [] ->
+                    del_state(conditions);
+                _ ->
+                    set_state(conditions, Rest)
+            end,
+
+            {ok, Cond};
+        false ->
+            not_found
+    end.
+
+handle_condition_expired(Id, State) ->
+    {ok, Cond} = take_condition(Id),
+    (Cond#condition.on_timeout)(State).
+
+check_conditions(Reply) ->
+    case should_check_conditions(Reply) of
+        true ->
+            Ix    = state_ix(Reply),
+            State = element(Ix, Reply),
+
+            case check_conditions_with_state(State) of
+                {noreply, NewState} ->
+                    setelement(Ix, Reply, NewState);
+                {stop, _, _} = Stop ->
+                    Stop
+            end;
+        false ->
+            Reply
+    end.
+
+should_check_conditions(Reply) ->
+    should_check_conditions_by_tag(element(1, Reply)).
+
+should_check_conditions_by_tag(stop) ->
+    false;
+should_check_conditions_by_tag(error) ->
+    false;
+should_check_conditions_by_tag(_) ->
+    true.
+
+state_ix(Reply) ->
+    Tag = element(1, Reply),
+    case Tag of
+        reply ->
+            3;
+        noreply ->
+            2;
+        ok ->
+            2
+    end.
+
+check_conditions_with_state(State) ->
+    {Satisfied, Rest} =
+        lists:foldr(fun (Cond, {AccSatisfied, AccRest}) ->
+                            case (Cond#condition.pred)(State) of
+                                false ->
+                                    {AccSatisfied, [Cond | AccRest]};
+                                Other ->
+                                    misc:cancel_timer(Cond#condition.timer),
+                                    {[{Cond, Other} | AccSatisfied], AccRest}
+                            end
+                    end, {[], []}, get_state(conditions, [])),
+
+    set_state(conditions, Rest),
+    chain_condition_bodies(Satisfied, State).
+
+chain_condition_bodies([], State) ->
+    {noreply, State};
+chain_condition_bodies([{Cond, PredResult} | Rest], State) ->
+    case (Cond#condition.on_success)(PredResult, State) of
+        {noreply, NewState} ->
+            chain_condition_bodies(Rest, NewState);
+        {stop, _, _} = Stop ->
+            Stop
+    end.
