@@ -223,16 +223,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["pools", "default", "buckets", Id, "docs", DocId] ->
                     {{[{bucket, Id}, data, docs], read},
                      fun menelaus_web_crud:handle_get/3, [Id, DocId]};
-                ["pools", "default", "buckets", "@query", "stats"] ->
-                    {{[stats], read},
-                     fun menelaus_stats:handle_stats_section/3, ["default", "@query"]};
-                ["pools", "default", "buckets", "@xdcr-" ++ _ = Id, "stats"] ->
-                    {{[stats], read},
-                     fun menelaus_stats:handle_stats_section/3, ["default", Id]};
-                ["pools", "default", "buckets", "@index-" ++ _ = Id, "stats"] ->
-                    {{[stats], read},
-                     fun menelaus_stats:handle_stats_section/3, ["default", Id]};
-                ["pools", "default", "buckets", "@fts-" ++ _ = Id, "stats"] ->
+                ["pools", "default", "buckets", "@" ++ _ = Id, "stats"] ->
                     {{[stats], read},
                      fun menelaus_stats:handle_stats_section/3, ["default", Id]};
                 ["pools", "default", "buckets", Id, "stats"] ->
@@ -262,21 +253,11 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["pools", "default", "buckets", Id, "nodes", NodeId] ->
                     {{[{bucket, Id}, settings], read},
                      fun menelaus_web_node:handle_bucket_node_info/3, [Id, NodeId]};
-                ["pools", "default", "buckets", "@query", "nodes", NodeId, "stats"] ->
-                    {{[stats], read}, fun menelaus_stats:handle_stats_section_for_node/4,
-                     ["default", "@query", NodeId]};
-                ["pools", "default", "buckets", "@xdcr-" ++ _ = Id, "nodes", NodeId, "stats"] ->
-                    {{[stats], read}, fun menelaus_stats:handle_stats_section_for_node/4,
+                ["pools", "default", "buckets", "@" ++ _ = Id, "nodes", NodeId,
+                 "stats"] ->
+                    {{[stats], read},
+                     fun menelaus_stats:handle_stats_section_for_node/4,
                      ["default", Id, NodeId]};
-                ["pools", "default", "buckets", "@index-" ++ _ = Id, "nodes", NodeId, "stats"] ->
-                    {{[stats], read}, fun menelaus_stats:handle_stats_section_for_node/4,
-                     ["default", Id, NodeId]};
-                ["pools", "default", "buckets", "@fts-" ++ _ = Id, "nodes", NodeId, "stats"] ->
-                    {{[stats], read}, fun menelaus_stats:handle_stats_section_for_node/4,
-                     ["default", Id, NodeId]};
-                ["pools", "default", "buckets", "@cbas-" ++ _ = Id, "nodes", NodeId, "stats"] ->
-                    {{[stats], read}, fun menelaus_stats:handle_stats_section_for_node/4,
-                        ["default", Id, NodeId]};
                 ["pools", "default", "buckets", Id, "nodes", NodeId, "stats"] ->
                     {{[{bucket, Id}, stats], read},
                      fun menelaus_stats:handle_bucket_node_stats/4,
