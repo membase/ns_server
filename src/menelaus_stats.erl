@@ -557,13 +557,7 @@ section_nodes("@xdcr-"++Bucket) ->
 section_nodes(Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket).
 
-is_persistent("@query") ->
-    false;
-is_persistent("@index-"++_) ->
-    false;
-is_persistent("@fts-"++_) ->
-    false;
-is_persistent("@xdcr-"++_) ->
+is_persistent("@"++_) ->
     false;
 is_persistent(BucketName) ->
     ns_bucket:is_persistent(BucketName).
