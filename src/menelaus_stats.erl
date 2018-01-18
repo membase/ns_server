@@ -410,34 +410,29 @@ get_samples_for_system_or_bucket_stat(BucketName, StatName, ClientTStamp, Window
     SearchList = get_stats_search_order(StatName, BucketName),
     get_samples_from_one_of_kind(SearchList, StatName, ClientTStamp, Window).
 
-%% List of different types of stats
-kinds_list(BucketName) ->
-    ["@system", BucketName, "@query", "@index-" ++ BucketName,
-     "@fts-" ++ BucketName, "@xdcr-" ++ BucketName, "@index", "@fts", "@cbas", "@cbas-" ++ BucketName].
-
-%% For many stats, their kind can be identified by their prefix.
-get_possible_kind(StatName, BucketName) ->
+%% For many stats, their section can be identified by their prefix.
+guess_sections_by_pefix(StatName, BucketName) ->
     case StatName of
         "query_" ++ _Rest ->
-            "@query";
+            ["@query"];
         "replication" ++ _Rest ->
-            "@xdcr-" ++ BucketName;
-        "index" ++ _Rest ->
-            "@index-" ++ BucketName;
-        "fts" ++ _Rest ->
-            "@fts-" ++ BucketName;
+            ["@xdcr-" ++ BucketName];
         "views" ++ _Rest ->
-            BucketName;
+            [BucketName];
         "spatial" ++ _Rest ->
-            BucketName;
+            [BucketName];
         "vb_" ++ _Rest ->
-            BucketName;
+            [BucketName];
         "ep_" ++ _Rest ->
-            BucketName;
-        "cbas" ++ _Rest ->
-            "@cbas-" ++ BucketName;
-        _ ->
-            kind_not_found
+            [BucketName];
+        Other ->
+            case lists:takewhile(fun ($/) -> false; (_) -> true end, Other) of
+                Other ->
+                    [];
+                Prefix ->
+                    ["@" ++ Prefix,
+                     "@" ++ Prefix ++ "-" ++ BucketName]
+            end
     end.
 
 %%
@@ -446,16 +441,10 @@ get_possible_kind(StatName, BucketName) ->
 %% query related stats first.
 %%
 get_stats_search_order(StatName, BucketName) ->
-    Kind = get_possible_kind(StatName, BucketName),
-    case Kind of
-        kind_not_found ->
-            %% Some stats do not have standard prefix.
-            %% In that case, we use the default search order.
-            kinds_list(BucketName);
-        _ ->
-            %% Move "Kind" to beginning of the search list.
-            [Kind | lists:delete(Kind, kinds_list(BucketName))]
-    end.
+    GuessedSections = guess_sections_by_pefix(StatName, BucketName),
+    AllSections = ["@system", BucketName, "@xdcr-" ++ BucketName] ++
+        services_sections(BucketName),
+    GuessedSections ++ (AllSections -- GuessedSections).
 
 build_response_for_specific_stat(BucketName, StatName, Params, LocalAddr) ->
     {ClientTStamp, {Step, _, Count} = Window} =
@@ -536,26 +525,45 @@ do_merge_all_samples_normally(ETS, MainSamples, ListOfLists) ->
       end, ListOfLists),
     [hd(ets:lookup(ETS, T)) || #stat_entry{timestamp = T} <- MainSamples].
 
+services_sections(BucketName) ->
+    ["@query",
+     "@index",
+     "@fts",
+     "@cbas",
+     "@index-" ++ BucketName,
+     "@fts-" ++ BucketName,
+     "@cbas-" ++ BucketName].
+
+describe_section("@query") ->
+    {n1ql, undefined};
+describe_section("@index") ->
+    {index, undefined};
+describe_section("@index-" ++ Bucket) ->
+    {index, Bucket};
+describe_section("@fts") ->
+    {fts, undefined};
+describe_section("@fts-" ++ Bucket) ->
+    {fts, Bucket};
+describe_section("@cbas") ->
+    {cbas, undefined};
+describe_section("@cbas-" ++ Bucket) ->
+    {cbas, Bucket};
+describe_section(_) ->
+    undefined.
+
 section_nodes("@system") ->
     ns_cluster_membership:actual_active_nodes();
-section_nodes("@index") ->
-    ns_cluster_membership:service_actual_nodes(ns_config:latest(), index);
-section_nodes("@query") ->
-    ns_cluster_membership:service_actual_nodes(ns_config:latest(), n1ql);
-section_nodes("@index-"++_) ->
-    ns_cluster_membership:service_actual_nodes(ns_config:latest(), index);
-section_nodes("@cbas-"++_) ->
-    ns_cluster_membership:service_actual_nodes(ns_config:latest(), cbas);
-section_nodes("@cbas") ->
-    ns_cluster_membership:service_actual_nodes(ns_config:latest(), cbas);
-section_nodes("@fts-"++_) ->
-    ns_cluster_membership:service_actual_nodes(ns_config:latest(), fts);
-section_nodes("@fts") ->
-    ns_cluster_membership:service_actual_nodes(ns_config:latest(), fts);
-section_nodes("@xdcr-"++Bucket) ->
+section_nodes("@xdcr-" ++ Bucket) ->
     ns_bucket:live_bucket_nodes(Bucket);
-section_nodes(Bucket) ->
-    ns_bucket:live_bucket_nodes(Bucket).
+section_nodes(Section) ->
+    case describe_section(Section) of
+        {Service, _} ->
+            ns_cluster_membership:service_actual_nodes(ns_config:latest(),
+                                                       Service);
+        undefined ->
+            %% Section is a bucket
+            ns_bucket:live_bucket_nodes(Section)
+    end.
 
 is_persistent("@"++_) ->
     false;
@@ -567,20 +575,17 @@ bucket_exists(Bucket) ->
 
 section_exists("@system") ->
     true;
-section_exists("@index") ->
-    true;
-section_exists("@query") ->
-    true;
-section_exists("@index-"++Bucket) ->
-    bucket_exists(Bucket);
-section_exists("@fts-"++Bucket) ->
-    bucket_exists(Bucket);
 section_exists("@xdcr-"++Bucket) ->
     bucket_exists(Bucket);
-section_exists("@cbas-"++Bucket) ->
-    bucket_exists(Bucket);
-section_exists(Bucket) ->
-    bucket_exists(Bucket).
+section_exists(Section) ->
+    case describe_section(Section) of
+        undefined ->
+            bucket_exists(Section);
+        {_Service, undefined} ->
+            true;
+        {_Service, Bucket} ->
+            bucket_exists(Bucket)
+    end.
 
 grab_system_aggregate_op_stats(all, ClientTStamp, Window) ->
     grab_aggregate_op_stats("@system", section_nodes("@system"), ClientTStamp, Window);
