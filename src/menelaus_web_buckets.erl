@@ -290,7 +290,6 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                           {threadsNumber, proplists:get_value(num_threads, BucketConfig, 3)},
                           {quota, {struct, [{ram, ns_bucket:ram_quota(BucketConfig)},
                                             {rawRAM, ns_bucket:raw_ram_quota(BucketConfig)}]}},
-                          {maxTTL, proplists:get_value(max_ttl, BucketConfig)},
                           {basicStats, {struct, BasicStats}},
                           {evictionPolicy, EvictionPolicy},
                           {conflictResolutionType, ConflictResolutionType}
@@ -365,6 +364,13 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                       Suffix4
               end,
 
+    Suffix6 = case cluster_compat_mode:is_cluster_vulcan() of
+                  true ->
+                      [{maxTTL, proplists:get_value(max_ttl, BucketConfig)} | Suffix5];
+                  false ->
+                      Suffix5
+              end,
+
     {struct, [{name, list_to_binary(Id)},
               {bucketType, external_bucket_type(BucketType, BucketConfig)},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
@@ -389,7 +395,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                                 {directoryURI, StatsDirectoryUri},
                                 {nodeStatsListURI, NodeStatsListURI}]}},
               {nodeLocator, ns_bucket:node_locator(BucketConfig)}
-              | Suffix5]}.
+              | Suffix6]}.
 
 build_bucket_capabilities(BucketConfig) ->
     MaybeXattr = case cluster_compat_mode:is_cluster_50() of
