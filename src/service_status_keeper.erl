@@ -103,7 +103,7 @@ handle_cast({update, Status}, #state{source = local} = State) ->
 handle_cast({update, _}, State) ->
     ?log_warning("Got unexpected status update when source is not local. Ignoring."),
     {noreply, State};
-handle_cast({refresh_done, Result}, State) ->
+handle_cast({refresh_done, Result}, #state{service = Service} = State) ->
     NewState =
         case Result of
             {ok, Items} ->
@@ -111,6 +111,7 @@ handle_cast({refresh_done, Result}, State) ->
             {stale, Items} ->
                 set_stale(Items, State);
             {error, _} ->
+                ?log_error("Service ~p returned incorrect status", [Service]),
                 increment_stale(State)
         end,
 
@@ -179,11 +180,8 @@ refresh_status(State) ->
 grab_status(#state{service = Service,
                    source = local}) ->
     case Service:get_local_status() of
-        {ok, {[_|_] = Status}} ->
+        {ok, Status} ->
             Service:process_status(Status);
-        {ok, Other} ->
-            ?log_error("Got invalid status from the ~p:~n~p", [Service, Other]),
-            {error, bad_status};
         Error ->
             Error
     end;
@@ -222,7 +220,7 @@ grab_status(#state{service = Service,
             end
     end.
 
-process_indexer_status(Mod, Status, Mapping) ->
+process_indexer_status(Mod, {[_|_] = Status}, Mapping) ->
     case lists:keyfind(<<"code">>, 1, Status) of
         {_, <<"success">>} ->
             RawIndexes =
@@ -238,7 +236,11 @@ process_indexer_status(Mod, Status, Mapping) ->
             ?log_error("Indexer ~p returned unsuccessful status:~n~p",
                        [Mod, Status]),
             {error, bad_status}
-    end.
+    end;
+process_indexer_status(Mod, Other, _Mapping) ->
+    ?log_error("~p got invalid status: ~p", [Mod, Other]),
+    {error, bad_status}.
+
 
 process_indexes(Indexes, Mapping) ->
     lists:map(
