@@ -105,37 +105,45 @@ find_type(Name, [{Type, Metrics} | Rest]) ->
             find_type(Name, Rest)
     end.
 
+global_types(Service) ->
+    [{#stats_accumulators.sys_gauges, Service:get_service_gauges()},
+     {#stats_accumulators.sys_counters, Service:get_service_counters()}].
+
+bucket_types(Service) ->
+    [{#stats_accumulators.gauges, Service:get_gauges()},
+     {#stats_accumulators.counters, Service:get_counters()}].
+
 do_recognize_name(_Service, <<"needs_restart">>) ->
     {#stats_accumulators.status, index_needs_restart};
 do_recognize_name(_Service, <<"num_connections">>) ->
     {#stats_accumulators.status, index_num_connections};
-do_recognize_name(Service, K) ->
-    Type = find_type(K, [{#stats_accumulators.sys_gauges,
-                          Service:get_service_gauges()},
-                         {#stats_accumulators.sys_counters,
-                          Service:get_service_counters()}]),
-    case Type of
+do_recognize_name(Service, K) when is_binary(K) ->
+    case find_type(K, global_types(Service)) of
         not_found ->
-            do_recognize_bucket_metric(Service, K);
-        _ ->
+            do_recognize_complex_name(Service, K);
+        Type ->
             NewKey = list_to_binary(service_stat_prefix(Service) ++
                                         binary_to_list(K)),
             {Type, NewKey}
-    end.
+    end;
+do_recognize_name(Service, K) ->
+    do_recognize_complex_name(Service, K).
 
-do_recognize_bucket_metric(Service, K) ->
+do_recognize_complex_name(Service, K) ->
     case Service:split_stat_name(K) of
         [Bucket, Item, Metric] ->
-            Type = find_type(Metric, [{#stats_accumulators.gauges,
-                                       Service:get_gauges()},
-                                      {#stats_accumulators.counters,
-                                       Service:get_counters()}]),
-
-            case Type of
+            case find_type(Metric, bucket_types(Service)) of
                 not_found ->
                     undefined;
-                _ ->
+                Type ->
                     {Type, {Bucket, Item, Metric}}
+            end;
+        [Item, Metric] ->
+            case find_type(Metric, global_types(Service)) of
+                not_found ->
+                    undefined;
+                Type ->
+                    {Type, {Item, Metric}}
             end;
         _ ->
             undefined
@@ -218,8 +226,10 @@ process_stats(TS, GrabbedStats, PrevCounters, PrevTS,
         CalculateStats(#stats_accumulators.sys_gauges, #stats_accumulators.sys_counters,
                        compute_service_gauges),
 
+    ServiceStats2 = aggregate_service_stats(Service, ServiceStats1),
+
     ServiceStats = [{service_event_name(Service),
-                     finalize_stats(ServiceStats1)}],
+                     finalize_stats(ServiceStats2)}],
     Prefix = service_prefix(Service),
     AggregatedStats =
         [{Prefix ++ binary_to_list(Bucket), Values} ||
@@ -230,6 +240,28 @@ process_stats(TS, GrabbedStats, PrevCounters, PrevTS,
     AllCounters = SortedBucketCounters ++ SortedServiceCounters,
     SortedCounters = lists:sort(AllCounters),
     {AggregatedStats, SortedCounters, State}.
+
+aggregate_item_stat(Service, Item, Name, Value, Acc) ->
+    Global = global_stat(Service, Name),
+    PerItem = per_item_stat(Service, Item, Name),
+
+    Acc1 =
+        case lists:keyfind(Global, 1, Acc) of
+            false ->
+                [{Global, Value} | Acc];
+            {_, OldV} ->
+                lists:keyreplace(Global, 1, Acc, {Global, OldV + Value})
+        end,
+
+    [{PerItem, Value} | Acc1].
+
+aggregate_service_stats(Service, Stats) ->
+    lists:foldl(
+      fun ({{Item, Name}, V}, Acc) ->
+              aggregate_item_stat(Service, Item, Name, V, Acc);
+          ({Name, V}, Acc) when is_binary(Name) ->
+              [{Name, V} | Acc]
+      end, [], Stats).
 
 aggregate_stats(Service, Stats, Buckets, Defaults) ->
     do_aggregate_stats(Service, Stats, Buckets, Defaults, []).
@@ -252,20 +284,8 @@ do_aggregate_bucket_stats(_Service, Acc, _, []) ->
     {finalize_stats(Acc), []};
 do_aggregate_bucket_stats(Service, Acc, Bucket,
                           [{{Bucket, Item, Name}, V} | Rest]) ->
-    Global = global_stat(Service, Name),
-    PerItem = per_item_stat(Service, Item, Name),
-
-    Acc1 =
-        case lists:keyfind(Global, 1, Acc) of
-            false ->
-                [{Global, V} | Acc];
-            {_, OldV} ->
-                lists:keyreplace(Global, 1, Acc, {Global, OldV + V})
-        end,
-
-    Acc2 = [{PerItem, V} | Acc1],
-
-    do_aggregate_bucket_stats(Service, Acc2, Bucket, Rest);
+    NewAcc = aggregate_item_stat(Service, Item, Name, V, Acc),
+    do_aggregate_bucket_stats(Service, NewAcc, Bucket, Rest);
 do_aggregate_bucket_stats(_Service, Acc, _, Stats) ->
     {finalize_stats(Acc), Stats}.
 
