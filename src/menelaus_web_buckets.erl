@@ -295,13 +295,25 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                           {conflictResolutionType, ConflictResolutionType}
                           | BucketCaps],
 
+                     BucketParams1 =
+                         case cluster_compat_mode:is_enterprise() andalso
+                             cluster_compat_mode:is_cluster_vulcan() of
+                             true ->
+                                 CMode = proplists:get_value(compression_mode, BucketConfig),
+                                 [{maxTTL, proplists:get_value(max_ttl, BucketConfig)},
+                                  {compressionMode, list_to_binary(CMode)} |
+                                  BucketParams];
+                             false ->
+                                 BucketParams
+                         end,
+
                      case ns_bucket:drift_thresholds(BucketConfig) of
                          undefined ->
-                             BucketParams;
+                             BucketParams1;
                          {DriftAheadThreshold, DriftBehindThreshold} ->
                              [{driftAheadThresholdMs, DriftAheadThreshold},
                               {driftBehindThresholdMs, DriftBehindThreshold}
-                              | BucketParams]
+                              | BucketParams1]
                      end
              end,
     BucketType = ns_bucket:bucket_type(BucketConfig),
@@ -364,15 +376,6 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                       Suffix4
               end,
 
-    Suffix6 = case cluster_compat_mode:is_cluster_vulcan() of
-                  true ->
-                      CompMode = proplists:get_value(compression_mode, BucketConfig),
-                      [{maxTTL, proplists:get_value(max_ttl, BucketConfig)},
-                       {compressionMode, list_to_binary(CompMode)} | Suffix5];
-                  false ->
-                      Suffix5
-              end,
-
     {struct, [{name, list_to_binary(Id)},
               {bucketType, external_bucket_type(BucketType, BucketConfig)},
               {authType, misc:expect_prop_value(auth_type, BucketConfig)},
@@ -397,7 +400,7 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                                 {directoryURI, StatsDirectoryUri},
                                 {nodeStatsListURI, NodeStatsListURI}]}},
               {nodeLocator, ns_bucket:node_locator(BucketConfig)}
-              | Suffix6]}.
+              | Suffix5]}.
 
 build_bucket_capabilities(BucketConfig) ->
     MaybeXattr = case cluster_compat_mode:is_cluster_50() of
