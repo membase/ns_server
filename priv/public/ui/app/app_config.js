@@ -15,7 +15,7 @@
 
     $sceDelegateProvider.resourceUrlWhitelist([
       'self', // Allow same origin resource loads
-      'http://ph.couchbase.net/**' // Allow JSONP calls that match this pattern
+      'https://ph.couchbase.net/**' // Allow JSONP calls that match this pattern
     ]);
 
     $qProvider.errorOnUnhandledRejections(false);

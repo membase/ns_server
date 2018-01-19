@@ -28,7 +28,7 @@
         idoc.body.innerHTML = "<form id=\"launchpad\" method=\"POST\"><textarea id=\"sputnik\" name=\"stats\"></textarea></form>";
         var form = idoc.getElementById("launchpad");
         var textarea = idoc.getElementById("sputnik");
-        form['action'] = "http://ph.couchbase.net/v2?launchID=" + $scope.launchpadId;
+        form['action'] = "https://ph.couchbase.net/v2?launchID=" + $scope.launchpadId;
         textarea.innerText = JSON.stringify(launchpadSource);
         form.submit();
         $scope.launchpadSource = undefined;

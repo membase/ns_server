@@ -94,7 +94,7 @@
 
       return $http({
         method: 'JSONP',
-        url: 'http://ph.couchbase.net/email',
+        url: 'https://ph.couchbase.net/email',
         params: params
       });
     }

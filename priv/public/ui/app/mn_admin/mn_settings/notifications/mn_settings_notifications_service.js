@@ -290,7 +290,7 @@ angular.module('mnSettingsNotificationsService', [
       return $http({
         method: 'JSONP',
         mnHttp: mnHttpParams,
-        url: 'http://ph.couchbase.net/v2',
+        url: 'https://ph.couchbase.net/v2',
         timeout: 8000,
         params: {launchID: data.launchID, version: data.version}
       });
