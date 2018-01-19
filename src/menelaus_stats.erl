@@ -1580,14 +1580,14 @@ do_couchbase_index_stats_descriptions(BucketId, Nodes) ->
                            {desc, <<"Average time to serve a scan request (nanoseconds)">>}]}]}]}
      || Id <- AllIndexes].
 
-couchbase_cbas_stats_descriptions(BucketId, ServiceNodes) ->
-    proceed_if_has_nodes(cbas, ServiceNodes, {stats_directory_cbas, BucketId},
+couchbase_cbas_stats_descriptions(ServiceNodes) ->
+    proceed_if_has_nodes(cbas, ServiceNodes, stats_directory_cbas,
                          fun (_) ->
-                                 do_couchbase_cbas_stats_descriptions(BucketId)
+                                 do_couchbase_cbas_stats_descriptions()
                          end).
 
-do_couchbase_cbas_stats_descriptions(BucketId) ->
-    BlockName = "Analytics Stats - " ++ BucketId,
+do_couchbase_cbas_stats_descriptions() ->
+    BlockName = "Analytics Stats",
     [{struct, [{blockName, list_to_binary(BlockName)},
                {extraCSSClasses, <<"dynamic_closed">>},
                {stats,
@@ -2289,7 +2289,7 @@ membase_stats_description(BucketId, ServiceNodes) ->
         ++ membase_dcp_queues_stats_description()
         ++ couchbase_view_stats_descriptions(BucketId)
         ++ couchbase_index_stats_descriptions(BucketId, ServiceNodes)
-        ++ couchbase_cbas_stats_descriptions(BucketId, ServiceNodes)
+        ++ couchbase_cbas_stats_descriptions(ServiceNodes)
         ++ couchbase_fts_stats_descriptions(BucketId, ServiceNodes)
         ++ couchbase_replication_stats_descriptions(BucketId)
         ++ couchbase_goxdcr_stats_descriptions(BucketId)
