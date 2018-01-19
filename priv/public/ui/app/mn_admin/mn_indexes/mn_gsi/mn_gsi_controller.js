@@ -20,9 +20,8 @@
     activate();
 
     function generateIndexId(row) {
-      return row.id + (row.hosts ? row.hosts.join() : "");
+      return (row.id.toString() + (row.instId || "")) + (row.hosts ? row.hosts.join() : "");
     }
-
 
     function activate() {
       mnHelper.initializeDetailsHashObserver(vm, 'openedIndex', 'app.admin.indexes.gsi');

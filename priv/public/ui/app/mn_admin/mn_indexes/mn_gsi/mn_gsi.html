@@ -106,7 +106,7 @@
                                        }">
           <div class="cbui-tablerow">
             <span class="cbui-table-cell flex-grow-2" title="{{row.index}}">{{row.index}}</span>
-            <span class="cbui-table-cell">{{row.hosts[0]}}</span>
+            <span class="cbui-table-cell">{{row.hosts.join(', ')}}</span>
             <span class="cbui-table-cell">{{row.storageMode | mnFormatStorageMode:pools.isEnterprise}}</span>
             <span class="cbui-table-cell flex-grow-half"><span ng-if="row.progress">{{row.progress}}%</span></span>
           </div>
@@ -152,7 +152,7 @@
           <span class="cbui-table-cell">
             <span ng-class="{closed:!gsiCtl.isDetailsOpened(gsiCtl.generateIndexId(row))}">{{row.bucket}}</span>
           </span>
-          <span class="cbui-table-cell">{{row.hosts[0]}}</span>
+          <span class="cbui-table-cell">{{row.hosts.join(', ')}}</span>
           <span class="cbui-table-cell">{{row.storageMode | mnFormatStorageMode:pools.isEnterprise}}</span>
           <span class="cbui-table-cell flex-grow-half"><span ng-if="row.progress">{{row.progress}}%</span></span>
         </div>

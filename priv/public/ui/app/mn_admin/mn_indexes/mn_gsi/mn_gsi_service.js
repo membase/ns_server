@@ -18,7 +18,9 @@
         mnHttp: mnHttpParams
       }).then(function (resp) {
         resp.data.groups = _.groupBy(resp.data.indexes, 'bucket');
-        resp.data.nodes = _.groupBy(resp.data.indexes, 'hosts');
+        resp.data.nodes = _.groupBy(resp.data.indexes, function (index) {
+          return index.hosts.join(", ");
+        });
         return resp.data;
       });
     }
