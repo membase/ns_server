@@ -17,9 +17,9 @@
 
       <div ng-if="analyticsListCtl.isDetailsOpened(block.blockName)">
         <div
-           ng-show="block.blockName === 'Query'"
+           ng-show="block.warning !== undefined"
            class="interim alert alert-warning">
-          <p>Metrics for Query are not per bucket and will not change if bucket dropdown above is changed</p>
+          <p>{{block.warning}}</p>
         </div>
         <div ng-if="block.columns">
           <h5

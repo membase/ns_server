@@ -1683,6 +1683,8 @@ do_couchbase_fts_stats_descriptions(BucketId, Nodes) ->
 couchbase_query_stats_descriptions() ->
     [{struct, [{blockName, <<"Query">>},
                {extraCSSClasses, <<"dynamic_closed">>},
+               {warning, <<"Metrics for Query are not per bucket and will not "
+                           "change if bucket dropdown above is changed">>},
                {stats,
                 [{struct, [{title, <<"requests/sec">>},
                            {name, <<"query_requests">>},
