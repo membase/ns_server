@@ -767,6 +767,10 @@ computed_stats_lazy_proplist("@fts-"++BucketId) ->
       end, get_indexes(service_fts, BucketId));
 computed_stats_lazy_proplist("@fts") ->
     [];
+computed_stats_lazy_proplist("@cbas") ->
+    [];
+computed_stats_lazy_proplist("@cbas-" ++ _BucketName) ->
+    [];
 computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
