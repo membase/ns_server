@@ -40,7 +40,10 @@ init([]) ->
 %% @private
 %% @doc The list of child specs.
 child_specs() ->
-    [{ns_tick, {ns_tick, start_link, []},
+    [{leader_lease_acquirer,
+      {leader_lease_acquirer, start_link, []},
+      permanent, 10000, worker, []},
+     {ns_tick, {ns_tick, start_link, []},
       permanent, 10, worker, [ns_tick]},
      {ns_orchestrator_sup, {ns_orchestrator_sup, start_link, []},
       permanent, infinity, supervisor, [ns_orchestrator_sup]}].

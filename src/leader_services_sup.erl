@@ -32,7 +32,10 @@ init([]) ->
           child_specs()}}.
 
 child_specs() ->
-    [
+    [{leader_activities, {leader_activities, start_link, []},
+      permanent, 10000, worker, []},
+     {leader_lease_agent, {leader_lease_agent, start_link, []},
+      permanent, 1000, worker, []},
      %% Note to the users of leader_events. The events are announced
      %% synchronously, make sure not to block mb_master for too long.
      {leader_events, {gen_event, start_link, [{local, leader_events}]},
