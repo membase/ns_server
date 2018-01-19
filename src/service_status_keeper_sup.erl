@@ -32,6 +32,8 @@ init([]) ->
          {service_status_keeper_index, {service_index, start_keeper, []},
           permanent, 1000, worker, []},
          {service_status_keeper_fts, {service_fts, start_keeper, []},
+          permanent, 1000, worker, []},
+         {service_status_keeper_eventing, {service_eventing, start_keeper, []},
           permanent, 1000, worker, []}],
     {ok, {{one_for_all,
            misc:get_env_default(max_r, 3),

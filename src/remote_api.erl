@@ -23,7 +23,7 @@
 -define(DEFAULT_TIMEOUT, ns_config:get_timeout(remote_api_default, 10000)).
 
 %% remote calls
--export([get_indexes/1, get_fts_indexes/1]).
+-export([get_indexes/1, get_fts_indexes/1, get_service_remote_items/2]).
 
 %% gen_server callbacks and functions
 -export([start_link/0]).
@@ -40,6 +40,10 @@ get_indexes(Node) ->
 get_fts_indexes(Node) ->
     do_call(Node, get_fts_indexes).
 
+%% introduced in vulcan
+get_service_remote_items(Node, Mod) ->
+    do_call(Node, {get_service_remote_items, Mod}).
+
 %% gen_server callbacks and functions
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -51,6 +55,8 @@ handle_call(get_indexes, _From, State) ->
     {reply, service_index:get_indexes(), State};
 handle_call(get_fts_indexes, _From, State) ->
     {reply, service_fts:get_indexes(), State};
+handle_call({get_service_remote_items, Mod}, _From, State) ->
+    {reply, service_status_keeper:get_items(Mod), State};
 handle_call(Request, {Pid, _} = _From, State) ->
     ?log_warning("Got unknown call ~p from ~p (node ~p)", [Request, Pid, node(Pid)]),
     {reply, unhandled, State}.
@@ -71,6 +77,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% internal
 get_timeout(Request) when is_atom(Request) ->
+    ns_config:get_timeout({remote_api, Request}, ?DEFAULT_TIMEOUT);
+get_timeout({Request, _}) when is_atom(Request) ->
     ns_config:get_timeout({remote_api, Request}, ?DEFAULT_TIMEOUT).
 
 do_call(Node, Request) ->

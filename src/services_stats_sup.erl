@@ -96,7 +96,8 @@ refresh_children() ->
     Config = ns_config:get(),
     WantedChildren0 = compute_wanted_children(service_fts, Config) ++
         compute_wanted_children(service_index, Config) ++
-        compute_wanted_children(service_cbas, Config),
+        compute_wanted_children(service_cbas, Config) ++
+        compute_wanted_children(service_eventing, Config),
     WantedChildren = lists:sort(WantedChildren0),
     ToStart = ordsets:subtract(WantedChildren, RunningChildren),
     ToStop = ordsets:subtract(RunningChildren, WantedChildren),
@@ -106,7 +107,8 @@ refresh_children() ->
 
 child_spec({Service, Mod, Name}) when Name =:= "@index" orelse
                                       Name =:= "@fts" orelse
-                                      Name =:= "@cbas" ->
+                                      Name =:= "@cbas" orelse
+                                      Name =:= "@eventing" ->
     {{Service, Mod, Name}, {Mod, start_link, [Name]},
      permanent, 1000, worker, []};
 child_spec({Service, Mod, Name}) when Mod =:= stats_archiver;

@@ -530,6 +530,7 @@ services_sections(BucketName) ->
      "@index",
      "@fts",
      "@cbas",
+     "@eventing",
      "@index-" ++ BucketName,
      "@fts-" ++ BucketName,
      "@cbas-" ++ BucketName].
@@ -548,6 +549,8 @@ describe_section("@cbas") ->
     {cbas, undefined};
 describe_section("@cbas-" ++ Bucket) ->
     {cbas, Bucket};
+describe_section("@eventing") ->
+    {eventing, undefined};
 describe_section(_) ->
     undefined.
 
@@ -555,7 +558,8 @@ services_add_params() ->
     [{n1ql, addq},
      {index, addi},
      {fts, addf},
-     {cbas, adda}].
+     {cbas, adda},
+     {eventing, adde}].
 
 has_nodes(Service, ServiceNodes) ->
     proplists:get_value(Service, ServiceNodes) =/= [].
@@ -652,6 +656,9 @@ per_fts_stat(Index, Metric) ->
 
 per_bucket_cbas_stat(StatName) ->
     service_stats_collector:global_stat(service_cbas, StatName).
+
+per_fun_evening_stat(Id, Metric) ->
+    service_stats_collector:per_item_stat(service_eventing, Id, Metric).
 
 computed_stats_lazy_proplist("@system") ->
     [];
@@ -766,6 +773,8 @@ computed_stats_lazy_proplist("@fts-"++BucketId) ->
               [{per_fts_stat(Index, <<"avg_queries_latency">>), AvgQueriesLatency}]
       end, get_indexes(service_fts, BucketId));
 computed_stats_lazy_proplist("@fts") ->
+    [];
+computed_stats_lazy_proplist("@eventing") ->
     [];
 computed_stats_lazy_proplist("@cbas") ->
     [];
@@ -1602,6 +1611,39 @@ do_couchbase_cbas_stats_descriptions() ->
                            {desc, <<"Operations (gets + sets + deletes) processed by Analytics for this bucket since last connected">>}]}
                 ]}]}].
 
+couchbase_eventing_stats_descriptions(ServiceNodes) ->
+    proceed_if_has_nodes(eventing, ServiceNodes, stats_directory_eventing,
+                         fun (_) ->
+                                 do_couchbase_eventing_stats_descriptions()
+                         end).
+
+do_couchbase_eventing_stats_descriptions() ->
+    Functions = service_eventing:get_functions(),
+    [{struct,
+      [{blockName, <<"Eventing Stats: ", Id/binary>>},
+       {warning, <<"Metrics for Eventing are not per bucket and will "
+                   "not change if bucket dropdown above is changed">>},
+       {extraCSSClasses, <<"dynamic_closed">>},
+       {stats,
+        [{struct,
+          [{title, <<"Processed">>},
+           {name, per_fun_evening_stat(Id, <<"processed_count">>)},
+           {desc, <<"Mutations for which the function has finished "
+                    "processing">>}]},
+         {struct,
+          [{title, <<"Failures">>},
+           {name, per_fun_evening_stat(Id, <<"failed_count">>)},
+           {desc, <<"Mutations for which the function execution failed">>}]},
+         {struct,
+          [{title, <<"Backlog">>},
+           {name, per_fun_evening_stat(Id, <<"dcp_backlog">>)},
+           {desc, <<"Mutations yet to be processed by the function">>}]},
+         {struct,
+          [{title, <<"Timeouts">>},
+           {name, per_fun_evening_stat(Id, <<"timeout_count">>)},
+           {desc, <<"Function execution timed-out while processing.">>}]}]}]}
+     || Id <- Functions].
+
 couchbase_fts_stats_descriptions(BucketId, ServiceNodes) ->
     proceed_if_has_nodes(
       fts, ServiceNodes, {stats_directory_fts, BucketId},
@@ -2281,6 +2323,7 @@ ephemeral_stats_description(BucketId, ServiceNodes) ->
                true -> couchbase_query_stats_descriptions();
                false -> []
            end
+        ++ couchbase_eventing_stats_descriptions(ServiceNodes)
         ++ membase_incoming_xdcr_operations_stats_description().
 
 
@@ -2299,6 +2342,7 @@ membase_stats_description(BucketId, ServiceNodes) ->
                true -> couchbase_query_stats_descriptions();
                false -> []
            end
+        ++ couchbase_eventing_stats_descriptions(ServiceNodes)
         ++ membase_incoming_xdcr_operations_stats_description().
 
 
