@@ -8,10 +8,22 @@
     var mnSettingsClusterService = {
       postPoolsDefault: postPoolsDefault,
       getIndexSettings: getIndexSettings,
-      postIndexSettings: postIndexSettings
+      postIndexSettings: postIndexSettings,
+      getLogRedaction: getLogRedaction,
+      postLogRedaction: postLogRedaction
     };
 
     return mnSettingsClusterService;
+
+    function getLogRedaction() {
+      return $http.get("/settings/logRedaction").then(function (resp) {
+        return resp.data;
+      });
+    }
+
+    function postLogRedaction(data) {
+      return $http.post("/settings/logRedaction", data);
+    }
 
     function maybeSetQuota(data, memory, service, key) {
       if (!memory.services || memory.services.model[service]) {

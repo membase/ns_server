@@ -1,6 +1,5 @@
-<div mn-spinner="logsCollectInfoCtl.viewLoading || !logsCollectInfoCtl.state.nodes" min-height="300px">
-  <h3>Select Nodes</h3>
-  <p>Collect logs and diagnostic information from:</p>
+<div mn-spinner="logsCollectInfoCtl.viewLoading || !logsCollectInfoCtl.state.nodes" min-height="300px" class="fix-width-7">
+  <div>Collect logs and diagnostic information from:</div>
   <form
      ng-submit="logsCollectInfoCtl.submit()"
      name="collectForm"
@@ -9,7 +8,7 @@
        class="error error-field"
        ng-show="logsCollectInfoCtl.errors._">{{logsCollectInfoCtl.errors._}}</div>
 
-    <div class="checkbox-list indent-1">
+    <div class="checkbox-list">
       <div class="formrow">
         <input
            type="radio"
@@ -28,11 +27,11 @@
         <label for="selected_nodes_radio">Selected Nodes</label>
       </div>
 
-      <div class="formrow">
+      <div class="formrow margin-bottom2 indent-1">
         <div ng-repeat="node in logsCollectInfoCtl.state.nodes track by node.otpNode"
              class="row flex-left">
           <div
-             class="icon margin-right-half indent-1"
+             class="icon margin-right-half"
              style="width:.2rem;height:1rem;"
              ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]"></div>
           <input
@@ -44,6 +43,35 @@
              ng-disabled="node.status === 'unhealthy' || logsCollectInfoCtl.collect.from">
           <label for="collected_node_list_{{node.otpNode}}">{{ node.hostname | mnStripPortHTML:logsCollectInfoCtl.state.nodes }}</label>
         </div>
+      </div>
+    </div>
+
+    <div class="formrow margin-bottom2"
+         ng-if="adminCtl.poolDefault.compat.atLeast55 && adminCtl.poolDefault.isEnterprise">
+      <h4>Log Redaction Level</h4>
+      <input
+         type="radio"
+         value="none"
+         id="redaction_none"
+         ng-model="logsCollectInfoCtl.collect.logRedactionLevel">
+      <label for="redaction_none" class="checkbox">None</label>
+
+      <input
+         type="radio"
+         value="partial"
+         id="redaction_partial"
+         ng-model="logsCollectInfoCtl.collect.logRedactionLevel">
+      <label for="redaction_partial" class="checkbox margin-right-zero">Partial Redaction</label>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip="In the log file created through this process, user data such as key/value pairs and usernames will be redacted. Metadata and system data will not be redacted. The cluster-level redaction configuration in Settings remains unchanged by your choice here."
+         tooltip-placement="top">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
+      <div class="content-box" ng-if="logsCollectInfoCtl.collect.logRedactionLevel == 'partial'">
+        <p>Couchbase Server will collect and save a redacted log file at the location you specify, but also save an unredacted version which could be useful for further troubleshooting.</p>
+        <p>If you use the "Upload to Couchbase" feature below, ONLY the redacted log will be uploaded.</p>
       </div>
     </div>
 

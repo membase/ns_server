@@ -1522,7 +1522,7 @@ section.dynamic_unhealthy {
   right: 1rem;
 }
 
-/* colored box with rounded corners for zero content situations --------- */
+/* shaded box with rounded corners for zero content situations --------- */
 .zero-content {
   background-color: #f6f7f9;
   font-size: .875rem;
@@ -1532,13 +1532,19 @@ section.dynamic_unhealthy {
   text-align: center;
 }
 
-/* colored box with rounded corners for content such as index definition  */
+/* shaded box with rounded corners for content such as index definition  */
 .content-box {
   border-radius: 9px;
-  background-color: #d9e7f7;
+  background-color: #eceff2;
   font-size: .75rem;
   padding: 1rem;
   margin-bottom: 1.5rem;
+}
+.content-box p {
+  margin-bottom: .5rem;
+}
+.content-box p:last-child {
+  margin-bottom: 0;
 }
 
 /* for when services are presented as a simple column of checkboxes (no

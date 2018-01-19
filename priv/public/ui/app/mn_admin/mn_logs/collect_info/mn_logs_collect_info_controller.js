@@ -14,10 +14,15 @@
 
     vm.collect = {
       nodes: {},
-      from: '*'
+      from: '*',
     };
+
     if (mnPoolDefault.latestValue().value.isEnterprise) {
       vm.collect.uploadHost = 's3.amazonaws.com/cb-customers';
+    }
+
+    if (mnPoolDefault.export.compat.atLeast55 && mnPoolDefault.export.isEnterprise) {
+      vm.collect.logRedactionLevel = "none";
     }
 
     function activate() {

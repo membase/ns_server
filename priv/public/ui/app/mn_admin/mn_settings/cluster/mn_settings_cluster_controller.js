@@ -70,8 +70,15 @@
         queries.push(promise3);
       }
 
-      var promise4 = $q.all(queries);
-      mnPromiseHelper(vm, promise4)
+      if (mnPoolDefault.export.compat.atLeast55 &&
+          mnPoolDefault.export.isEnterprise && $scope.rbac.cluster.settings.write) {
+        var promise4 = mnSettingsClusterService.postLogRedaction(vm.logRedactionSettings);
+
+        queries.push(promise4);
+      }
+
+      var promiseAll = $q.all(queries);
+      mnPromiseHelper(vm, promiseAll)
         .showGlobalSpinner()
         .showGlobalSuccess("Settings saved successfully!");
     }
@@ -96,6 +103,12 @@
       if (mnPoolDefault.export.compat.atLeast55 && $scope.rbac.cluster.settings.read) {
         mnPromiseHelper(vm, mnClusterConfigurationService.getQuerySettings())
           .applyToScope("querySettings");
+      }
+
+      if (mnPoolDefault.export.compat.atLeast55 &&
+          mnPoolDefault.export.isEnterprise && $scope.rbac.cluster.settings.read) {
+        mnPromiseHelper(vm, mnSettingsClusterService.getLogRedaction())
+          .applyToScope("logRedactionSettings")
       }
 
       mnPromiseHelper(vm, mnMemoryQuotaService.memoryQuotaConfig({

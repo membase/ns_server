@@ -26,6 +26,10 @@
   .column {
     margin-right: 0;
   }
+  .resp-flex-column-med {
+    flex-direction: column;
+    justify-content: flex-start;
+  }
   .menu-icon {
     display: block;
     color: #fff;
@@ -132,7 +136,7 @@
 }
 
 /* responsive extra-small ------------------------------- */
-@media (max-width: 480px) {
+@media (max-width: 520px) {
   .resp-hide-xsml {
     display: none !important;
   }
@@ -145,6 +149,9 @@
     margin-top: 2rem;
   }
   .width-480 {
+    width: 94vw;
+  }
+  div[class*="fix-width-"] {
     width: 94vw;
   }
   nav.nav-header {
