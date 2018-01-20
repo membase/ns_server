@@ -1408,20 +1408,20 @@ parse_validate_replica_index("1") -> {ok, replica_index, true};
 parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaIndex can only be 1 or 0">>}.
 
 parse_validate_compression_mode(Params, BucketConfig, IsNew) ->
-    CanParse = cluster_compat_mode:is_enterprise() andalso cluster_compat_mode:is_cluster_vulcan(),
     CompMode = proplists:get_value("compressionMode", Params),
-    parse_validate_compression_mode_inner(CanParse, CompMode, BucketConfig, IsNew).
+    parse_validate_compression_mode_inner(cluster_compat_mode:is_enterprise(),
+                                          cluster_compat_mode:is_cluster_vulcan(),
+                                          CompMode, BucketConfig, IsNew).
 
-parse_validate_compression_mode_inner(false, undefined, _BucketCfg, _IsNew) ->
+parse_validate_compression_mode_inner(false, _, undefined, _BucketCfg, _IsNew) ->
+    {ok, compression_mode, "off"};
+parse_validate_compression_mode_inner(_, false, undefined, _BucketCfg, _IsNew) ->
     ignore;
-parse_validate_compression_mode_inner(false, _CompMode, _BucketCfg, _IsNew) ->
-    case not cluster_compat_mode:is_enterprise() of
-        true ->
-            {error, compressionMode, <<"Compression mode is supported in enterprise edition only">>};
-        false ->
-            {error, compressionMode, <<"Compression mode can not be set until the cluster is fully vulcan">>}
-    end;
-parse_validate_compression_mode_inner(true, CompMode, BucketCfg, IsNew) ->
+parse_validate_compression_mode_inner(false, _, _CompMode, _BucketCfg, _IsNew) ->
+    {error, compressionMode, <<"Compression mode is supported in enterprise edition only">>};
+parse_validate_compression_mode_inner(_, false, _CompMode, _BucketCfg, _IsNew) ->
+    {error, compressionMode, <<"Compression mode can not be set until the cluster is fully vulcan">>};
+parse_validate_compression_mode_inner(true, true, CompMode, BucketCfg, IsNew) ->
     DefaultVal = case IsNew of
                      true -> "off";
                      false -> proplists:get_value(compression_mode, BucketCfg)
@@ -1434,20 +1434,20 @@ validate_compression_mode(_) ->
     {error, compressionMode, <<"compressionMode can be set to 'off', 'passive' or 'active'">>}.
 
 parse_validate_max_ttl(Params, BucketConfig, IsNew) ->
-    CanParse = cluster_compat_mode:is_enterprise() andalso cluster_compat_mode:is_cluster_vulcan(),
     MaxTTL = proplists:get_value("maxTTL", Params),
-    parse_validate_max_ttl_inner(CanParse, MaxTTL, BucketConfig, IsNew).
+    parse_validate_max_ttl_inner(cluster_compat_mode:is_enterprise(),
+                                 cluster_compat_mode:is_cluster_vulcan(), MaxTTL,
+                                 BucketConfig, IsNew).
 
-parse_validate_max_ttl_inner(false, undefined, _BucketCfg, _IsNew) ->
+parse_validate_max_ttl_inner(false, _, undefined, _BucketCfg, _IsNew) ->
+    {ok, max_ttl, 0};
+parse_validate_max_ttl_inner(_, false, undefined, _BucketCfg, _IsNew) ->
     ignore;
-parse_validate_max_ttl_inner(false, _MaxTTL, _BucketCfg, _IsNew) ->
-    case not cluster_compat_mode:is_enterprise() of
-        true ->
-            {error, maxTTL, <<"Max TTL is supported in enterprise edition only">>};
-        false ->
-            {error, maxTTL, <<"Max TTL can not be set until the cluster is fully vulcan">>}
-    end;
-parse_validate_max_ttl_inner(true, MaxTTL, BucketCfg, IsNew) ->
+parse_validate_max_ttl_inner(false, _, _MaxTTL, _BucketCfg, _IsNew) ->
+    {error, maxTTL, <<"Max TTL is supported in enterprise edition only">>};
+parse_validate_max_ttl_inner(_, false, _MaxTTL, _BucketCfg, _IsNew) ->
+    {error, maxTTL, <<"Max TTL can not be set until the cluster is fully vulcan">>};
+parse_validate_max_ttl_inner(true, true, MaxTTL, BucketCfg, IsNew) ->
     DefaultVal = case IsNew of
                      true -> "0";
                      false -> proplists:get_value(max_ttl, BucketCfg)
