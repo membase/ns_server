@@ -831,8 +831,16 @@ rebalancing({update_progress, Service, ServiceProgress},
 rebalancing({timeout, _Tref, stop_timeout},
             #rebalancing_state{rebalancer = Pid} = State) ->
     ?log_debug("Stop rebalance timeout, brutal kill pid = ~p", [Pid]),
-    exit(Pid, stopped),
-    {next_state, rebalancing, State#rebalancing_state{stop_timer = undefined}}.
+    exit(Pid, kill),
+    Reason =
+        receive
+            {'EXIT', Pid, killed} ->
+                %% still treat this as user-stopped rebalance
+                {shutdown, stop};
+            {'EXIT', Pid, R} ->
+                R
+        end,
+    handle_rebalance_completion(Reason, State).
 
 %% Synchronous rebalancing events
 rebalancing({start_rebalance, _KeepNodes, _EjectNodes,
@@ -846,7 +854,7 @@ rebalancing({start_graceful_failover, _}, _From, State) ->
 rebalancing(stop_rebalance, _From,
             #rebalancing_state{rebalancer=Pid} = State) ->
     ?log_debug("Sending stop to rebalancer: ~p", [Pid]),
-    Pid ! stop,
+    exit(Pid, {shutdown, stop}),
     Tref = gen_fsm:start_timer(?STOP_REBALANCE_TIMEOUT, stop_timeout),
     {reply, ok, rebalancing, State#rebalancing_state{stop_timer = Tref}};
 rebalancing(rebalance_progress, _From,
@@ -1244,7 +1252,7 @@ log_rebalance_completion(Reason, #rebalancing_state{type = Type}) ->
 do_log_rebalance_completion(normal, Type) ->
     ale:info(?USER_LOGGER,
              "~s completed successfully.", [rebalance_type2text(Type)]);
-do_log_rebalance_completion(stopped, Type) ->
+do_log_rebalance_completion({shutdown, stop}, Type) ->
     ale:info(?USER_LOGGER,
              "~s stopped by user.", [rebalance_type2text(Type)]);
 do_log_rebalance_completion(Error, Type) ->
@@ -1265,7 +1273,7 @@ update_rebalance_counters(Reason, #rebalancing_state{type = Type}) ->
         case Reason of
             normal ->
                 success;
-            stopped ->
+            {shutdown, stop} ->
                 stop;
             _Error ->
                 fail
@@ -1278,7 +1286,7 @@ update_rebalance_status(Reason, #rebalancing_state{type = Type}) ->
 
 reason2status(normal, _Type) ->
     none;
-reason2status(stopped, _Type) ->
+reason2status({shutdown, stop}, _Type) ->
     none;
 reason2status(_Error, Type) ->
     Msg = io_lib:format(

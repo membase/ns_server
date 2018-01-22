@@ -375,22 +375,19 @@ do_wait_local_buckets_shutdown_complete(ExcessiveBuckets) ->
       end).
 
 do_wait_buckets_shutdown(KeepNodes) ->
-    execute_and_be_stop_aware(
-      fun () ->
-              {Good, ReallyBad, FailedNodes} =
-                  misc:rpc_multicall_with_plist_result(
-                    KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
-              NonOk = [Pair || {_Node, Result} = Pair <- Good,
-                               Result =/= ok],
-              Failures = ReallyBad ++ NonOk ++ [{N, node_was_down} || N <- FailedNodes],
-              case Failures of
-                  [] ->
-                      ok;
-                  _ ->
-                      ?rebalance_error("Failed to wait deletion of some buckets on some nodes: ~p~n", [Failures]),
-                      exit({buckets_shutdown_wait_failed, Failures})
-              end
-      end).
+    {Good, ReallyBad, FailedNodes} =
+        misc:rpc_multicall_with_plist_result(
+          KeepNodes, ns_rebalancer, wait_local_buckets_shutdown_complete, []),
+    NonOk = [Pair || {_Node, Result} = Pair <- Good,
+                     Result =/= ok],
+    Failures = ReallyBad ++ NonOk ++ [{N, node_was_down} || N <- FailedNodes],
+    case Failures of
+        [] ->
+            ok;
+        _ ->
+            ?rebalance_error("Failed to wait deletion of some buckets on some nodes: ~p~n", [Failures]),
+            exit({buckets_shutdown_wait_failed, Failures})
+    end.
 
 sanitize(Config) ->
     misc:rewrite_key_value_tuple(sasl_password, "*****", Config).
@@ -546,21 +543,25 @@ rebalance_topology_aware_service(Service, KeepNodes, EjectNodes, DeltaNodes) ->
                 ns_orchestrator:update_progress(Service, Progress)
         end,
 
-    {Pid, MRef} = service_rebalancer:spawn_monitor_rebalance(
-                    Service, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback),
+    misc:with_trap_exit(
+      fun () ->
+              {Pid, MRef} = service_rebalancer:spawn_monitor_rebalance(
+                              Service, KeepNodes,
+                              EjectNodes, DeltaNodes, ProgressCallback),
 
-    receive
-        stop ->
-            misc:terminate_and_wait({shutdown, stopped}, Pid),
-            exit(stopped);
-        {'DOWN', MRef, _, _, Reason} ->
-            case Reason of
-                normal ->
-                    ok;
-                _ ->
-                    exit({service_rebalance_failed, Service, Reason})
-            end
-    end.
+              receive
+                  {'EXIT', _Pid, Reason} ->
+                      misc:terminate_and_wait(Reason, Pid),
+                      exit(Reason);
+                  {'DOWN', MRef, _, _, Reason} ->
+                      case Reason of
+                          normal ->
+                              ok;
+                          _ ->
+                              exit({service_rebalance_failed, Service, Reason})
+                      end
+              end
+      end).
 
 get_service_eject_delay(Service) ->
     Default =
@@ -610,23 +611,10 @@ do_maybe_delay_eject_nodes(Timestamps, EjectNodes) ->
 
     case Delay > 0 of
         true ->
-            execute_and_be_stop_aware(
-              fun () ->
-                      ?log_info("Waiting ~pms before ejecting nodes:~n~p",
-                                [Delay, EjectNodes]),
-                      timer:sleep(Delay)
-              end);
+            ?log_info("Waiting ~pms before ejecting nodes:~n~p",
+                      [Delay, EjectNodes]),
+            timer:sleep(Delay);
         false ->
-            ok
-    end.
-
-execute_and_be_stop_aware(Fun) ->
-    Pid = erlang:spawn_link(Fun),
-    MRef = erlang:monitor(process, Pid),
-    receive
-        stop ->
-            exit(stopped);
-        {'DOWN', MRef, _, _, _} ->
             ok
     end.
 
@@ -732,18 +720,15 @@ rebalance_membase_bucket(BucketName, BucketConfig, ProgressFun,
                                        lists:sort(EjectNodes)),
     ThisLiveNodes = KeepKVNodes ++ ThisEjected,
     ns_bucket:set_servers(BucketName, ThisLiveNodes),
-    execute_and_be_stop_aware(
-      fun () ->
-              ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
-              {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
-              case Zombies of
-                  [] ->
-                      ?rebalance_info("Bucket is ready on all nodes"),
-                      ok;
-                  _ ->
-                      exit({not_all_nodes_are_ready_yet, Zombies})
-              end
-      end),
+    ?rebalance_info("Waiting for bucket ~p to be ready on ~p", [BucketName, ThisLiveNodes]),
+    {ok, _States, Zombies} = janitor_agent:query_states(BucketName, ThisLiveNodes, ?REBALANCER_READINESS_WAIT_TIMEOUT),
+    case Zombies of
+        [] ->
+            ?rebalance_info("Bucket is ready on all nodes"),
+            ok;
+        _ ->
+            exit({not_all_nodes_are_ready_yet, Zombies})
+    end,
 
     run_janitor_pre_rebalance(BucketName),
 
@@ -760,12 +745,6 @@ rebalance_membase_bucket(BucketName, BucketConfig, ProgressFun,
     run_verify_replication(BucketName, KeepKVNodes, NewMap).
 
 run_janitor_pre_rebalance(BucketName) ->
-    execute_and_be_stop_aware(
-      fun () ->
-              do_run_janitor_pre_rebalance(BucketName)
-      end).
-
-do_run_janitor_pre_rebalance(BucketName) ->
     case ns_janitor:cleanup(BucketName,
                             [{query_states_timeout, ?REBALANCER_QUERY_STATES_TIMEOUT},
                              {apply_config_timeout, ?REBALANCER_APPLY_CONFIG_TIMEOUT}]) of
@@ -797,31 +776,27 @@ do_rebalance_membase_bucket(Bucket, Config,
 run_mover(Bucket, Config, KeepNodes, ProgressFun, Map, FastForwardMap) ->
     ?rebalance_info("Target map (distance: ~p):~n~p", [(catch mb_map:vbucket_movements(Map, FastForwardMap)), FastForwardMap]),
     ns_bucket:set_fast_forward_map(Bucket, FastForwardMap),
-    {ok, Pid} =
-        ns_vbucket_mover:start_link(Bucket, Map, FastForwardMap, ProgressFun),
-    case wait_for_mover(Pid) of
-        ok ->
-            HadRebalanceOut = ((proplists:get_value(servers, Config, []) -- KeepNodes) =/= []),
-            case HadRebalanceOut of
-                true ->
-                    SecondsToWait = ns_config:read_key_fast(rebalance_out_delay_seconds, 10),
-                    ?rebalance_info("Waiting ~w seconds before completing rebalance out."
-                                    " So that clients receive graceful not my vbucket instead of silent closed connection", [SecondsToWait]),
-                    receive
-                        stop ->
-                            exit(stopped)
-                    after (SecondsToWait * 1000) ->
-                            ok
-                    end;
-                false ->
-                    ok
-            end,
-            ns_bucket:set_fast_forward_map(Bucket, undefined),
-            ns_bucket:set_servers(Bucket, KeepNodes),
-            FastForwardMap;
-        stopped ->
-            exit(stopped)
-    end.
+    misc:with_trap_exit(
+      fun () ->
+              {ok, Pid} = ns_vbucket_mover:start_link(Bucket, Map,
+                                                      FastForwardMap,
+                                                      ProgressFun),
+              wait_for_mover(Pid)
+      end),
+
+    HadRebalanceOut = ((proplists:get_value(servers, Config, []) -- KeepNodes) =/= []),
+    case HadRebalanceOut of
+        true ->
+            SecondsToWait = ns_config:read_key_fast(rebalance_out_delay_seconds, 10),
+            ?rebalance_info("Waiting ~w seconds before completing rebalance out."
+                            " So that clients receive graceful not my vbucket instead of silent closed connection", [SecondsToWait]),
+            timer:sleep(SecondsToWait * 1000);
+        false ->
+            ok
+    end,
+    ns_bucket:set_fast_forward_map(Bucket, undefined),
+    ns_bucket:set_servers(Bucket, KeepNodes),
+    FastForwardMap.
 
 unbalanced(Map, BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
@@ -905,15 +880,7 @@ run_verify_replication(Bucket, Nodes, Map) ->
     Pid = proc_lib:spawn_link(?MODULE, verify_replication, [Bucket, Nodes, Map]),
     ?log_debug("Spawned verify_replication worker: ~p", [Pid]),
     {trap_exit, false} = erlang:process_info(self(), trap_exit),
-    MRef = erlang:monitor(process, Pid),
-    receive
-        stop ->
-            exit(stopped);
-        {'DOWN', MRef, _, _, _} ->
-            %% we're not trapping exits so if we're alive then child's
-            %% exit is normal
-            ok
-    end.
+    misc:wait_for_process(Pid, infinity).
 
 verify_replication(Bucket, Nodes, Map) ->
     ExpectedReplicators0 = ns_bucket:map_to_replicas(Map),
@@ -937,42 +904,33 @@ verify_replication(Bucket, Nodes, Map) ->
             exit(bad_replicas)
     end.
 
--spec wait_for_mover(pid()) -> ok | stopped.
 wait_for_mover(Pid) ->
-    Ref = erlang:monitor(process, Pid),
-    wait_for_mover_tail(Pid, Ref).
-
-wait_for_mover_tail(Pid, Ref) ->
     receive
-        stop ->
+        {'EXIT', Pid, Reason} ->
+            case Reason of
+                normal ->
+                    ok;
+                {shutdown, stop} = Stop->
+                    exit(Stop);
+                _ ->
+                    exit({mover_crashed, Reason})
+            end;
+        {'EXIT', _Pid, {shutdown, stop} = Stop} ->
             ?log_debug("Got rebalance stop request"),
-            erlang:unlink(Pid),
             TimeoutPid = diag_handler:arm_timeout(
                            5000,
                            fun (_) ->
-                                   ?log_debug("Observing slow rebalance stop (mover pid: ~p", [Pid]),
+                                   ?log_debug("Observing slow rebalance stop (mover pid: ~p)", [Pid]),
                                    timeout_diag_logger:log_diagnostics(slow_rebalance_stop)
                            end),
             try
-                (catch Pid ! {'EXIT', self(), shutdown}),
-                wait_for_mover_tail(Pid, Ref)
+                exit(Pid, Stop),
+                wait_for_mover(Pid)
             after
                 diag_handler:disarm_timeout(TimeoutPid)
             end;
-        {'DOWN', Ref, _, _, Reason} ->
-            case Reason of
-                %% monitoring was too late, but because we're linked
-                %% and don't trap exits the fact that we're alife
-                %% means it went normal
-                noproc ->
-                    ok;
-                normal ->
-                    ok;
-                shutdown ->
-                    stopped;
-                _ ->
-                    exit({mover_crashed, Reason})
-            end
+        {'EXIT', _Pid, Reason} ->
+            exit(Reason)
     end.
 
 maybe_cleanup_old_buckets(KeepNodes) ->
@@ -1203,7 +1161,6 @@ wait_for_bucket(Bucket, Nodes) ->
     do_wait_for_bucket(Bucket, Nodes).
 
 do_wait_for_bucket(Bucket, Nodes) ->
-    stop_if_ordered(),
     case janitor_agent:query_states_details(Bucket, Nodes, 60000) of
         {ok, _States, []} ->
             ?log_debug("Bucket ~p became ready on nodes ~p", [Bucket, Nodes]),
@@ -1220,14 +1177,6 @@ do_wait_for_bucket(Bucket, Nodes) ->
                                [Bucket, Failures]),
                     fail
             end
-    end.
-
-stop_if_ordered() ->
-    receive
-        stop ->
-            exit(stopped)
-    after 0 ->
-            ok
     end.
 
 check_failures(Failures) ->
