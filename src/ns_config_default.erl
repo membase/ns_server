@@ -316,7 +316,8 @@ default() ->
        %% Location that Breakpad should write minidumps upon memcached crash.
        {breakpad_minidump_dir_path, BreakpadMinidumpDir},
        {dedupe_nmvb_maps, false},
-       {tracing_enabled, true}]},
+       {tracing_enabled, true},
+       {datatype_snappy, true}]},
 
      %% Memcached config
      {{node, node(), memcached},
@@ -400,6 +401,7 @@ default() ->
         {rbac_file, {"~s", [rbac_file]}},
         {dedupe_nmvb_maps, dedupe_nmvb_maps},
         {tracing_enabled, tracing_enabled},
+        {datatype_snappy, datatype_snappy},
         {xattr_enabled, {memcached_config_mgr, is_enabled, [?VERSION_50]}},
 
         {logger,
