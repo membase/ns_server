@@ -2101,3 +2101,101 @@ is_shutdown({shutdown, _}) ->
     true;
 is_shutdown(_) ->
     false.
+
+with_trap_exit(Fun) ->
+    Old = process_flag(trap_exit, true),
+    try
+        Fun()
+    after
+        case Old of
+            true ->
+                ok;
+            false ->
+                process_flag(trap_exit, false),
+                with_trap_exit_maybe_exit()
+        end
+    end.
+
+with_trap_exit_maybe_exit() ->
+    receive
+        {'EXIT', _Pid, normal} ->
+            with_trap_exit_maybe_exit();
+        {'EXIT', _Pid, Reason} ->
+            exit_async(Reason)
+    after
+        0 ->
+            ok
+    end.
+
+%% Like exit(reason), but can't be catched like such:
+%%
+%% try exit_async(evasive) catch exit:evasive -> ok end
+exit_async(Reason) ->
+    Self = self(),
+    Pid = spawn(fun () ->
+                        exit(Self, Reason)
+                end),
+    wait_for_process(Pid, infinity),
+    exit(must_not_happen).
+
+-ifdef(EUNIT).
+with_trap_exit_test_() ->
+    {spawn,
+     fun () ->
+             ?assertExit(
+                finished,
+                begin
+                    with_trap_exit(fun () ->
+                                           spawn_link(fun () ->
+                                                              exit(crash)
+                                                      end),
+
+                                           receive
+                                               {'EXIT', _, crash} ->
+                                                   ok
+                                           end
+                                   end),
+
+                    false = process_flag(trap_exit, false),
+
+                    Parent = self(),
+                    {_, MRef} =
+                        erlang:spawn_monitor(
+                          fun () ->
+                                  try
+                                      with_trap_exit(
+                                        fun () ->
+                                                spawn_link(fun () ->
+                                                                   exit(blah)
+                                                           end),
+
+                                                timer:sleep(100),
+                                                Parent ! msg
+                                        end)
+                                  catch
+                                      exit:blah ->
+                                          %% we must not be able to catch the
+                                          %% shutdown
+                                          throw(bad)
+                                  end
+                          end),
+
+                    receive
+                        {'DOWN', MRef, _, _, Reason} ->
+                            ?assertEqual(blah, Reason)
+                    end,
+
+                    %% must still receive the message
+                    1 = misc:flush(msg),
+
+                    with_trap_exit(fun () ->
+                                           spawn_link(fun () ->
+                                                              exit(normal)
+                                                      end),
+                                           timer:sleep(100)
+                                   end),
+
+                    exit(finished)
+                end)
+     end}.
+-endif.
