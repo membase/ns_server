@@ -74,9 +74,14 @@ build_cluster_logs_task_tail(Tasks, Nodes, BaseURL, Timestamp, PidOrCompleted) -
                                 _ -> false
                             end],
 
+    Progress = case length(NodeStatuses) of
+                   0 -> 100;
+                   Total -> length(CompletedNodes) * 100 div Total
+               end,
+
     [{type, cluster_logs_collect},
      {status, Status},
-     {progress, length(CompletedNodes) * 100 div length(NodeStatuses)},
+     {progress, Progress},
      {timestamp, Timestamp},
      {perNode, NodeStatuses}].
 
