@@ -241,8 +241,8 @@ async_loop_handle_result(Type, Child, ChildAsyncs, Result) ->
     case Type of
         perform ->
             case Result of
-                {raised, _} = Raised ->
-                    exit(Raised);
+                {raised, {T, E, Stack}} ->
+                    erlang:raise(T, E, Stack);
                 {ok, _} ->
                     exit(normal)
             end;
