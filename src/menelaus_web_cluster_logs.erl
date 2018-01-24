@@ -75,7 +75,10 @@ parse_nodes(NodesParam, Config) ->
                     end, Nodes),
     case Bad of
         [] ->
-            {ok, lists:usort([list_to_atom(N) || N <- Nodes])};
+            case Nodes of
+                [] -> {error, missing_nodes};
+                _ -> {ok, lists:usort([list_to_atom(N) || N <- Nodes])}
+            end;
         _ ->
             {error, {unknown_nodes, Bad}}
     end.
