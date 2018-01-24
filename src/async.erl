@@ -166,15 +166,17 @@ async_init(Parent, ParentController, Opts, Fun) ->
                   set_role(executor),
                   set_controller(Controller),
 
-                  R = try
-                          {ok, Fun()}
-                      catch
-                          T:E ->
-                              {raised, {T, E,
-                                        erlang:get_stacktrace()}}
-                      end,
+                  To = {Controller, Reply},
 
-                  Controller ! {Reply, R}
+                  try Fun() of
+                      R ->
+                          reply(To, {ok, R})
+                  catch
+                      T:E ->
+                          Stack = erlang:get_stacktrace(),
+                          reply(To, {raised, {T, E, Stack}}),
+                          erlang:raise(T, E, Stack)
+                  end
           end),
 
     MonitorPids = proplists:get_value(monitor_pids, Opts, []),
