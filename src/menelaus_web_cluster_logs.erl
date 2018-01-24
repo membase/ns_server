@@ -34,10 +34,9 @@ handle_start_collect_logs(Req) ->
                     menelaus_util:reply_json(Req, {struct, [{'_', Message}]}, 400)
             end;
         {errors, RawErrors} ->
-            Errors = [case stringify_one_node_upload_error(E) of
-                          {Field, Msg} ->
-                              {Field, iolist_to_binary([Msg])};
-                          List -> List
+            Errors = [begin
+                          {Field, Msg} = stringify_one_node_upload_error(E),
+                          {Field, iolist_to_binary(Msg)}
                       end || E <- RawErrors],
             menelaus_util:reply_json(Req, {struct, lists:flatten(Errors)}, 400)
     end.
@@ -50,17 +49,17 @@ handle_cancel_collect_logs(Req) ->
 stringify_one_node_upload_error({unknown_nodes, List}) ->
     {nodes, io_lib:format("Unknown nodes: ~p", [List])};
 stringify_one_node_upload_error(missing_nodes) ->
-    {nodes, <<"must be given">>};
+    {nodes, "must be given"};
 stringify_one_node_upload_error({empty, F}) ->
-    {F, <<"cannot be empty">>};
+    {F, "cannot be empty"};
 stringify_one_node_upload_error({malformed, customer}) ->
-    {customer, <<"must contain only [A-Za-z0-9._ -] and be no longer than 50 characters">>};
+    {customer, "must contain only [A-Za-z0-9._ -] and be no longer than 50 characters"};
 stringify_one_node_upload_error({malformed, ticket}) ->
-    {ticket, <<"must contain only [0-9] and be no longer than 7 characters">>};
+    {ticket, "must contain only [0-9] and be no longer than 7 characters"};
 stringify_one_node_upload_error(missing_customer) ->
-    [{customer, <<"customer must be given if upload host or ticket is given">>}];
+    {customer, "customer must be given if upload host or ticket is given"};
 stringify_one_node_upload_error(missing_upload) ->
-    [{uploadHost, <<"upload host must be given if customer or ticket is given">>}];
+    {uploadHost, "upload host must be given if customer or ticket is given"};
 stringify_one_node_upload_error({cluster_too_old, log_redaction}) ->
     {logRedactionLevel, "log redaction is not supported for this version of the cluster"};
 stringify_one_node_upload_error({not_enterprise, log_redaction}) ->
