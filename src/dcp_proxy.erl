@@ -19,6 +19,8 @@
 
 -behaviour(gen_server).
 
+-include_lib("eunit/include/eunit.hrl").
+
 -include("ns_common.hrl").
 -include("mc_constants.hrl").
 -include("mc_entry.hrl").
@@ -218,8 +220,9 @@ connect(Type, ConnName, Node, Bucket) ->
     connect(Type, ConnName, Node, Bucket, false).
 
 connect(Type, ConnName, Node, Bucket, XAttr) ->
-    Username = ns_config:search_node_prop(Node, ns_config:latest(), memcached, admin_user),
-    Password = ns_config:search_node_prop(Node, ns_config:latest(), memcached, admin_pass),
+    Cfg = ns_config:latest(),
+    Username = ns_config:search_node_prop(Node, Cfg, memcached, admin_user),
+    Password = ns_config:search_node_prop(Node, Cfg, memcached, admin_pass),
 
     {Host, Port} = ns_memcached:host_port(Node),
     {ok, Sock} = gen_tcp:connect(Host, Port,
@@ -235,17 +238,60 @@ connect(Type, ConnName, Node, Bucket, XAttr) ->
                                        list_to_binary(Password)}}),
     ok = mc_client_binary:select_bucket(Sock, Bucket),
 
-    XAttr = maybe_negotiate_xattr(Sock, XAttr),
+    %% If XAttr is true that means that the cluster is XATTRs capable and we
+    %% don't expect the XAttr negotiation to fail.
+    %%
+    %% Snappy is controlled by datatype_snappy flag and it defaults to true.
+    %% So we try to negotiate it unconditionally, if it's enabled. In mixed
+    %% clusters, if this fails we still go ahead with the connections as there
+    %% will be no correctness issues. Also when the datatype_snappy flag is
+    %% toggled by the user, only the newer connections see the change and it's
+    %% semantically ok to retain the older connections as is.
+    Snappy = ns_config:search_prop(Cfg, memcached, datatype_snappy, true),
+    negotiate_features(Sock, Type, ConnName, XAttr, Snappy),
+
     ok = dcp_commands:open_connection(Sock, ConnName, Type, XAttr),
     Sock.
 
-maybe_negotiate_xattr(_Sock, false = _XAttr) ->
-    false;
-maybe_negotiate_xattr(Sock, true = _XAttr) ->
-    %% If we are here that means that the cluster is XATTRs capable.
-    %% So when we try to negotiate XATTRs we don't expect it to fail.
-    {ok, true} = dcp_commands:negotiate_xattr(Sock, "proxy"),
-    true.
+negotiate_features(Sock, Type, ConnName, XAttr, Snappy) ->
+    Features = [<<V:16>> || {V, true} <-
+                                [{?MC_FEATURE_XATTR, XAttr},
+                                 {?MC_FEATURE_SNAPPY, Snappy}]],
+
+    case do_negotiate_features(Sock, Type, ConnName, Features) of
+        ok ->
+            ok;
+        {error, FailedFeatures} ->
+            case lists:member(<<?MC_FEATURE_SNAPPY:16>>, FailedFeatures) of
+                true ->
+                    ?log_debug("Snappy negotiation failed for connection ~p:~p",
+                               [ConnName, Type]);
+                false ->
+                    ok
+            end,
+
+            %% We don't expect the XAttr negotiation to fail.
+            false = lists:member(<<?MC_FEATURE_XATTR:16>>, FailedFeatures),
+            ok
+    end.
+
+do_negotiate_features(_Sock, _Type, _ConnName, []) ->
+    ok;
+do_negotiate_features(Sock, Type, ConnName, Features) ->
+    case mc_client_binary:hello(Sock, "proxy", list_to_binary(Features)) of
+        {ok, RV} ->
+            Negotiated = [<<V:16>> || <<V:16>> <= RV],
+            case Features -- Negotiated of
+                [] ->
+                    ok;
+                Val ->
+                    {error, Val}
+            end;
+        Error ->
+            ?log_debug("HELLO cmd failed for connection ~p:~p, features = ~p,"
+                       "err = ~p", [ConnName, Type, Features, Error]),
+            {error, Features}
+    end.
 
 disconnect(Sock) ->
     gen_tcp:close(Sock).
@@ -294,3 +340,35 @@ process_data_loop(Data, PacketLen, State) ->
             {ok, NewState} = handle_packet(Packet, State),
             process_data_loop(Rest, undefined, NewState)
     end.
+
+-ifdef(EUNIT).
+
+negotiate_features_test() ->
+    meck:new(mc_client_binary, [passthrough]),
+
+    V = [<<?MC_FEATURE_XATTR:16>>, <<?MC_FEATURE_SNAPPY:16>>],
+    meck:expect(mc_client_binary, hello,
+                fun(_, _, _) -> {ok, list_to_binary(V)} end),
+    ?assertEqual(ok, do_negotiate_features([], type, "xyz", V)),
+
+    meck:expect(mc_client_binary, hello,
+                fun(_, _, _) -> {ok, <<?MC_FEATURE_SNAPPY:16>>} end),
+    ?assertEqual({error, [<<?MC_FEATURE_XATTR:16>>]},
+                 do_negotiate_features([], type, "xyz", V)),
+    ?assertEqual(ok, do_negotiate_features([], type, "xyz",
+                                           [<<?MC_FEATURE_SNAPPY:16>>])),
+
+    meck:expect(mc_client_binary, hello,
+                fun(_, _, _) -> {ok, <<?MC_FEATURE_XATTR:16>>} end),
+    ?assertEqual({error, [<<?MC_FEATURE_SNAPPY:16>>]},
+                 do_negotiate_features([], type, "xyz", V)),
+    ?assertEqual(ok, do_negotiate_features([], type, "xyz",
+                                           [<<?MC_FEATURE_XATTR:16>>])),
+
+    meck:expect(mc_client_binary, hello, fun(_, _, _) -> error end),
+    ?assertEqual({error, V}, do_negotiate_features([], type, "xyz", V)),
+
+    true = meck:validate(mc_client_binary),
+    meck:unload(mc_client_binary).
+
+-endif.
