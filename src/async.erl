@@ -20,7 +20,8 @@
 
 -export([start/1, start/2, start_many/2,
          perform/1, perform/2,
-         abort/1, abort_many/1,
+         abort/1, abort/2,
+         abort_many/1, abort_many/2,
          send/2, adopt/1,
          with/2, with_many/3,
          wait/1, wait_many/1, wait_any/1,
@@ -62,8 +63,14 @@ start_many(Fun, Args) ->
 abort(Pid) ->
     abort_many([Pid]).
 
+abort(Pid, Reason) ->
+    abort_many([Pid], Reason).
+
 abort_many(Pids) ->
-    misc:terminate_and_wait(shutdown, Pids).
+    abort_many(Pids, shutdown).
+
+abort_many(Pids, Reason) ->
+    misc:terminate_and_wait(Reason, Pids).
 
 send(Async, Msg) ->
     Async ! {'$async_msg', Msg},
