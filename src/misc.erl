@@ -1158,7 +1158,56 @@ compute_map_diff(NewMap, OldMap) ->
 %% it will be rethrown. Care is taken to propagate exits of 'parent'
 %% process to this worker process.
 executing_on_new_process(Body) ->
-    async:with(Body, fun async:wait/1).
+    {trap_exit, TrapExit} = process_info(self(), trap_exit),
+    executing_on_new_process(TrapExit, Body).
+
+executing_on_new_process(true, Body) ->
+    %% If the caller had trap_exit set, we can't really make the execution
+    %% interruptlible, after all it was, hopefully, a deliberate choice to set
+    %% trap_exit, so we need to abide by it.
+    async:with(Body, fun async:wait/1);
+executing_on_new_process(false, Body) ->
+    with_trap_exit(
+      fun () ->
+              A = async:start(Body),
+              try
+                  async:wait(A, [interruptible])
+              catch
+                  throw:{interrupted, {'EXIT', _, Reason} = Exit} ->
+                      async:abort(A, Reason),
+
+                      %% will be processed by the with_trap_exit
+                      self() ! Exit
+              after
+                  async:abort(A)
+              end
+      end).
+
+-ifdef(EUNIT).
+executing_on_new_process_test() ->
+    lists:foreach(
+      fun (_) ->
+              P = spawn(?cut(misc:executing_on_new_process(
+                               fun () ->
+                                       register(grandchild, self()),
+                                       timer:sleep(3600 * 1000)
+                               end))),
+              timer:sleep(random:uniform(5) - 1),
+              exit(P, shutdown),
+              ok = wait_for_process(P, 500),
+              undefined = whereis(grandchild)
+      end, lists:seq(1, 1000)).
+
+%% Check that exit signals are propagated without any mangling.
+executing_on_new_process_exit_test() ->
+    try
+        misc:executing_on_new_process(?cut(exit(shutdown)))
+    catch
+        exit:shutdown ->
+            ok
+    end.
+
+-endif.
 
 %% returns if Reason is EXIT caused by undefined function/module
 is_undef_exit(M, F, A, {undef, [{M, F, A, []} | _]}) -> true; % R15, R16
