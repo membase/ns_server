@@ -6,9 +6,9 @@
   <form
      ng-submit="auditCtl.submit()"
      name="auditForm"
-     class="forms width-300">
+     class="forms">
 
-    <div class="formrow checkbox-list">
+    <div class="formrow">
       <input
          type="checkbox"
          id="audit-enable-flag"
@@ -17,7 +17,8 @@
       <label for="audit-enable-flag">Enable Auditing</label>
     </div>
 
-    <div class="formrow">
+    <div
+       class="formrow width-300">
       <label for="target-log-field">Target Log Directory</label>
       <input
          type="text"
@@ -35,32 +36,112 @@
       </div>
     </div>
 
-    <div class="formrow">
-      <label for="log-rotation-interval">Log Rotation Time Interval</label>
-      <span class="form-inline">
-        <input
-           id="log-rotation-interval"
-           ng-model="auditCtl.state.rotateInterval"
-           ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
-           type="number">
-        <select
-           ng-model="auditCtl.state.rotateUnit"
-           ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write">
-          <option value="minutes">Minutes</option>
-          <option value="hours">Hours</option>
-          <option value="days">Days</option>
-        </select>
-      </span>
+    <label>Log Rotation: Time Interval & Size Trigger</label>
+    <div class="row flex-left fix-width-5">
+      <div class="column">
+        <span class="form-inline">
+          <input
+             id="log-rotation-interval"
+             ng-model="auditCtl.state.rotateInterval"
+             ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
+             type="number"
+             class="input-short-1">
+          <small>Day{{auditCtl.state.rotateInterval !== 1 ? "s" : ""}}</small>
+        </span>
+      </div>
+      <div class="column">
+        <span class="form-inline">
+          <input
+             id="log-rotation-size"
+             ng-model="auditCtl.state.rotateSize"
+             ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
+             type="number"
+             class="input-short-1">
+          <small>MB</small>
+        </span>
+      </div>
+    </div>
+    <div class="margin-bottom-1-5">
       <div
          ng-if="auditCtl.errors.rotateInterval"
          class="error error-field">
         {{auditCtl.errors.rotateInterval}}
       </div>
+      <div
+         ng-if="auditCtl.errors.rotateSize"
+         class="error error-field">
+        {{auditCtl.errors.rotateSize}}
+      </div>
+    </div>
+
+    <section
+       ng-if="adminCtl.poolDefault.isEnterprise && adminCtl.poolDefault.compat.atLeast55"
+       class="audit-module"
+       ng-class="{'audit-module-open' : showModule}"
+       ng-repeat="(module, descs) in auditCtl.state.eventsDescriptors">
+      <span
+         class="disclosure inline fix-width-3"
+         ng-class="{disclosed: showModule}"
+         ng-click="showModule = !showModule">
+        {{auditCtl.mapNames(module)}} Events
+      </span>
+      <span
+         class="icon"
+         ng-class="auditCtl.findEnabled(module, true) ? 'fa-check green-3' : 'fa-ban red-4'"></span>
+
+      <div class="audit-module-body" ng-show="showModule">
+        <input
+           type="checkbox"
+           id="thisModule_checkall_{{module}}"
+           ng-checked="!auditCtl.findEnabled(module, false)"
+           ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
+           ng-click="auditCtl.toggleAll(module)">
+        <label
+           class="checkbox"
+           for="thisModule_checkall_{{module}}">enable/disable all {{auditCtl.mapNames(module)}} events</label>
+        <hr>
+        <div
+           class="row flex-left items-top"
+           ng-repeat="desc in descs">
+          <span class="fix-width-5">
+            <input
+               type="checkbox"
+               id="thisModule_{{module}}_{{desc.id}}"
+               ng-model="desc.enabledByUI"
+               ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write">
+            <label
+               class="checkbox"
+               for="thisModule_{{module}}_{{desc.id}}">{{desc.name}}</label>
+          </span>
+          <p>{{desc.description}}</p>
+        </div>
+      </div>
+    </section>
+
+    <div
+       ng-if="adminCtl.poolDefault.isEnterprise && adminCtl.poolDefault.compat.atLeast55"
+       class="formrow fix-width-5 margin-top-1-5">
+      <label>Ignore Events From These Users</label>
+      <textarea
+         ng-model="auditCtl.state.disabledUsers"
+         ng-disabled="!auditCtl.state.auditdEnabled || !rbac.cluster.admin.security.write"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
+         rows="3"
+         placeholder="e.g. username/external,username/couchbase ...">
+      </textarea>
+      <div
+         ng-if="auditCtl.errors.disabledUsers"
+         class="error error-field">
+        {{auditCtl.errors.disabledUsers}}
+      </div>
     </div>
 
     <button
        ng-show="rbac.cluster.admin.security.write"
-       ng-disabled="!!auditCtl.errors || auditForm.$pristine"
-       class="save_button">Save</button>
+       ng-disabled="!!auditCtl.errors"
+       class="save_button margin-top-1">Save</button>
+
   </form>
 </div>

@@ -233,7 +233,7 @@ h1 a:active {
   text-align: center;
   color: #333;
   position: absolute;
-  top: -3px;
+  top: -1px;
   left: 0;
   text-decoration: none;
 }
@@ -245,7 +245,7 @@ h1 a:active {
   text-align: center;
   color: #333;
   position: absolute;
-  top: -3px;
+  top: -1px;
   left: 0;
   text-decoration: none;
 }
@@ -1312,7 +1312,7 @@ input[type="checkbox"] + label {
   font-weight: normal;
   cursor: pointer;
   font-size: .961rem;
-  padding-left: .4rem;
+  padding-left: 3px;
   margin-right: .75rem;
 }
 input[type="radio"] + label:last-child,
@@ -1328,7 +1328,7 @@ input[type="radio"] + label:before {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   width: 1rem;
-  left: -2px;
+  left: -3px;
 }
 input[type="checkbox"][disabled="disabled"] + label:before,
 input[type="radio"][disabled="disabled"] + label:before {
@@ -1600,4 +1600,28 @@ section.dynamic_unhealthy {
   to {
     width: 1rem;
   }
+}
+
+/* Audit Tab ------------------------------------------------------------ */
+.audit-module {
+  margin: 0 0 1rem -0.5rem;
+  padding: .5rem;
+  border-bottom: none;
+  max-width: 980px;
+  font-size: .962rem;
+}
+.audit-module-open {
+  background-color: #f6fafd!important;
+}
+.audit-module-body {
+  padding: .5rem 1.25rem;
+  line-height: 2;
+}
+.audit-module-body hr {
+  margin: .75rem -0.75rem;
+}
+.audit-module-body p {
+  font-size: .875rem;
+  color: #555;
+  margin: 0;
 }
