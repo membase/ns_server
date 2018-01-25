@@ -299,8 +299,8 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                          case cluster_compat_mode:is_enterprise() andalso
                              cluster_compat_mode:is_cluster_vulcan() of
                              true ->
-                                 CMode = proplists:get_value(compression_mode, BucketConfig),
-                                 [{maxTTL, proplists:get_value(max_ttl, BucketConfig)},
+                                 CMode = proplists:get_value(compression_mode, BucketConfig, "off"),
+                                 [{maxTTL, proplists:get_value(max_ttl, BucketConfig, 0)},
                                   {compressionMode, list_to_binary(CMode)} |
                                   BucketParams];
                              false ->
