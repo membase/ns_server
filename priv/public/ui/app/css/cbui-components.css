@@ -949,6 +949,9 @@ section.error {
   right: 0;
   bottom: 0;
 }
+.z-index-10001 {
+  z-index: 10001!important;
+}
 .spinner {
   position: absolute;
   z-index: 10;

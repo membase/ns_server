@@ -118,13 +118,15 @@
     function publishDdoc(ddoc) {
       var url = mnViewsListService.getDdocUrl($state.params.bucket, "_design/" + mnViewsListService.cutOffDesignPrefix(ddoc.meta.id));
       var publish = prepareToPublish(url, ddoc);
-      mnPromiseHelper(vm, mnViewsListService.getDdoc(url))
-        .getPromise()
-        .then(function (presentDdoc) {
-          $uibModal.open({
-            templateUrl: 'app/mn_admin/mn_indexes/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
-          }).result.then(publish);
-        }, publish);
+      var promise = mnViewsListService.getDdoc(url).then(function () {
+        return $uibModal.open({
+          windowClass: "z-index-10001",
+          templateUrl: 'app/mn_admin/mn_indexes/mn_views/confirm_dialogs/mn_views_confirm_override_dialog.html'
+        }).result.then(publish);
+      }, publish);
+
+      mnPromiseHelper(vm, promise)
+        .showGlobalSpinner();
     }
     function copyToDev(ddoc) {
       $uibModal.open({
