@@ -582,7 +582,8 @@ fts_spec(Config) ->
                       "ftsMemoryQuota=" ++ integer_to_list(FTSMemoryQuota * 1024000) ++ "," ++
                       "maxReplicasAllowed=" ++ integer_to_list(MaxReplicasAllowed) ++ "," ++
                       "bucketTypesAllowed=" ++ BucketTypesAllowed ++ "," ++
-                      "http2=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
+                      "http2=" ++ atom_to_list(cluster_compat_mode:is_enterprise()) ++ "," ++
+                      "vbuckets=" ++ integer_to_list(ns_bucket:get_num_vbuckets()),
             Spec = {fts, FtCmd,
                     [
                      "-cfg=metakv",
