@@ -2199,3 +2199,95 @@ with_trap_exit_test_() ->
                 end)
      end}.
 -endif.
+
+%% Like a sequence of unlink(Pid) and exit(Pid, Reason). But care is taken
+%% that the Pid is terminated even the caller dies right in between unlink and
+%% exit.
+unlink_terminate(Pid, Reason) ->
+    with_trap_exit(
+      fun () ->
+              exit(Pid, Reason),
+              unlink(Pid),
+              %% the process might have died before we unlinked
+              ?flush({'EXIT', Pid, _})
+      end).
+
+%% Unlink, terminate and wait for the completion.
+unlink_terminate_and_wait(Pid, Reason) ->
+    unlink_terminate(Pid, Reason),
+
+    %% keeping this out of with_trap_exit body to make sure that if somebody
+    %% wants to kill us quickly, we let them
+    wait_for_process(Pid, infinity).
+
+-ifdef(EUNIT).
+unlink_terminate_and_wait_simple_test() ->
+    Pid = proc_lib:spawn_link(fun () -> timer:sleep(10000) end),
+    unlink_terminate_and_wait(Pid, kill),
+    false = is_process_alive(Pid),
+
+    %% make sure dead procecesses are handled too
+    unlink_terminate_and_wait(Pid, kill).
+
+%% Test that if the killing process doesn't trap exits, we can still kill it
+%% promptly.
+unlink_terminate_and_wait_wont_block_test() ->
+    One = proc_lib:spawn(
+            fun () ->
+                    process_flag(trap_exit, true),
+                    timer:sleep(2000),
+                    1 = ?flush({'EXIT', _, _})
+            end),
+    Two = proc_lib:spawn(
+            fun () ->
+                    link(One),
+                    timer:sleep(50),
+                    unlink_terminate_and_wait(One, shutdown)
+            end),
+
+    timer:sleep(100),
+    exit(Two, shutdown),
+    ok = wait_for_process(Two, 500),
+    %% the other process terminates eventually
+    ok = wait_for_process(One, 5000).
+
+
+%% This tries to test that it's never possible to kill the killing process at
+%% an unfortunate moment and leave the the linked process
+%% alive. Unfortunately, timings are making it quite hard to test. I managed
+%% to catch the original issue only when added explicit erlang:yield() between
+%% unlink and exit. But leaving the test here anyway, it's better than nothing
+%% after all.
+unlink_terminate_and_wait_kill_the_killer_test_() ->
+    {spawn,
+     fun () ->
+             lists:foreach(
+               fun (_) ->
+                       Self = self(),
+
+                       Pid = proc_lib:spawn(fun () -> timer:sleep(10000) end),
+                       Killer = proc_lib:spawn(
+                                  fun () ->
+                                          link(Pid),
+                                          Self ! linked,
+                                          receive
+                                              kill ->
+                                                  unlink_terminate_and_wait(Pid, kill)
+                                          end
+                                  end),
+
+                       receive linked -> ok end,
+                       Killer ! kill,
+                       delay(random:uniform(10000)),
+                       exit(Killer, kill),
+
+                       ok = wait_for_process(Killer, 1000),
+                       ok = wait_for_process(Pid, 1000)
+               end, lists:seq(1, 10000))
+     end}.
+
+delay(0) ->
+    ok;
+delay(I) ->
+    delay(I-1).
+-endif.
