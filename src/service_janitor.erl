@@ -15,6 +15,7 @@
 %%
 -module(service_janitor).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
 
 -export([cleanup/0, cleanup/1, complete_service_failover/1]).
@@ -90,6 +91,9 @@ maybe_init_topology_aware_service(Config, Service) ->
     end.
 
 orchestrate_initial_rebalance(Service) ->
+    misc:with_trap_exit(?cut(do_orchestrate_initial_rebalance(Service))).
+
+do_orchestrate_initial_rebalance(Service) ->
     ProgressCallback =
         fun (Progress) ->
                 ?log_debug("Initial rebalance progress for `~p': ~p",
@@ -100,8 +104,10 @@ orchestrate_initial_rebalance(Service) ->
     EjectNodes = [],
     DeltaNodes = [],
 
-    {Pid, MRef} = service_rebalancer:spawn_monitor_rebalance(
-                    Service, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback),
+    {Pid, MRef} = service_rebalancer:spawn_monitor_rebalance(Service, KeepNodes,
+                                                             EjectNodes,
+                                                             DeltaNodes,
+                                                             ProgressCallback),
     receive
         {'DOWN', MRef, _, Pid, Reason} ->
             case Reason of
@@ -179,6 +185,9 @@ complete_topology_aware_service_failover(Config, Service) ->
     end.
 
 orchestrate_service_failover(Service, Nodes) ->
+    misc:with_trap_exit(?cut(do_orchestrate_service_failover(Service, Nodes))).
+
+do_orchestrate_service_failover(Service, Nodes) ->
     {Pid, MRef} = service_rebalancer:spawn_monitor_failover(Service, Nodes),
 
     receive

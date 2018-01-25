@@ -183,7 +183,7 @@ run_cleanup(Parent, Requests) ->
     {RequestsRV, Reprovision} =
         lists:foldl(
           fun({Item, _}, {OAcc, RAcc}) ->
-                  case do_run_cleanup(Item, Parent, Options) of
+                  case do_run_cleanup(Item, Options) of
                       {error, unsafe_nodes, Nodes} ->
                           {OAcc, [{Item, Nodes} | RAcc]};
                       RV ->
@@ -201,21 +201,9 @@ run_cleanup(Parent, Requests) ->
     %% Return the individual cleanup status back to the parent.
     ok = gen_server:cast(Parent, {cleanup_complete, RequestsRV, UnsafeNodes}).
 
-do_run_cleanup(services, Parent, _Options) ->
-    %% we need to be able to terminate spawned subprocesses synchronously
-    process_flag(trap_exit, true),
-    RV = service_janitor:cleanup(),
-    process_flag(trap_exit, false),
-
-    %% If we have received an 'EXIT' message from the parent before we
-    %% turned off the trap_exit, then we exit right here.
-    receive
-        {'EXIT', Parent, Reason} ->
-            exit(Reason)
-    after 0 ->
-            RV
-    end;
-do_run_cleanup({bucket, Bucket}, _Parent, Options) ->
+do_run_cleanup(services, _Options) ->
+    service_janitor:cleanup();
+do_run_cleanup({bucket, Bucket}, Options) ->
     ns_janitor:cleanup(Bucket, [consider_stopping_rebalance_status | Options]).
 
 get_unsafe_nodes_from_reprovision_list(ReprovisionList) ->
