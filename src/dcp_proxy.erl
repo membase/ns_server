@@ -310,13 +310,13 @@ connect_proxies(Pid1, Pid2) ->
     gen_server:cast(Pid2, {setup_proxy, Pid1, Sock1}),
     [{Pid1, Sock1}, {Pid2, Sock2}].
 
-terminate_and_wait(normal, Pairs) ->
-    misc:terminate_and_wait(normal, [Pid || {Pid, _} <- Pairs]);
-terminate_and_wait(shutdown, Pairs) ->
-    misc:terminate_and_wait(shutdown, [Pid || {Pid, _} <- Pairs]);
-terminate_and_wait(_Reason, Pairs) ->
+terminate_and_wait(Pairs, normal) ->
+    misc:terminate_and_wait([Pid || {Pid, _} <- Pairs], normal);
+terminate_and_wait(Pairs, shutdown) ->
+    misc:terminate_and_wait([Pid || {Pid, _} <- Pairs], shutdown);
+terminate_and_wait(Pairs, _Reason) ->
     [disconnect(Sock) || {_, Sock} <- Pairs],
-    misc:terminate_and_wait(kill, [Pid || {Pid, _} <- Pairs]).
+    misc:terminate_and_wait([Pid || {Pid, _} <- Pairs], kill).
 
 process_data(NewData, #state{buf = PrevData,
                              packet_len = PacketLen} = State) ->

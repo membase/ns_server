@@ -70,15 +70,15 @@ run_rebalance(Parent, Service,
                 R;
             {'EXIT', Parent, R} = Exit ->
                 ?log_error("Got exit message from parent: ~p", [Exit]),
-                misc:terminate_and_wait(R, Worker),
+                misc:terminate_and_wait(Worker, R),
                 R;
             {'DOWN', _, _, Parent, R} = Down ->
                 ?log_error("Parent died unexpectedly: ~p", [Down]),
-                misc:terminate_and_wait(R, Worker),
+                misc:terminate_and_wait(Worker, R),
                 R;
             {'DOWN', _, _, _Agent, R} = Down ->
                 ?log_error("Agent terminated during the rebalance: ~p", [Down]),
-                misc:terminate_and_wait(R, Worker),
+                misc:terminate_and_wait(Worker, R),
                 R
         end,
 

@@ -551,7 +551,7 @@ rebalance_topology_aware_service(Service, KeepNodes, EjectNodes, DeltaNodes) ->
 
               receive
                   {'EXIT', _Pid, Reason} ->
-                      misc:terminate_and_wait(Reason, Pid),
+                      misc:terminate_and_wait(Pid, Reason),
                       exit(Reason);
                   {'DOWN', MRef, _, _, Reason} ->
                       case Reason of

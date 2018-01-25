@@ -95,7 +95,7 @@ terminate(Reason, #state{proxies = Proxies,
         %% failover time to depend on slow (failed over) producer termination.
         maybe_shut_consumer(Reason, Consumer)
     after
-        dcp_proxy:terminate_and_wait(Reason, Proxies)
+        dcp_proxy:terminate_and_wait(Proxies, Reason)
     end,
     ok.
 

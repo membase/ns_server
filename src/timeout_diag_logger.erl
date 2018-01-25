@@ -182,7 +182,7 @@ terminate(_Reason, #state{diag_pid = DiagPid} = _State) ->
         undefined ->
             ok;
         _ ->
-            misc:terminate_and_wait(kill, DiagPid)
+            misc:terminate_and_wait(DiagPid, kill)
     end,
     ok.
 

@@ -255,7 +255,7 @@ terminate(Reason, #state{service = Service,
                          rebalance_worker = RebalanceWorker}) ->
     Pids = [P || P <- [TasksWorker, TopologyWorker, RebalanceWorker],
                  P =/= undefined],
-    ok = misc:terminate_and_wait(Reason, Pids),
+    ok = misc:terminate_and_wait(Pids, Reason),
 
     if
         Reason =:= normal orelse Reason =:= shutdown ->
@@ -648,7 +648,7 @@ terminate_long_poll_workers(#state{tasks_worker = TasksWorker,
 
     Workers = [TopologyWorker, TasksWorker],
     lists:foreach(fun erlang:unlink/1, Workers),
-    misc:terminate_and_wait(kill, Workers),
+    misc:terminate_and_wait(Workers, kill),
 
     State#state{tasks_worker = undefined,
                 topology_worker = undefined}.

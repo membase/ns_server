@@ -72,7 +72,7 @@ abort_many(Pids) ->
     abort_many(Pids, shutdown).
 
 abort_many(Pids, Reason) ->
-    misc:terminate_and_wait(Reason, Pids).
+    misc:terminate_and_wait(Pids, Reason).
 
 send(Async, Msg) ->
     Async ! {'$async_msg', Msg},
@@ -241,20 +241,20 @@ async_loop_wait_result(Type, Child, Reply, ChildAsyncs) ->
     end.
 
 terminate_now(Reason, Children) ->
-    misc:terminate_and_wait(Reason, Children),
+    misc:terminate_and_wait(Children, Reason),
     exit(Reason).
 
 terminate_on_query(perform, Reason, Children) ->
     terminate_now(Reason, Children);
 terminate_on_query(wait, Reason, Children) ->
-    misc:terminate_and_wait(Reason, Children),
+    misc:terminate_and_wait(Children, Reason),
     async_loop_with_result({die, Reason}).
 
 async_loop_handle_result(Type, Child, ChildAsyncs, Result) ->
     unlink(Child),
     ?flush({'EXIT', Child, _}),
 
-    misc:terminate_and_wait(shutdown, ChildAsyncs),
+    misc:terminate_and_wait(ChildAsyncs, shutdown),
 
     case Type of
         perform ->

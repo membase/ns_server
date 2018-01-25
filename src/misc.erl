@@ -313,10 +313,10 @@ wait_for_process_test_() ->
              ok = wait_for_process(Pid, 100)
      end}.
 
--spec terminate_and_wait(Reason :: term(), Processes :: pid() | [pid()]) -> ok.
-terminate_and_wait(Reason, Process) when is_pid(Process) ->
-    terminate_and_wait(Reason, [Process]);
-terminate_and_wait(Reason, Processes) ->
+-spec terminate_and_wait(Processes :: pid() | [pid()], Reason :: term()) -> ok.
+terminate_and_wait(Process, Reason) when is_pid(Process) ->
+    terminate_and_wait([Process], Reason);
+terminate_and_wait(Processes, Reason) ->
     RealReason = case Reason of
                      normal -> shutdown;
                      _ -> Reason

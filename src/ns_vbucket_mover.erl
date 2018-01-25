@@ -209,7 +209,7 @@ handle_info(Info, State) ->
 terminate(Reason, _State) ->
     ?log_debug("running terminate/2 of ns_vbucket_mover. Reason: ~p", [Reason]),
     AllChildsEver = erlang:get(child_processes),
-    misc:terminate_and_wait(Reason, AllChildsEver).
+    misc:terminate_and_wait(AllChildsEver, Reason).
 
 %%
 %% Internal functions

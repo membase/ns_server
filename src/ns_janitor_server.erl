@@ -168,7 +168,7 @@ handle_info(_, State) ->
     {noreply, State}.
 
 terminate(Reason, #state{pid = Pid} = _State) when is_pid(Pid) ->
-    misc:terminate_and_wait(Reason, Pid);
+    misc:terminate_and_wait(Pid, Reason);
 terminate(_Reason, _State) ->
     ok.
 

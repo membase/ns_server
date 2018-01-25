@@ -450,8 +450,8 @@ terminate_activities(Activities) ->
     ?log_debug("Terminating activities:~n~p", [Activities]),
 
     lists:foreach(?cut(erlang:demonitor(_#activity.mref, [flush])), Activities),
-    misc:terminate_and_wait({shutdown, quorum_lost},
-                            [A#activity.pid || A <- Activities]).
+    misc:terminate_and_wait([A#activity.pid || A <- Activities],
+                            {shutdown, quorum_lost}).
 
 terminate_all_activities(#state{activities = Activities} = State) ->
     terminate_activities(Activities),

@@ -90,7 +90,7 @@ nuke(Bucket) ->
 
     ?log_debug("Nuking DCP replicators for bucket ~p:~n~p",
                [Bucket, Children]),
-    misc:terminate_and_wait({shutdown, nuke}, [Pid || {_, Pid} <- Children]),
+    misc:terminate_and_wait([Pid || {_, Pid} <- Children], {shutdown, nuke}),
 
     Connections = dcp_replicator:get_connections(Bucket),
     misc:parallel_map(

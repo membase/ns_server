@@ -114,13 +114,13 @@ orchestrate_initial_rebalance(Service) ->
         {'EXIT', _, Reason} = Exit ->
             ?log_debug("Received exit message ~p. Terminating initial rebalance",
                        [Exit]),
-            misc:terminate_and_wait(Reason, Pid),
+            misc:terminate_and_wait(Pid, Reason),
             exit(Reason)
     after
         ?INITIAL_REBALANCE_TIMEOUT ->
             ?log_error("Initial rebalance of service `~p` takes too long (timeout ~p)",
                        [Service, ?INITIAL_REBALANCE_TIMEOUT]),
-            misc:terminate_and_wait(shutdown, Pid),
+            misc:terminate_and_wait(Pid, shutdown),
             {error, {initial_rebalance_timeout, Service}}
     end.
 
@@ -192,7 +192,7 @@ orchestrate_service_failover(Service, Nodes) ->
         {'EXIT', _, Reason} = Exit ->
             ?log_debug("Received exit message ~p. Terminating failover",
                        [Exit]),
-            misc:terminate_and_wait(Reason, Pid),
+            misc:terminate_and_wait(Pid, Reason),
             exit(Reason)
     end.
 
