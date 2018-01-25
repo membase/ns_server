@@ -24,7 +24,9 @@
          abort_many/1, abort_many/2,
          send/2, adopt/1,
          with/2, with_many/3,
-         wait/1, wait_many/1, wait_any/1,
+         wait/1, wait/2,
+         wait_many/1, wait_many/2,
+         wait_any/1, wait_any/2,
          race/2, map/2, foreach/2,
          run_with_timeout/2,
          get_identity/0]).
@@ -97,13 +99,22 @@ with_many(AsyncBody, Args, Fun) ->
     end.
 
 wait(Pid) ->
-    call(Pid, get_result).
+    wait(Pid, []).
+
+wait(Pid, Flags) ->
+    call(Pid, get_result, Flags).
 
 wait_many(Pids) ->
-    call_many(Pids, get_result).
+    wait_many(Pids, []).
+
+wait_many(Pids, Flags) ->
+    call_many(Pids, get_result, Flags).
 
 wait_any(Pids) ->
-    call_any(Pids, get_result).
+    wait_any(Pids, []).
+
+wait_any(Pids, Flags) ->
+    call_any(Pids, get_result, Flags).
 
 race(Fun1, Fun2) ->
     with(
@@ -295,23 +306,28 @@ handle_get_result(_From, {die, Reason}) ->
     exit(Reason).
 
 call(Pid, Req) ->
-    [{Pid, R}] = call_many([Pid], Req),
+    call(Pid, Req, []).
+
+call(Pid, Req, Flags) ->
+    [{Pid, R}] = call_many([Pid], Req, Flags),
     R.
 
-call_many(Pids, Req) ->
+call_many(Pids, Req, Flags) ->
+    Interruptible = proplists:get_bool(interruptible, Flags),
+
     PidMRefs = monitor_asyncs(Pids),
     try
         send_req_many(PidMRefs, Req),
-        recv_many(PidMRefs)
+        recv_many(PidMRefs, Interruptible)
     after
         demonitor_asyncs(PidMRefs)
     end.
 
-call_any(Pids, Req) ->
+call_any(Pids, Req, Flags) ->
     PidMRefs = monitor_asyncs(Pids),
     try
         send_req_many(PidMRefs, Req),
-        recv_any(PidMRefs)
+        recv_any(PidMRefs, Flags)
     after
         Pids = demonitor_asyncs(PidMRefs),
         abort_many(Pids),
@@ -346,12 +362,14 @@ send_req_many(PidMRefs, Req) ->
               send_req(Pid, MRef, Req)
       end, PidMRefs).
 
-recv_resp(MRef) ->
+recv_resp(MRef, Interruptible) ->
     receive
         {MRef, R} ->
             R;
         {'DOWN', MRef, _, _, Reason} ->
-            recv_resp_handle_down(Reason)
+            recv_resp_handle_down(Reason);
+        {'EXIT', _Pid, _Reason} = Exit when Interruptible ->
+            throw({interrupted, Exit})
     end.
 
 recv_resp_handle_down({raised, {T, E, Stack}}) ->
@@ -359,15 +377,14 @@ recv_resp_handle_down({raised, {T, E, Stack}}) ->
 recv_resp_handle_down(Reason) ->
     exit(Reason).
 
-recv_many([]) ->
-    [];
-recv_many([{Pid, MRef} | Rest]) ->
-    [{Pid, recv_resp(MRef)} | recv_many(Rest)].
+recv_many(PidMRefs, Interruptible) ->
+    [{Pid, recv_resp(MRef, Interruptible)} || {Pid, MRef} <- PidMRefs].
 
-recv_any(PidMRefs) ->
-    recv_any_loop(PidMRefs, []).
+recv_any(PidMRefs, Flags) ->
+    Interruptible = proplists:get_bool(interruptible, Flags),
+    recv_any_loop(PidMRefs, Interruptible, []).
 
-recv_any_loop(PidMRefs, PendingMsgs) ->
+recv_any_loop(PidMRefs, Interruptible, PendingMsgs) ->
     receive
         {Ref, R} = Msg when is_reference(Ref) ->
             case lists:keyfind(Ref, 2, PidMRefs) of
@@ -375,7 +392,9 @@ recv_any_loop(PidMRefs, PendingMsgs) ->
                     recv_any_loop_resend_pending(PendingMsgs),
                     {Pid, R};
                 false ->
-                    recv_any_loop(PidMRefs, [Msg | PendingMsgs])
+                    recv_any_loop(PidMRefs,
+                                  Interruptible,
+                                  [Msg | PendingMsgs])
             end;
         {'DOWN', Ref, _, _, Reason} = Msg ->
             case lists:keymember(Ref, 2, PidMRefs) of
@@ -383,8 +402,12 @@ recv_any_loop(PidMRefs, PendingMsgs) ->
                     recv_any_loop_resend_pending(PendingMsgs),
                     recv_resp_handle_down(Reason);
                 false ->
-                    recv_any_loop(PidMRefs, [Msg | PendingMsgs])
-            end
+                    recv_any_loop(PidMRefs,
+                                  Interruptible,
+                                  [Msg | PendingMsgs])
+            end;
+        {'EXIT', _Pid, _Reason} = Exit when Interruptible ->
+            throw({interrupted, Exit})
     end.
 
 recv_any_loop_resend_pending(PendingMsgs) ->
