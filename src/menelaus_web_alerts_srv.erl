@@ -664,7 +664,5 @@ basic_test() ->
     try
         run_basic_test_do()
     after
-        erlang:unlink(Pid),
-        exit(Pid, shutdown),
-        misc:wait_for_process(Pid, infinity)
+        misc:unlink_terminate_and_wait(Pid, shutdown)
     end.

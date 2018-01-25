@@ -1682,8 +1682,7 @@ reply_async(From, Timeout, Computation) ->
                       gen_server:reply(From, R)
               after
                   Timeout ->
-                      erlang:unlink(Pid),
-                      erlang:exit(Pid, kill),
+                      misc:unlink_terminate_and_wait(Pid, kill),
                       gen_server:reply(From, {error, timeout})
               end
       end).

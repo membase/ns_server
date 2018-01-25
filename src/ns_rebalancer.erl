@@ -689,10 +689,7 @@ rebalance_kv(KeepNodes, EjectNodes, BucketConfigs, DeltaRecoveryBuckets) ->
                   end, misc:enumerate(BucketConfigs, 0)),
 
     update_kv_progress(LiveKVNodes, 1.0),
-
-    unlink(RebalanceObserver),
-    exit(RebalanceObserver, shutdown),
-    misc:wait_for_process(RebalanceObserver, infinity).
+    misc:unlink_terminate_and_wait(RebalanceObserver, shutdown).
 
 rebalance_bucket(BucketName, BucketConfig, ProgressFun,
                  KeepKVNodes, EjectNodes, DeltaRecoveryBuckets) ->

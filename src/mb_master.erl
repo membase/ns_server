@@ -269,9 +269,7 @@ terminate(_Reason, _StateName, StateData) ->
     case StateData of
         #state{child=Child} when is_pid(Child) ->
             ?log_info("Synchronously shutting down child mb_master_sup"),
-            (catch erlang:unlink(Child)),
-            erlang:exit(Child, shutdown),
-            misc:wait_for_process(Child, infinity);
+            misc:unlink_terminate_and_wait(Child, shutdown);
         _ ->
             ok
     end.

@@ -675,8 +675,7 @@ spawn_dbs_compactor(BucketName, Config, Force, OriginalTarget) ->
               Pids = [chain_compactors([Compactor]) || Compactor <- Compactors],
               ?log_debug("Started KV compaction workers ~p", [Pids]),
               [misc:wait_for_process(Pid, infinity) || Pid <- Pids],
-              unlink(Manager),
-              exit(Manager, shutdown),
+              misc:unlink_terminate_and_wait(Manager, shutdown),
 
               ?log_info("Finished compaction of databases for bucket ~s",
                         [BucketName])

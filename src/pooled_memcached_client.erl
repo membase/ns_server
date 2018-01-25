@@ -58,9 +58,7 @@ find_missing_revs_inner(S, Vb, IdRevs, Timeout) ->
                           send_batch(S, Data)
                   end),
     RV = fetch_missing_revs_loop(extract_recv_socket(S), IdRevs, [], [], Timeout),
-    erlang:unlink(SenderPid),
-    erlang:exit(SenderPid, kill),
-    misc:wait_for_process(SenderPid, infinity),
+    misc:unlink_terminate_and_wait(SenderPid, kill),
     RV.
 
 fetch_missing_revs_loop(_S, [], Acc, AccErr, _Timeout) ->

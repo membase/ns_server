@@ -175,9 +175,7 @@ times(N, F, A) ->
     times(N - 1, F, A).
 
 kill_silently_sync(P) ->
-    unlink(P),
-    exit(P, kill),
-    misc:wait_for_process(P, infinity).
+    misc:unlink_terminate_and_wait(P, kill).
 
 create_table() ->
     ?TABLE = ets:new(?TABLE, [public, set, named_table]),

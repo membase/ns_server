@@ -841,9 +841,7 @@ pass_vbucket_states_to_set_view_manager(#state{bucket_name = BucketName,
 set_rebalance_mref(Pid, State0) ->
     [begin
          ?log_debug("Killing rebalance-related subprocess: ~p", [P]),
-         erlang:unlink(P),
-         exit(P, shutdown),
-         misc:wait_for_process(P, infinity),
+         misc:unlink_terminate_and_wait(P, shutdown),
          gen_server:reply(From, rebalance_aborted)
      end || {From, P} <- State0#state.rebalance_subprocesses],
 
@@ -852,9 +850,7 @@ set_rebalance_mref(Pid, State0) ->
             ok;
         P ->
             ?log_debug("Killing apply_vbucket_states_worker: ~p", [P]),
-            erlang:unlink(P),
-            exit(P, shutdown),
-            misc:wait_for_process(P, infinity),
+            misc:unlink_terminate_and_wait(P, shutdown),
             [gen_server:reply(From, rebalance_aborted) ||
                 From <- queue:to_list(State0#state.apply_vbucket_states_queue)]
     end,

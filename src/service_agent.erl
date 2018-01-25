@@ -373,8 +373,7 @@ handle_unset_rebalancer(#state{rebalancer = Pid,
   when is_pid(Pid) ->
     erlang:demonitor(MRef, [flush]),
 
-    erlang:unlink(Worker),
-    misc:terminate_and_wait({shutdown, rebalance_terminated}, Worker),
+    misc:unlink_terminate_and_wait(Worker, {shutdown, rebalance_terminated}),
 
     lists:foreach(
       fun (Waiter) ->
