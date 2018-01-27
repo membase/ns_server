@@ -56,7 +56,7 @@ do_handle_settings_log_redaction_post_body(Req, Values) ->
     Level = proplists:get_value(redact_level, Values),
     Settings = [{redact_level, list_to_atom(Level)}],
     ns_config:set(log_redaction_default_cfg, Settings),
-    reply_json(Req, 200).
+    handle_settings_log_redaction(Req).
 
 handle_start_collect_logs(Req) ->
     Params = Req:parse_post(),
