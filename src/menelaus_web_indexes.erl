@@ -23,6 +23,7 @@
          reply_json/2,
          validate_any_value/3,
          validate_by_fun/3,
+         validate_one_of/4,
          validate_has_params/1,
          validate_unsupported_params/1,
          validate_integer/2,
@@ -145,26 +146,17 @@ is_storage_mode_acceptable(Value) ->
     end.
 
 acceptable_values(logLevel) ->
-    [<<"silent">>, <<"fatal">>, <<"error">>, <<"warn">>, <<"info">>,
-     <<"verbose">>, <<"timing">>, <<"debug">>, <<"trace">>];
- acceptable_values(storageMode) ->
-    [?INDEX_STORAGE_MODE_FORESTDB, ?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED,
-     ?INDEX_STORAGE_MODE_PLASMA].
+    ["silent", "fatal", "error", "warn", "info", "verbose", "timing", "debug",
+     "trace"];
+acceptable_values(storageMode) ->
+    [binary_to_list(X) ||
+        X <- [?INDEX_STORAGE_MODE_FORESTDB,
+              ?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED,
+              ?INDEX_STORAGE_MODE_PLASMA]].
 
 validate_string(State, Param) ->
-    State1 = validate_any_value(Param, State, fun list_to_binary/1),
-    validate_by_fun(
-      fun (Value) ->
-              AV = acceptable_values(Param),
-              case lists:member(Value, AV) of
-                  true ->
-                      ok;
-                  false ->
-                      {error,
-                       io_lib:format("~p must be one of ~s",
-                                     [Param, string:join([binary_to_list(X) || X <- AV], ", ")])}
-              end
-      end, Param, State1).
+    validate_one_of(Param, acceptable_values(Param), State,
+                    fun list_to_binary/1).
 
 update_storage_mode(Req, Values) ->
     case proplists:get_value(storageMode, Values) of

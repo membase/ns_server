@@ -68,6 +68,7 @@
          validate_any_value/3,
          validate_by_fun/3,
          validate_one_of/3,
+         validate_one_of/4,
          validate_required/2,
          validate_prohibited/2,
          execute_if_validated/3,
@@ -482,32 +483,29 @@ validate_by_fun(Fun, Name, {_, InList, _} = State) ->
             end
     end.
 
-validate_one_of(Name, List, {OutList, _, _} = State) ->
+validate_one_of(Name, List, State) ->
+    validate_one_of(Name, List, State, fun list_to_atom/1).
+
+validate_one_of(Name, List, {OutList, _, _} = State, Convert) ->
     Value = proplists:get_value(atom_to_list(Name), OutList),
     case Value of
         undefined ->
             State;
         _ ->
             case lists:member(Value, List) of
-                    true ->
-                        return_value(Name, Value, State);
-                    false ->
-                        return_error(Name, "The value is not one of expected values", State)
+                true ->
+                    return_value(Name, Convert(Value), State);
+                false ->
+                    return_error(
+                      Name,
+                      io_lib:format(
+                        "The value must be one of the following: [~s]",
+                        [string:join(List, ",")]), State)
             end
     end.
 
-validate_boolean(Name, {OutList, _, _} = State) ->
-    Value = proplists:get_value(atom_to_list(Name), OutList),
-    case Value of
-        "true" ->
-            return_value(Name, true, State);
-        "false" ->
-            return_value(Name, false, State);
-        undefined ->
-            State;
-        _ ->
-            return_error(Name, "The value must be true or false", State)
-    end.
+validate_boolean(Name, State) ->
+    validate_one_of(Name, ["true", "false"], State).
 
 validate_dir(Name, {_, InList, _} = State) ->
     Value = proplists:get_value(Name, InList),

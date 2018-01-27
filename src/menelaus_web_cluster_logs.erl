@@ -53,8 +53,7 @@ validate_settings_log_redaction_post(Args) ->
     validate_unsupported_params(R1).
 
 do_handle_settings_log_redaction_post_body(Req, Values) ->
-    Level = proplists:get_value(redact_level, Values),
-    Settings = [{redact_level, list_to_atom(Level)}],
+    Settings = [{redact_level, proplists:get_value(redact_level, Values)}],
     ns_config:set(log_redaction_default_cfg, Settings),
     handle_settings_log_redaction(Req).
 
