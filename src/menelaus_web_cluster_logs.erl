@@ -33,9 +33,10 @@ handle_settings_log_redaction(Req) ->
     assert_is_enterprise(),
     assert_is_vulcan(),
 
-    {value, Config} = ns_config:search(ns_config:get(), log_redaction_default_cfg),
+    {value, Config} =
+        ns_config:search(ns_config:get(), log_redaction_default_cfg),
     Level = proplists:get_value(redact_level, Config),
-    Settings = [{redact_level, Level}],
+    Settings = [{logRedactionLevel, Level}],
     reply_json(Req, {struct, Settings}).
 
 handle_settings_log_redaction_post(Req) ->
@@ -49,11 +50,11 @@ handle_settings_log_redaction_post(Req) ->
 
 validate_settings_log_redaction_post(Args) ->
     R0 = validate_has_params({Args, [], []}),
-    R1 = validate_one_of(redact_level, ["none", "partial"], R0),
+    R1 = validate_one_of(logRedactionLevel, ["none", "partial"], R0),
     validate_unsupported_params(R1).
 
 do_handle_settings_log_redaction_post_body(Req, Values) ->
-    Settings = [{redact_level, proplists:get_value(redact_level, Values)}],
+    Settings = [{redact_level, proplists:get_value(logRedactionLevel, Values)}],
     ns_config:set(log_redaction_default_cfg, Settings),
     handle_settings_log_redaction(Req).
 
