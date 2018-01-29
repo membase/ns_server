@@ -108,8 +108,14 @@ _check_inet_mode() {
     fi
 
     if [ $OUTPUT == "true" ]; then
-        VM_NAME='babysitter_of_ns_1@::1'
-        PROTO_DIST='inet6_tcp'
+        if [ x"${ENTERPRISE}" = "xtrue" ]
+        then
+            VM_NAME='babysitter_of_ns_1@::1'
+            PROTO_DIST='inet6_tcp'
+        else
+            echo "IPv6 is supported only in enterprise edition"
+            exit 1
+        fi
     else
         VM_NAME='babysitter_of_ns_1@127.0.0.1'
         PROTO_DIST='inet_tcp'
