@@ -64,17 +64,14 @@
 %%
 
 run_failover(Nodes) ->
-    misc:executing_on_new_process(
-      fun () ->
-              ok = check_no_tap_buckets(),
-
-              case check_failover_possible(Nodes) of
-                  ok ->
-                      ns_rebalancer:orchestrate_failover(Nodes);
-                  Error ->
-                      Error
-              end
-      end).
+    ok = check_no_tap_buckets(),
+    case check_failover_possible(Nodes) of
+        ok ->
+            leader_activities:run_activity(failover, majority,
+                                           ?cut(orchestrate_failover(Nodes)));
+        Error ->
+            Error
+    end.
 
 orchestrate_failover(Nodes) ->
     ale:info(?USER_LOGGER, "Starting failing over ~p", [Nodes]),
@@ -83,8 +80,13 @@ orchestrate_failover(Nodes) ->
     ale:info(?USER_LOGGER, "Failed over ~p: ok", [Nodes]),
     ns_cluster:counter_inc(failover),
     ns_cluster_membership:deactivate(Nodes),
-    ok.
 
+    OtherNodes = ns_node_disco:nodes_wanted() -- Nodes,
+    LiveNodes  = leader_utils:live_nodes(OtherNodes),
+
+    ns_config_rep:ensure_config_seen_by_nodes(LiveNodes),
+
+    ok.
 
 %% @doc Fail one or more nodes. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
