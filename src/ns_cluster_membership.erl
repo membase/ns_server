@@ -27,6 +27,7 @@
          get_nodes_cluster_membership/1,
          get_cluster_membership/1,
          get_cluster_membership/2,
+         get_node_server_group/2,
          activate/1,
          deactivate/1,
          failover/1,
@@ -102,6 +103,20 @@ get_cluster_membership(Node, Config) ->
              Value;
         _ ->
             inactiveAdded
+    end.
+
+get_node_server_group(Node, Config) ->
+    {value, Groups} = ns_config:search(Config, server_groups),
+    get_node_server_group_inner(Node, Groups).
+
+get_node_server_group_inner(_, []) ->
+    undefined;
+get_node_server_group_inner(Node, [SG | Rest]) ->
+    case lists:member(Node, proplists:get_value(nodes, SG)) of
+        true ->
+            proplists:get_value(name, SG);
+        false ->
+            get_node_server_group_inner(Node, Rest)
     end.
 
 system_joinable() ->

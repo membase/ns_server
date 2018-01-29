@@ -14,14 +14,38 @@
 %% limitations under the License.
 %%
 
-%% @doc Does auto failover nodes that are down.
-%% It works like that: You specify a certain time interval a node
-%% must be down, before it will be auto-failovered. There's also a
-%% maximum number of nodes that may be auto-failovered. Whenever a node
-%% gets auto-failovered a counter is increased by one. Once the counter
-%% has reached the maximum number of nodes that may be auto-failovered
-%% the user will only get a notification that there was a node that would
-%% have been auto-failovered if the maximum wouldn't have been reached.
+%%
+%% @doc Auto-failover logic at a very high level:
+%%  - User sets the auto-failover timeout. This is the time period for which
+%%  a node or server group must be down before it is automatically failed over.
+%%  - User specifies the maximum number of auto-failover events that are
+%%  allowed before requiring manual intervention/reset of quota.
+%%  - Whenever a node or a server group is automatically failed over, a
+%%  counter is incremented by one.
+%%  - Auto-failover of maximum one server group is allowed before requiring
+%%  manual intervention/reset of quota. This is irrespective of the max count
+%%  set by the user.
+%%  - When the maximum number of nodes or server groups that can be failed over
+%%  has been reached and there is another failure, user will receive
+%%  appropriate notification.
+%%  - The max auto-failover count applies for cascading failures only.
+%%      - Cascading failures are where one node fails, it is automatically
+%%      failed over then another node fails, it is automatically failed over
+%%      and so on. This will continue up to the max count.
+%%      - If two or more nodes fail concurrently and it is not a server group
+%%      failure, then none of the nodes will be automatically failed over.
+%%      This is one of the restrictions that prevents a network partition
+%%      from causing two or more halves of a cluster from failing each other
+%%      over.
+%%  - If one ore more buckets have insufficient replicas (unsafe buckets), then
+%%  the node will not be failed over. This is irresepctive of the value of
+%%  max count.
+%%  E.g. cluster has a bucket with one replica. User has set max count to 2.
+%%  KVNode1 fails and is automatically failed over. KVNode2 fails. It's
+%%  auto-failover will be attempted but validate_autofailover() will prevent
+%%  the failover because of unsafe bucket.
+%%  - Auto-failover of server groups is disabled by default.
+%%
 
 -module(auto_failover).
 
@@ -43,8 +67,8 @@
 
 %% @doc Fired when a node was auto-failovered.
 -define(EVENT_NODE_AUTO_FAILOVERED, 1).
-%% @doc Fired when the maximum number of nodes that can be auto-failovered
-%% was reached (and thus the auto-failover was disabled).
+%% @doc Fired when the maximum number of nodes or server groups that can be
+%% automatically failed over has reached.
 -define(EVENT_MAX_REACHED, 2).
 %% @doc Fired when another node is down while we were trying to failover
 %% a node
@@ -71,8 +95,15 @@
           tick_ref = nil :: nil | timer:tref(),
           %% Time a node needs to be down until it is automatically failovered
           timeout = nil :: nil | integer(),
-          %% Counts the number of nodes that were already auto-failovered
+          %% Maximum number of auto-failover events
+          max_count = 0  :: non_neg_integer(),
+          %% Counts the number of auto-failover events
           count = 0 :: non_neg_integer(),
+          %% List of server groups that have already been automatically failed
+          %% over. Currently, auto-failover of only one server group is allowed
+          %% before requiring reset of the auto-failover count.
+          %% This list is reset when auto-failover count is reset.
+          failed_over_server_groups = [] :: list(),
 
           %% Whether we reported to the user autofailover_unsafe condition
           reported_autofailover_unsafe = false :: boolean(),
@@ -98,12 +129,10 @@ start_link() ->
 %% not all nodes in the cluster were healthy.
 %% `Timeout` is the number of seconds a node must be down before it will be
 %% automatically failovered
-%% `Max` is the maximum number of nodes that can will be automatically
-%% failovered
+%% `Max` is the maximum number of auto-failover events that are allowed.
 %% `Extras` are optional settings.
 -spec enable(Timeout::integer(), Max::integer(), Extras::list()) -> ok.
 enable(Timeout, Max, Extras) ->
-    1 = Max,
     %% Request will be sent to the master for processing.
     %% In a mixed version cluster, node running highest version is
     %% usually selected as the master.
@@ -169,14 +198,18 @@ init([]) ->
     ?log_debug("init auto_failover.", []),
     Timeout = proplists:get_value(timeout, Config),
     Count = proplists:get_value(count, Config),
+    MaxCount = proplists:get_value(max_count, Config, 1),
+    FailedOverSGs = proplists:get_value(failed_over_server_groups, Config, []),
     State0 = #state{timeout = Timeout,
+                    max_count = MaxCount,
                     count = Count,
+                    failed_over_server_groups = FailedOverSGs,
                     auto_failover_logic_state = undefined},
     State1 = init_reported(State0),
     case proplists:get_value(enabled, Config) of
         true ->
             {reply, ok, State2} = handle_call(
-                                    {enable_auto_failover, Timeout, 1},
+                                    {enable_auto_failover, Timeout, MaxCount},
                                     self(), State1),
             {ok, State2};
         false ->
@@ -193,29 +226,19 @@ handle_call({enable_auto_failover, Timeout, Max}, From, State) ->
 %% @doc Auto-failover isn't enabled yet (tick_ref isn't set).
 handle_call({enable_auto_failover, Timeout, Max, Extras}, _From,
             #state{tick_ref = nil} = State) ->
-    1 = Max,
-    ale:info(?USER_LOGGER, "Enabled auto-failover with timeout ~p", [Timeout]),
+    ale:info(?USER_LOGGER,
+             "Enabled auto-failover with timeout ~p and max count ~p",
+             [Timeout, Max]),
     {ok, Ref} = timer2:send_interval(get_tick_period(), tick),
-    State2 = State#state{tick_ref = Ref, timeout = Timeout,
+    State1 = State#state{tick_ref = Ref, timeout = Timeout, max_count = Max,
                          auto_failover_logic_state = init_logic_state(Timeout)},
-    make_state_persistent(State2, Extras),
-    {reply, ok, State2};
+    make_state_persistent(State1, Extras),
+    {reply, ok, State1};
 %% @doc Auto-failover is already enabled, just update the settings.
-handle_call({enable_auto_failover, Timeout, Max, Extras}, _From,
-            #state{timeout = CurrTimeout} = State) ->
+handle_call({enable_auto_failover, Timeout, Max, Extras}, _From, State) ->
     ?log_debug("updating auto-failover settings: ~p", [State]),
-    1 = Max,
-    State2 = case Timeout =/= CurrTimeout of
-                 true ->
-                     ale:info(?USER_LOGGER,
-                              "Updating auto-failover timeout to ~p",
-                              [Timeout]),
-                     State#state{timeout = Timeout,
-                                 auto_failover_logic_state = init_logic_state(Timeout)};
-                 false ->
-                     ?log_debug("No change in timeout ~p", [Timeout]),
-                     State
-             end,
+    State1 = update_state_timeout(Timeout, State),
+    State2 = update_state_max_count(Max, State1),
     make_state_persistent(State2, Extras),
     {reply, ok, State2};
 
@@ -245,8 +268,14 @@ handle_cast(reset_auto_failover_count, #state{count = 0} = State) ->
     {noreply, State};
 handle_cast(reset_auto_failover_count, State) ->
     ?log_debug("reset auto_failover count: ~p", [State]),
-    State2 = State#state{count = 0,
-                         auto_failover_logic_state = init_logic_state(State#state.timeout)},
+    State1 = case cluster_compat_mode:is_cluster_vulcan() of
+                 true ->
+                     State#state{failed_over_server_groups = []};
+                 false ->
+                     State
+             end,
+    LogicState = init_logic_state(State1#state.timeout),
+    State2 = State1#state{count = 0, auto_failover_logic_state = LogicState},
     State3 = init_reported(State2),
     make_state_persistent(State3),
     ale:info(?USER_LOGGER, "Reset auto-failover count"),
@@ -267,7 +296,10 @@ handle_info(tick, State0) ->
     %% rest of the cluster. And say we win the battle over mastership
     %% again. In this case our failover count will still be zero which is
     %% incorrect.
-    State = State0#state{count = get_auto_failover_count(Config)},
+    {value, AFOConfig} = ns_config:search(Config, auto_failover_cfg),
+    FOSGs = proplists:get_value(failed_over_server_groups, AFOConfig, []),
+    State = State0#state{count = proplists:get_value(count, AFOConfig),
+                         failed_over_server_groups = FOSGs},
 
     NonPendingNodes = lists:sort(ns_cluster_membership:active_nodes(Config)),
 
@@ -287,7 +319,8 @@ handle_info(tick, State0) ->
                                           ServicesConfig, DownSG),
     NewState = lists:foldl(
                  fun(Action, S) ->
-                         process_action(Action, S, DownNodes, NodeStatuses)
+                         process_action(Action, S, DownNodes, NodeStatuses,
+                                        Config)
                  end, State#state{auto_failover_logic_state = LogicState},
                  Actions),
 
@@ -313,7 +346,32 @@ code_change(_OldVsn, State, _Extra) ->
 %%
 %% Internal functions
 %%
-process_action({mail_too_small, Service, SvcNodes, {Node, _UUID}}, S, _, _) ->
+
+update_state_timeout(Timeout, #state{timeout = CurrTimeout} = State) ->
+    case Timeout =/= CurrTimeout of
+        true ->
+            ale:info(?USER_LOGGER, "Updating auto-failover timeout to ~p",
+                     [Timeout]),
+            State#state{timeout = Timeout,
+                        auto_failover_logic_state = init_logic_state(Timeout)};
+        false ->
+            ?log_debug("No change in timeout ~p", [Timeout]),
+            State
+    end.
+
+update_state_max_count(Max, #state{max_count = CurrMax} = State) ->
+    case Max =/= CurrMax of
+        true ->
+            ale:info(?USER_LOGGER, "Updating auto-failover max count to ~p",
+                     [Max]),
+            State#state{max_count = Max};
+        false ->
+            ?log_debug("No change in max count ~p", [Max]),
+            State
+    end.
+
+process_action({mail_too_small, Service, SvcNodes, {Node, _UUID}},
+               S, _, _, _) ->
     ?user_log(?EVENT_CLUSTER_TOO_SMALL,
               "Could not auto-failover node (~p). "
               "Number of nodes running ~s service is ~p. "
@@ -323,62 +381,124 @@ process_action({mail_too_small, Service, SvcNodes, {Node, _UUID}}, S, _, _) ->
                length(SvcNodes),
                auto_failover_logic:service_failover_min_node_count(Service) + 1]),
     S;
-process_action({mail_down_warning, {Node, _UUID}}, S, _, _) ->
+process_action({mail_down_warning, {Node, _UUID}}, S, _, _, _) ->
     ?user_log(?EVENT_OTHER_NODES_DOWN,
               "Could not auto-failover node (~p). "
               "There was at least another node down.",
               [Node]),
     S;
-process_action({mail_auto_failover_disabled, Service, {Node, _}}, S, _, _) ->
+process_action({mail_auto_failover_disabled, Service, {Node, _}}, S, _, _, _) ->
     ?user_log(?EVENT_AUTO_FAILOVER_DISABLED,
               "Could not auto-failover node (~p). "
               "Auto-failover for ~s service is disabled.",
               [Node, ns_cluster_membership:user_friendly_service_name(Service)]),
     S;
-process_action({_, {Node, _UUID}}, #state{count = 1} = S, _, _) ->
-    case should_report(#state.reported_max_reached, S) of
-        true ->
-            ?user_log(?EVENT_MAX_REACHED,
-                      "Could not auto-failover more nodes (~p). "
-                      "Maximum number of nodes that will be "
-                      "automatically failovered (1) is reached.",
-                      [Node]),
-            note_reported(#state.reported_max_reached, S);
-        false ->
-            S
+process_action({failover, {Node, _UUID}}, S, DownNodes, NodeStatuses, Config) ->
+    SG = ns_cluster_membership:get_node_server_group(Node, Config),
+    case allow_failover(SG, S, failover) of
+        {false, ErrMsg} ->
+            case should_report(#state.reported_max_reached, S) of
+                true ->
+                    ?user_log(?EVENT_MAX_REACHED,
+                              "Could not auto-failover more nodes (~p). ~s",
+                              [Node, ErrMsg]),
+                    note_reported(#state.reported_max_reached, S);
+                false ->
+                    S
+            end;
+        {true, UpdateCount} ->
+            failover_nodes([Node], S, DownNodes, NodeStatuses, UpdateCount)
     end;
-process_action({failover_group, SG, Nodes0}, #state{count = 1} = S, _, _) ->
-    case should_report(#state.reported_max_reached, S) of
-        true ->
-            Nodes = [N || {N, _} <- Nodes0],
-            ?user_log(?EVENT_MAX_REACHED,
-                      "Could not auto-failover server group (~p) "
-                      "with nodes (~p). Maximum number of auto-failover "
-                      "events has been reached.", [binary_to_list(SG), Nodes]),
-            note_reported(#state.reported_max_reached, S);
-        false ->
-            S
-    end;
-process_action({failover_group, SG, Nodes0}, S, DownNodes, NodeStatuses) ->
+process_action({failover_group, SG, Nodes0}, S, DownNodes, NodeStatuses, _) ->
     Nodes = [N || {N, _} <- Nodes0],
-    %% TODO: Add new reported flag in the state for following message
-    %% so that this message is dispalyed only once for each unique
-    %% server group auto-failover event.
-    %% Otherwise it will spam the user log when failover of nodes in SG fails.
-    ale:info(?USER_LOGGER, "Attempting auto-failover of server group (~p) "
-             "with nodes (~p).", [binary_to_list(SG), Nodes]),
-    failover_nodes(Nodes, S, DownNodes, NodeStatuses);
-process_action({failover, {Node, _UUID}}, S, DownNodes, NodeStatuses) ->
-    failover_nodes([Node], S, DownNodes, NodeStatuses).
+    case allow_failover(SG, S, failover_group) of
+        {false, ErrMsg} ->
+            %% TODO - have different reported_max_reached for server groups
+            case should_report(#state.reported_max_reached, S) of
+                true ->
+                    ?user_log(?EVENT_MAX_REACHED,
+                              "Could not auto-failover server group (~p) "
+                              "with nodes (~p). ~s",
+                              [binary_to_list(SG), Nodes, ErrMsg]),
+                    note_reported(#state.reported_max_reached, S);
+                false ->
+                    S
+            end;
+        {true, UpdateCount} ->
+            failover_group(Nodes, S, DownNodes, NodeStatuses, UpdateCount, SG)
+    end.
 
-failover_nodes(Nodes, S, DownNodes, NodeStatuses) ->
+failover_group(Nodes, S, DownNodes, NodeStatuses, UpdateCount, SG) ->
+    %% TODO: Add new reported flag for following message otherwise
+    %% it will spam the user log if the failover of nodes in the
+    %% server group fails.
+    ale:info(?USER_LOGGER,
+             "Attempting auto-failover of server group (~p) with nodes (~p).",
+             [binary_to_list(SG), Nodes]),
+    NewState = failover_nodes(Nodes, S, DownNodes, NodeStatuses, UpdateCount),
+    case NewState#state.count =:= S#state.count of
+        true ->
+            NewState;
+        false ->
+            NewState#state{failed_over_server_groups = [SG]}
+    end.
+
+allow_failover(SG, #state{count = Count, max_count = Max,
+                          failed_over_server_groups = FOSGs}, Action) ->
+    case lists:member(SG, FOSGs) of
+        true ->
+            %% SG was partially failed over in the past; allow failover of
+            %% rest of it's nodes even though we may have reached the quota.
+            ?log_debug("Server group ~p was partially auto-failed over in "
+                       "the past. Allow auto-failover of rest of it's nodes. "
+                       "Auto-failover count: ~p, max_count:~p, "
+                       "failed_over_server_groups:~p",
+                       [binary_to_list(SG), Count, Max, FOSGs]),
+            %% Continuation of an earlier server group auto-failover event.
+            %% Do not update auto-failover count.
+            {true, false};
+        false ->
+            %% Count can be greater than Max if user reduces the Max
+            %% before resetting the count.
+            case Count >= Max of
+                true ->
+                    M = io_lib:format("Maximum number of auto-failover events "
+                                      "(~p) has been reached.", [Max]),
+                    {false, lists:flatten(M)};
+                false ->
+                    case Action of
+                        failover ->
+                            {true, true};
+                        failover_group ->
+                            allow_failover_group(FOSGs)
+                    end
+            end
+    end.
+
+allow_failover_group([]) ->
+    {true, true};
+allow_failover_group(FOSGs) ->
+    M = io_lib:format("Auto-failover of maximum one server group is allowed "
+                      "before requiring reset of auto-failover quota. "
+                      "Server group ~p was failed over in the past. Reset "
+                      "quota to allow auto-failover of additional "
+                      "server groups.", [FOSGs]),
+    {false, lists:flatten(M)}.
+
+failover_nodes(Nodes, S, DownNodes, NodeStatuses, UpdateCount) ->
     case ns_orchestrator:try_autofailover(Nodes) of
         ok ->
             lists:foreach(
               fun (Node) ->
                       log_failover_success(Node, DownNodes, NodeStatuses)
               end, Nodes),
-            init_reported(S#state{count = S#state.count + 1});
+            NewCount = case UpdateCount of
+                           false ->
+                               S#state.count;
+                           true ->
+                               S#state.count + 1
+                       end,
+            init_reported(S#state{count = NewCount});
         Error ->
             process_failover_error(Error, Nodes, S)
     end.
@@ -422,13 +542,6 @@ report_failover_error(Flag, ErrMsg, Nodes, State) ->
         false ->
             State
     end.
-
-%% TODO - move this later to (yet to be created) auto_failover_settings module.
-get_auto_failover_count(Config) ->
-    {value, AutoFailoverConfig} = ns_config:search(Config, auto_failover_cfg),
-    AutoFailoverCount = proplists:get_value(count, AutoFailoverConfig),
-    true = is_integer(AutoFailoverCount),
-    AutoFailoverCount.
 
 get_tick_period() ->
     case cluster_compat_mode:is_cluster_50() of
@@ -683,10 +796,15 @@ make_state_persistent(State, Extras) ->
                                {timeout, State#state.timeout}),
     NewCfg2 = lists:keyreplace(count, 1, NewCfg1,
                                {count, State#state.count}),
+    NewCfg3 = lists:keyreplace(max_count, 1, NewCfg2,
+                               {max_count, State#state.max_count}),
+    NewCfg4 = lists:keyreplace(failed_over_server_groups, 1, NewCfg3,
+                               {failed_over_server_groups,
+                                State#state.failed_over_server_groups}),
     NewCfg = lists:foldl(
                fun ({Key, Val}, Acc) ->
                        lists:keyreplace(Key, 1, Acc, {Key, Val})
-               end, NewCfg2, Extras),
+               end, NewCfg4, Extras),
     ns_config:set(auto_failover_cfg, NewCfg).
 
 note_reported(Flag, State) ->
