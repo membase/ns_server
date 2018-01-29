@@ -57,7 +57,8 @@
 
 -type activity_option() :: {quorum_timeout, non_neg_integer()}
                          | {timeout, non_neg_integer()}
-                         | quiet.
+                         | quiet
+                         | unsafe.
 -type activity_options() :: [activity_option()].
 
 -record(activity, { pid          :: pid(),
@@ -211,8 +212,9 @@ init([]) ->
 
 handle_call({if_internal_process, Type, Pid, SubCall}, From, State) ->
     {noreply, handle_if_internal_process(Type, Pid, SubCall, From, State)};
-handle_call({wait_for_quorum, Lease, Quorum, SubCall, Timeout}, From, State) ->
-    {noreply, handle_wait_for_quorum(Lease, Quorum,
+handle_call({wait_for_quorum,
+             Lease, Quorum, Unsafe, SubCall, Timeout}, From, State) ->
+    {noreply, handle_wait_for_quorum(Lease, Quorum, Unsafe,
                                      SubCall, Timeout, From, State)};
 handle_call(Request, From, State) ->
     ?log_error("Received unexpected call ~p from ~p when state is~n~p",
@@ -240,6 +242,7 @@ call_if_internal_process(Type, Pid, SubCall) ->
 call_wait_for_quorum(Node, Token, UserQuorum, Opts, Call, Args) ->
     QuorumTimeout = proplists:get_value(quorum_timeout, Opts, ?QUORUM_TIMEOUT),
     OuterTimeout  = proplists:get_value(timeout, Opts, QuorumTimeout + 5000),
+    Unsafe        = proplists:get_bool(unsafe, Opts),
 
     Lease       = Token#activity_token.lease,
     Domain      = Token#activity_token.domain,
@@ -252,7 +255,7 @@ call_wait_for_quorum(Node, Token, UserQuorum, Opts, Call, Args) ->
                              DomainToken, TokenName, Quorum, Opts | Args]),
 
     call(Node, {wait_for_quorum,
-                Lease, Quorum, SubCall, QuorumTimeout}, OuterTimeout).
+                Lease, Quorum, Unsafe, SubCall, QuorumTimeout}, OuterTimeout).
 
 call(Call, Timeout) ->
     call(node(), Call, Timeout).
@@ -515,12 +518,16 @@ take_activity(Key, N, #state{activities = Activities} = State) ->
             {ok, A, State#state{activities = Rest}}
     end.
 
+have_local_lease(#state{local_lease_holder = Lease}) ->
+    Lease =/= undefined.
+
+have_lease(undefined, State) ->
+    have_local_lease(State);
 have_lease(ExpectedLease, #state{local_lease_holder = ActualLease}) ->
     ExpectedLease =:= ActualLease.
 
-have_quorum(_, #state{local_lease_holder = undefined}) ->
-    false;
-have_quorum(follower, _State) ->
+have_quorum(follower, State) ->
+    true = (State#state.local_lease_holder =/= undefined),
     true;
 have_quorum({all, Nodes}, #state{leases = Leases}) ->
     sets:is_subset(Nodes, Leases);
@@ -531,10 +538,17 @@ have_quorum(Quorums, State)
   when is_list(Quorums) ->
     lists:all(have_quorum(_, State), Quorums).
 
+check_quorum(Activity, State) ->
+    case have_local_lease(State) of
+        true ->
+            Unsafe = proplists:get_bool(unsafe, get_options(Activity)),
+            Unsafe orelse have_quorum(Activity#activity.quorum, State);
+        false ->
+            false
+    end.
+
 check_quorums(#state{activities = Activities} = State) ->
-    {Quorum, NoQuorum} =
-        lists:partition(?cut(have_quorum(_#activity.quorum, State)),
-                        Activities),
+    {Quorum, NoQuorum} = lists:partition(check_quorum(_, State), Activities),
 
     case NoQuorum of
         [] ->
@@ -546,19 +560,41 @@ check_quorums(#state{activities = Activities} = State) ->
 
     State#state{activities = Quorum}.
 
-handle_wait_for_quorum(Lease, Quorum, SubCall, Timeout, From, State) ->
+handle_wait_for_quorum(Lease,
+                       Quorum, Unsafe, SubCall, Timeout, From, State) ->
     gen_server2:conditional(
       wait_for_quorum_pred(Lease, Quorum, _),
-      ?cut({noreply, handle_activity_subcall(SubCall, From, _2)}),
+      ?cut(handle_wait_for_quorum_success(SubCall, From, _2)),
       Timeout,
-      reply_no_quorum(From, Lease, Quorum, _)),
+      handle_wait_for_quorum_timeout(Unsafe, SubCall, Timeout,
+                                     From, Lease, Quorum, _)),
 
     State.
 
-wait_for_quorum_pred(undefined, Quorum, State) ->
-    have_quorum(Quorum, State);
 wait_for_quorum_pred(Lease, Quorum, State) ->
     have_lease(Lease, State) andalso have_quorum(Quorum, State).
+
+handle_wait_for_quorum_success(SubCall, From, State) ->
+    {noreply, handle_activity_subcall(SubCall, From, State)}.
+
+handle_wait_for_quorum_timeout(false, _, _, From,
+                               RequiredLease, RequiredQuorum, State) ->
+    reply_no_quorum(From, RequiredLease, RequiredQuorum, State);
+handle_wait_for_quorum_timeout(true, SubCall, Timeout, From,
+                               RequiredLease, RequiredQuorum,
+                               #state{leases = RemoteLeases} = State) ->
+    case have_lease(RequiredLease, State) of
+        true ->
+            ?log_debug("Failed to acquire quorum for call ~p after ~bms. "
+                       "Continuing since 'unsafe' option is set.~n"
+                       "Required quorum: ~p~n"
+                       "Leases: ~p",
+                       [SubCall, Timeout, RequiredQuorum, RemoteLeases]),
+            handle_wait_for_quorum_success(SubCall, From, State);
+        false ->
+            %% don't continue if we somehow don't even have the local lease
+            reply_no_quorum(From, RequiredLease, RequiredQuorum, State)
+    end.
 
 reply_no_quorum(From, RequiredLease, RequiredQuorum,
                 #state{local_lease_holder = LocalLease,
@@ -700,5 +736,8 @@ report_error(Domain, Name, Error) ->
     ?log_error("Activity ~p failed with error ~p", [{Domain, Name}, Error]),
     {leader_activities_error, {Domain, Name}, Error}.
 
-is_verbose(#activity{options = Options}) ->
-    not proplists:get_bool(quiet, Options).
+is_verbose(Activity) ->
+    not proplists:get_bool(quiet, get_options(Activity)).
+
+get_options(#activity{options = Options}) ->
+    Options.
