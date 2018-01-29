@@ -33,8 +33,8 @@
         password: ''
       },
       services: {
-        disabled: {kv: false, index: false, n1ql: false, fts: false, eventing: false, cbas: false},
-        model: {kv: true, index: true, n1ql: true, fts: true, eventing: true, cbas: false}
+        disabled: {kv: false, index: false, n1ql: false, fts: false, eventing: false},
+        model: {kv: true, index: true, n1ql: true, fts: true, eventing: true}
       },
       firstTimeAddedServices: undefined
     };
@@ -42,16 +42,15 @@
       maxMemorySize: undefined,
       totalMemorySize: undefined,
       memoryQuota: undefined,
-      displayedServices: {kv: true, index: true, fts: true, n1ql: true, eventing: true, cbas: true},
+      displayedServices: {kv: true, index: true, fts: true, n1ql: true, eventing: true},
       services: {
-        disabled: {kv: true, index: false, n1ql: false, fts: false, eventing: false, cbas: false},
-        model: {kv: true, index: true, n1ql: true, fts: true, eventing: true, cbas: false}
+        disabled: {kv: true, index: false, n1ql: false, fts: false, eventing: false},
+        model: {kv: true, index: true, n1ql: true, fts: true, eventing: true}
       },
       showKVMemoryQuota: true,
       showIndexMemoryQuota: true,
       showFTSMemoryQuota: true,
       showEventingMemoryQuota: true,
-      showCBASMemoryQuota: true,
       indexMemoryQuota: undefined,
       ftsMemoryQuota: undefined,
       eventingMemoryQuota: undefined,
@@ -61,6 +60,14 @@
         storageMode: mnPools.export.isEnterprise ? "plasma" : "forestdb"
       }
     };
+    if (mnPools.export.isEnterprise) {
+      newConfig.displayedServices.cbas = true;
+      newConfig.services.disabled.cbas = false;
+      newConfig.services.model.cbas = false;
+      joinClusterConfig.services.disabled.cbas = false;
+      joinClusterConfig.services.model.cbas = false;
+      newConfig.showCBASMemoryQuota = true
+    }
 
     return mnClusterConfigurationService;
 
@@ -133,14 +140,17 @@
         newConfig.indexMemoryQuota = selfConfig.indexMemoryQuota;
         newConfig.ftsMemoryQuota = selfConfig.ftsMemoryQuota;
         newConfig.eventingMemoryQuota = selfConfig.eventingMemoryQuota;
-        newConfig.cbasMemoryQuota = selfConfig.cbasMemoryQuota;
         newConfig.calculateTotal = true;
+
+        if (mnPools.export.isEnterprise) {
+          newConfig.cbasMemoryQuota = selfConfig.cbasMemoryQuota;
+          rv.cbasDirs = selfConfig.storage.hdd[0].cbas_dirs;
+        }
 
         rv.startNewClusterConfig = newConfig;
         rv.hostname = selfConfig.hostname;
         rv.dbPath = selfConfig.storage.hdd[0].path;
         rv.indexPath = selfConfig.storage.hdd[0].index_path;
-        rv.cbasDirs = selfConfig.storage.hdd[0].cbas_dirs;
         return rv;
       });
     }

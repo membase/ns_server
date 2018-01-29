@@ -36,7 +36,7 @@
       if (currentPool.compat.atLeast45) {
         rv.ftsMemoryQuota = currentPool.ftsMemoryQuota || 256;
       }
-      if (currentPool.compat.atLeast55) {
+      if (currentPool.compat.atLeast55 && mnPoolDefault.export.isEnterprise) {
         rv.cbasMemoryQuota = currentPool.cbasMemoryQuota || 256;
       }
       if (currentPool.compat.atLeast55) {

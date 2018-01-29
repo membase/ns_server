@@ -111,14 +111,19 @@
           .applyToScope("logRedactionSettings")
       }
 
-      mnPromiseHelper(vm, mnMemoryQuotaService.memoryQuotaConfig({
+      var services = {
         kv: true,
         index: mnPoolDefault.export.compat.atLeast40,
         fts: mnPoolDefault.export.compat.atLeast45,
-        cbas: mnPoolDefault.export.compat.atLeast55,
         n1ql: mnPoolDefault.export.compat.atLeast40,
         eventing: mnPoolDefault.export.compat.atLeast55
-      }, false, false))
+      };
+
+      if (mnPoolDefault.export.isEnterprise) {
+        services.cbas = mnPoolDefault.export.compat.atLeast55;
+      }
+
+      mnPromiseHelper(vm, mnMemoryQuotaService.memoryQuotaConfig(services, false, false))
         .applyToScope(function (resp) {
           vm.initialMemoryQuota = resp.indexMemoryQuota;
           vm.memoryQuotaConfig = resp;

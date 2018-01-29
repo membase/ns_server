@@ -84,8 +84,10 @@
       var newClusterState = mnWizardService.getNewClusterState();
       !vm.config.startNewClusterConfig.services.model.index && (delete data.indexMemoryQuota);
       !vm.config.startNewClusterConfig.services.model.fts && (delete data.ftsMemoryQuota);
-      !vm.config.startNewClusterConfig.services.model.cbas && (delete data.cbasMemoryQuota);
       !vm.config.startNewClusterConfig.services.model.eventing && (delete data.eventingMemoryQuota);
+      if (pools.isEnterprise) {
+        !vm.config.startNewClusterConfig.services.model.cbas && (delete data.cbasMemoryQuota);
+      }
       return addErrorHandler(mnSettingsClusterService.postPoolsDefault(data, false, newClusterState.clusterName), "postMemory");
     }
     function validateIndexSettings() {
@@ -105,11 +107,16 @@
       }), "postQuerySettings");
     }
     function postDiskStorage() {
-      return addErrorHandler(mnClusterConfigurationService.postDiskStorage({
+      var data = {
         path: vm.config.dbPath,
-        index_path: vm.config.indexPath,
-        cbas_path: vm.config.cbasDirs
-      }), "postDiskStorage");
+        index_path: vm.config.indexPath
+      };
+      if (pools.isEnterprise) {
+        data.cbas_path = vm.config.cbasDirs;
+      }
+      return addErrorHandler(
+        mnClusterConfigurationService.postDiskStorage(data),
+        "postDiskStorage");
     }
     function postJoinCluster() {
       var data = _.clone(vm.joinClusterConfig.clusterMember);

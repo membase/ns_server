@@ -79,7 +79,9 @@
         </p>
       </div>
 
-      <div class="formrow">
+      <div
+         class="formrow"
+         ng-if="clusterConfigurationCtl.isEnterprise">
         <div class="row">
           <label for="setup_cbas_dirs_input0">Analytics Disk Paths</label>
           <small class="text-smaller">Paths cannot be changed after setup</small>
@@ -101,7 +103,9 @@
         </div>
       </div>
 
-      <div class="row formrow flex-right margin-top-neg-2">
+      <div
+         class="row formrow flex-right margin-top-neg-2"
+         ng-if="clusterConfigurationCtl.isEnterprise">
         <button
            class="outline btn-small"
            title="Add field"
@@ -164,6 +168,7 @@
           </div>
           <div
              class="formrow"
+             mn-is-enterprise="clusterConfigurationCtl.isEnterprise"
              mn-memory-quota="clusterConfigurationCtl.config.startNewClusterConfig"
              errors="clusterConfigurationCtl.postMemoryErrors">
           </div>

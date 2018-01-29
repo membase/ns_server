@@ -21,7 +21,9 @@
       <div class="formrow">
         <h4>RAM Quotas <small>in megabytes per server node</small></h4>
       </div>
-      <div class="formrow indent-1"
+      <div
+         mn-is-enterprise="serversMemoryQuotaDialogCtl.isEnterprise"
+         class="formrow indent-1"
          mn-memory-quota="serversMemoryQuotaDialogCtl.config"
          rbac="rbac"
          errors="serversMemoryQuotaDialogCtl.errors">

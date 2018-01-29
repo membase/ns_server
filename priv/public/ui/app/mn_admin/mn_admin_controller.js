@@ -207,7 +207,13 @@
 
       $scope.$on("maybeShowMemoryQuotaDialog", function (event, services) {
         return mnPoolDefault.get().then(function (poolsDefault) {
-          var firstTimeAddedServices = mnMemoryQuotaService.getFirstTimeAddedServices(["index", "fts", "cbas", "eventing"], services, poolsDefault.nodes);
+          var servicesToCheck = ["index", "fts", "eventing"];
+          if (poolsDefault.export.isEnterprise) {
+            servicesToCheck.push("cbas");
+          }
+          var firstTimeAddedServices =
+              mnMemoryQuotaService
+              .getFirstTimeAddedServices(servicesToCheck, services, poolsDefault.nodes);
           if (firstTimeAddedServices.count) {
             $uibModal.open({
               windowTopClass: "without-titlebar-close",

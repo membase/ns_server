@@ -66,15 +66,18 @@
 
     function getServices() {
       return mnServersService.getNodes().then(function (nodes) {
-        return {
+        var rv = {
           kv: getNodesByService("kv", nodes),
           index: getNodesByService("index", nodes),
           n1ql: getNodesByService("n1ql", nodes),
           fts: getNodesByService("fts", nodes),
           eventing: getNodesByService("eventing", nodes),
-          cbas: getNodesByService("cbas", nodes),
           all: nodes
         };
+        if (mnPoolDefault.export.isEnterprise) {
+          rv.cbas = getNodesByService("cbas", nodes);
+        }
+        return rv;
       });
     }
 

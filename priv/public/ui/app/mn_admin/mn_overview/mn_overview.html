@@ -82,6 +82,7 @@
       </div>
     </div>
     <div
+       ng-if="adminCtl.poolDefault.isEnterprise"
        class="service-widget"
        ui-sref="app.admin.cbas.workbench"
        ng-class="['dynamic_' + overviewCtl.nodes.cbas.statusClass]">

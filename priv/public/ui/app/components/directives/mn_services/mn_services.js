@@ -9,7 +9,8 @@
     var mnServices = {
       restrict: 'A',
       scope: {
-        config: '=mnServices'
+        config: '=mnServices',
+        mnIsEnterprise: "="
       },
       templateUrl: 'app/components/directives/mn_services/mn_services.html'
     };
