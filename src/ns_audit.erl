@@ -397,9 +397,10 @@ send_to_memcached(Queue) ->
 
 stats() ->
     case ns_memcached_sockets_pool:executing_on_socket(
-      fun (Sock) ->
-              mc_binary:quick_stats(Sock, <<"audit">>, fun mc_binary:quick_stats_append/3, [])
-      end) of
+           fun (Sock) ->
+                   mc_binary:quick_stats(Sock, <<"audit">>,
+                                         fun mc_binary:quick_stats_append/3, [])
+           end) of
         {ok, Stats} ->
             {ok, Stats ++ gen_server:call(?MODULE, stats)};
         Error ->
@@ -512,7 +513,7 @@ add_group(Req, Group) ->
 
 delete_group(Req, Group) ->
     put(delete_group, Req, [{group_name, proplists:get_value(name, Group)},
-                             {uuid, proplists:get_value(uuid, Group)}]).
+                            {uuid, proplists:get_value(uuid, Group)}]).
 
 update_group(Req, Group) ->
     put(update_group, Req, [{group_name, proplists:get_value(name, Group)},
