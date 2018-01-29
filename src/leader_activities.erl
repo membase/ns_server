@@ -55,12 +55,17 @@
                      | {majority, Nodes}
                      | [quorum(Nodes)].
 
+-type activity_option() :: {quorum_timeout, non_neg_integer()}
+                         | {timeout, non_neg_integer()}.
+-type activity_options() :: [activity_option()].
+
 -record(activity, { pid          :: pid(),
                     mref         :: reference(),
                     domain       :: term(),
                     domain_token :: binary() | any(),
                     name         :: [term()],
-                    quorum       :: quorum() }).
+                    quorum       :: quorum(),
+                    options      :: activity_options() }).
 
 -record(activity_token, { lease        :: {node(), binary()},
                           domain_token :: binary(),
@@ -242,7 +247,8 @@ call_wait_for_quorum(Node, Token, UserQuorum, Opts, Call, Args) ->
 
     Quorum  = convert_quorum(UserQuorum),
     SubCall = list_to_tuple([Call,
-                             Domain, DomainToken, TokenName, Quorum | Args]),
+                             Domain,
+                             DomainToken, TokenName, Quorum, Opts | Args]),
 
     call(Node, {wait_for_quorum,
                 Lease, Quorum, SubCall, QuorumTimeout}, OuterTimeout).
@@ -288,7 +294,8 @@ check_no_domain_conflicts_success(Domain,
     OnSuccess(Token).
 
 handle_start_activity(Async,
-                      Domain, DomainToken, Name, Quorum, Body, From, State) ->
+                      Domain,
+                      DomainToken, Name, Quorum, Opts, Body, From, State) ->
     check_no_domain_conflicts(
       Domain, DomainToken, Name, Quorum, From, State,
       fun (ActivityToken) ->
@@ -299,16 +306,19 @@ handle_start_activity(Async,
                               end,
                               [monitor, {adopters, [Async]}]),
               gen_server2:reply(From, {ok, Pid}),
-              add_activity(Domain, DomainToken, Name, Quorum, Pid, MRef, State)
+              add_activity(Domain,
+                           DomainToken, Name, Quorum, Opts, Pid, MRef, State)
       end).
 
-handle_register_process(Domain, DomainToken, Name, Quorum, Pid, From, State) ->
+handle_register_process(Domain,
+                        DomainToken, Name, Quorum, Opts, Pid, From, State) ->
     check_no_domain_conflicts(
       Domain, DomainToken, Name, Quorum, From, State,
       fun (ActivityToken) ->
               MRef = erlang:monitor(process, Pid),
               gen_server2:reply(From, {ok, ActivityToken}),
-              add_activity(Domain, DomainToken, Name, Quorum, Pid, MRef, State)
+              add_activity(Domain,
+                           DomainToken, Name, Quorum, Opts, Pid, MRef, State)
       end).
 
 handle_if_internal_process(Type, Pid, SubCall, From, State) ->
@@ -457,13 +467,14 @@ terminate_all_activities(#state{activities = Activities} = State) ->
     terminate_activities(Activities),
     State#state{activities = []}.
 
-add_activity(Domain, DomainToken, Name, Quorum, Pid, MRef, State) ->
+add_activity(Domain, DomainToken, Name, Quorum, Opts, Pid, MRef, State) ->
     Activity = #activity{pid          = Pid,
                          mref         = MRef,
                          domain       = Domain,
                          domain_token = DomainToken,
                          name         = Name,
-                         quorum       = Quorum},
+                         quorum       = Quorum,
+                         options      = Opts},
 
     ?log_debug("Added activity:~n~p", [Activity]),
     misc:update_field(#state.activities, State, [Activity | _]).
@@ -545,21 +556,26 @@ reply_no_quorum(From, RequiredLease, RequiredQuorum,
 
 handle_activity_subcall({start_activity,
                          Domain,
-                         DomainToken, ParentName, Quorum, Async, Name, Body},
+                         DomainToken,
+                         ParentName, Quorum, Opts, Async, Name, Body},
                         From, State) ->
     FullName = ParentName ++ [Name],
     handle_start_activity(Async,
                           Domain,
-                          DomainToken, FullName, Quorum, Body, From, State);
+                          DomainToken,
+                          FullName, Quorum, Opts, Body, From, State);
 handle_activity_subcall({register_process,
-                         Domain, DomainToken, ParentName, Quorum, Name, Pid},
+                         Domain,
+                         DomainToken, ParentName, Quorum, Opts, Name, Pid},
                         From, State) ->
     FullName = ParentName ++ [Name],
     handle_register_process(Domain,
-                            DomainToken, FullName, Quorum, Pid, From, State);
+                            DomainToken,
+                            FullName, Quorum, Opts, Pid, From, State);
 handle_activity_subcall({switch_quorum,
                          Domain,
-                         _DomainToken, Name, Quorum, Activity}, From, State) ->
+                         _DomainToken,
+                         Name, Quorum, _Opts, Activity}, From, State) ->
     handle_switch_quorum(Domain, Name, Quorum, Activity, From, State);
 handle_activity_subcall(Request, From, State) ->
     ?log_error("Received unexpected activity call ~p from ~p when state is~n~p",
