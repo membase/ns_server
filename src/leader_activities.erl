@@ -56,7 +56,8 @@
                      | [quorum(Nodes)].
 
 -type activity_option() :: {quorum_timeout, non_neg_integer()}
-                         | {timeout, non_neg_integer()}.
+                         | {timeout, non_neg_integer()}
+                         | quiet.
 -type activity_options() :: [activity_option()].
 
 -record(activity, { pid          :: pid(),
@@ -392,8 +393,17 @@ handle_activity_down(MRef, Pid, Reason, State) ->
             false;
         {ok, Activity, NewState} ->
             true = (Activity#activity.pid =:= Pid),
-            ?log_debug("Activity terminated with reason ~p. Activity:~n~p",
-                       [Reason, Activity]),
+
+            case is_verbose(Activity)
+                orelse not misc:is_normal_termination(Reason) of
+                true ->
+                    ?log_debug("Activity "
+                               "terminated with reason ~p. Activity:~n~p",
+                               [Reason, Activity]);
+                false ->
+                    ok
+            end,
+
             {ok, NewState}
     end.
 
@@ -476,7 +486,13 @@ add_activity(Domain, DomainToken, Name, Quorum, Opts, Pid, MRef, State) ->
                          quorum       = Quorum,
                          options      = Opts},
 
-    ?log_debug("Added activity:~n~p", [Activity]),
+    case is_verbose(Activity) of
+        true ->
+            ?log_debug("Added activity:~n~p", [Activity]);
+        false ->
+            ok
+    end,
+
     misc:update_field(#state.activities, State, [Activity | _]).
 
 add_activity(Activity, State)
@@ -691,3 +707,6 @@ handle_switch_quorum(Domain, Name, NewQuorum, Pid, From, State) ->
 report_error(Domain, Name, Error) ->
     ?log_error("Activity ~p failed with error ~p", [{Domain, Name}, Error]),
     {leader_activities_error, {Domain, Name}, Error}.
+
+is_verbose(#activity{options = Options}) ->
+    not proplists:get_bool(quiet, Options).
