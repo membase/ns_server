@@ -1297,14 +1297,32 @@ run_graceful_failover(Node) ->
     end,
     proc_lib:init_ack({ok, self()}),
 
-    ale:info(?USER_LOGGER, "Starting vbucket moves for graceful failover of ~p", [Node]),
-    lists:foldl(
-      fun ({BucketName, BucketConfig}, I) ->
-              do_run_graceful_failover_moves(Node, BucketName, BucketConfig,
-                                             I / NumBuckets, NumBuckets),
-              I+1
-      end, 0, InterestingBuckets),
-    orchestrate_failover([Node]).
+    AllBucketNodes =
+        lists:foldl(fun ({_, Conf}, Acc) ->
+                            Servers = proplists:get_value(servers, Conf),
+                            sets:union(Acc, sets:from_list(Servers))
+                    end, sets:new(), InterestingBuckets),
+
+    ok = leader_activities:run_activity(
+           graceful_failover, [majority, {all, AllBucketNodes}],
+           fun () ->
+                   ale:info(?USER_LOGGER,
+                            "Starting vbucket moves for "
+                            "graceful failover of ~p", [Node]),
+
+                   lists:foldl(
+                     fun ({BucketName, BucketConfig}, I) ->
+                             do_run_graceful_failover_moves(Node,
+                                                            BucketName,
+                                                            BucketConfig,
+                                                            I / NumBuckets,
+                                                            NumBuckets),
+                             I+1
+                     end, 0, InterestingBuckets),
+                   orchestrate_failover([Node]),
+
+                   ok
+           end).
 
 do_run_graceful_failover_moves(Node, BucketName, BucketConfig, I, N) ->
     run_janitor_pre_rebalance(BucketName),
