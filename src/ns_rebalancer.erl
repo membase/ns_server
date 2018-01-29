@@ -629,11 +629,23 @@ do_maybe_delay_eject_nodes(Timestamps, EjectNodes) ->
 rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
           BucketConfigs,
           DeltaNodes, DeltaRecoveryBuckets) ->
-    ok = drop_old_2i_indexes(KeepNodes),
-    KVDeltaNodes = ns_cluster_membership:service_nodes(DeltaNodes, kv),
-    ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets, KVDeltaNodes, BucketConfigs),
-    ok = maybe_clear_full_recovery_type(KeepNodes),
+    ok = leader_activities:run_activity(
+           rebalance,
+           {all, KeepNodes ++ EjectNodesAll},
+           ?cut(rebalance_body(KeepNodes, EjectNodesAll,
+                               FailedNodesAll, BucketConfigs,
+                               DeltaNodes, DeltaRecoveryBuckets))).
 
+rebalance_body(KeepNodes,
+               EjectNodesAll,
+               FailedNodesAll,
+               BucketConfigs, DeltaNodes, DeltaRecoveryBuckets) ->
+    KVDeltaNodes = ns_cluster_membership:service_nodes(DeltaNodes, kv),
+
+    ok = drop_old_2i_indexes(KeepNodes),
+    ok = apply_delta_recovery_buckets(DeltaRecoveryBuckets,
+                                      KVDeltaNodes, BucketConfigs),
+    ok = maybe_clear_full_recovery_type(KeepNodes),
     ok = service_janitor:cleanup(),
 
     ns_cluster_membership:activate(KeepNodes),
@@ -647,11 +659,24 @@ rebalance(KeepNodes, EjectNodesAll, FailedNodesAll,
     rebalance_kv(KeepNodes, EjectNodesAll, BucketConfigs, DeltaRecoveryBuckets),
     rebalance_services(KeepNodes, EjectNodesAll),
 
-    ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes),
+    %% don't eject ourselves at all here; this will be handled by
+    %% ns_orchestrator
+    EjectNowNodes = EjectNodesAll -- [node()],
 
-    %% don't eject ourselves at all here; this will be handled by ns_orchestrator
-    EjectNodes = EjectNodesAll -- [node()],
-    eject_nodes(EjectNodes).
+    %% Deactivate the nodes first so that they are excluded from quorums.
+    ns_cluster_membership:deactivate(EjectNowNodes),
+
+    %% Generally, the nodes to be ejected are supposed to be healthy, so it's
+    %% ok to try to sync the config to them to. The intent here is to improve
+    %% the safety: we want those nodes to realize that they are not part of
+    %% the normal quorum anymore. Obviously, it still doesn't guarantee
+    %% complete safety.
+    ok = ns_config_rep:ensure_config_seen_by_nodes(KeepNodes ++ EjectNodesAll),
+    ok = leader_activities:switch_quorum({all, KeepNodes}),
+
+    eject_nodes(EjectNowNodes),
+
+    ok.
 
 make_progress_fun(BucketCompletion, NumBuckets) ->
     fun (P) ->
