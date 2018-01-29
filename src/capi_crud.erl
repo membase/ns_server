@@ -60,7 +60,21 @@ get_inner(Bucket, DocId, VBucket, RetriesLeft) ->
 
     case Header#mc_header.status of
         ?SUCCESS ->
-            continue_get(Bucket, DocId, VBucket, Entry, RetriesLeft);
+            CAS = Entry#mc_entry.cas,
+            Value = Entry#mc_entry.data,
+            ContentMeta = case is_valid_json(Value) of
+                              true -> ?CONTENT_META_JSON;
+                              false -> ?CONTENT_META_INVALID_JSON
+                          end,
+            try
+                {ok, Rev, _MetaFlags} = get_meta(Bucket, DocId, VBucket, CAS),
+                {ok, XAttrsJsonObj} = get_xattrs(Bucket, DocId, VBucket, CAS),
+                {ok, #doc{id = DocId, body = Value, rev = Rev,
+                          content_meta = ContentMeta},
+                 {[{<<"xattrs">>, XAttrsJsonObj}]}}
+            catch
+                _:_ -> get_inner(Bucket, DocId, VBucket, RetriesLeft-1)
+            end;
         ?KEY_ENOENT ->
             {not_found, missing};
         ?NOT_MY_VBUCKET ->
@@ -69,27 +83,31 @@ get_inner(Bucket, DocId, VBucket, RetriesLeft) ->
             {error, Entry#mc_entry.data}
     end.
 
-continue_get(Bucket, DocId, VBucket, Entry, RetriesLeft) ->
+get_meta(Bucket, DocId, VBucket, CAS) ->
     case ns_memcached:get_meta(Bucket, DocId, VBucket) of
-        {ok, Rev, NowCAS, MetaFlags} ->
-            case NowCAS =:= Entry#mc_entry.cas of
-                true ->
-                    %% GET above could only 'see' live item
-                    0 = (MetaFlags band ?GET_META_ITEM_DELETED_FLAG),
-                    Value = Entry#mc_entry.data,
-                    ContentMeta = case is_valid_json(Value) of
-                                      true -> ?CONTENT_META_JSON;
-                                      false -> ?CONTENT_META_INVALID_JSON
-                                  end,
-                    {ok, #doc{id = DocId, body = Value, rev = Rev,
-                              content_meta = ContentMeta}};
-                false ->
-                    get_inner(Bucket, DocId, VBucket, RetriesLeft-1)
-            end;
-        _ ->
-            get_inner(Bucket, DocId, VBucket, RetriesLeft-1)
+        {ok, Rev, CAS, MetaFlags} -> {ok, Rev, MetaFlags};
+        {ok, _, _, _} -> {error, bad_cas};
+        _ -> {error, bad_resp}
     end.
 
+get_xattrs(Bucket, DocId, VBucket, CAS) ->
+    try
+        [Keys] = try_get_xattrs(Bucket, DocId, VBucket, CAS, [<<"$XTOC">>]),
+        Values = try_get_xattrs(Bucket, DocId, VBucket, CAS, Keys),
+        Res = lists:zip(Keys, Values),
+        {ok, [{[KeyValue]} || KeyValue <- Res]}
+    catch
+        _:Reason -> {error, Reason}
+    end.
+
+try_get_xattrs(_Bucket, _DocId, _VBucket, _CAS, []) -> [];
+try_get_xattrs(Bucket, DocId, VBucket, CAS, Keys) ->
+    case ns_memcached:subdoc_multi_lookup(Bucket, DocId, VBucket,
+                                          Keys, [xattr_path]) of
+        {ok, CAS, JSONs} -> [ejson:decode(Res) || Res <- JSONs];
+        {ok, _, _} -> throw(bad_cas);
+        _ -> throw(bad_subdoc_resp)
+    end.
 
 -spec is_valid_json(Data :: binary()) -> boolean().
 is_valid_json(<<>>) ->

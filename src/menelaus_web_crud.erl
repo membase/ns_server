@@ -205,8 +205,9 @@ handle_get(BucketId, DocId, Req) ->
             menelaus_util:reply(Req, 404);
         {error, Msg} ->
             menelaus_util:reply_json(Req, construct_error_reply(Msg), 400);
-        {ok, EJSON} ->
-            menelaus_util:reply_json(Req, capi_utils:couch_doc_to_mochi_json(EJSON))
+        {ok, EJSON, XAttrsJsonObj} ->
+            Res = capi_utils:couch_doc_to_mochi_json(EJSON, XAttrsJsonObj),
+            menelaus_util:reply_json(Req, Res)
     end.
 
 do_mutate(BucketId, DocId, BodyOrUndefined, Flags) ->

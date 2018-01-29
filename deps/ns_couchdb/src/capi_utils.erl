@@ -116,7 +116,11 @@ couch_json_to_mochi_json(List) when is_list(List) ->
 couch_json_to_mochi_json(Else) -> Else.
 
 couch_doc_to_mochi_json(Doc) ->
-    couch_json_to_mochi_json(couch_doc:to_json_obj(Doc, [])).
+    couch_doc_to_mochi_json(Doc, {[]}).
+
+couch_doc_to_mochi_json(Doc, _JSONObject = {ExtraValues}) ->
+    {Values} = couch_doc:to_json_obj(Doc, []),
+    couch_json_to_mochi_json({Values ++ ExtraValues}).
 
 extract_doc_id(Doc) ->
     Doc#doc.id.
