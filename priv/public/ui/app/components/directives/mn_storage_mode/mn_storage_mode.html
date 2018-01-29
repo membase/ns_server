@@ -6,8 +6,7 @@
        value="forestdb"
        id="storage_mode_forestdb"
        ng-model="mnModel.storageMode"
-       ng-disabled="!mnIsEnterprise ||
-                    (mnServices && !mnServicesModel.index) ||
+       ng-disabled="(mnServices && !mnServicesModel.index) ||
                     (mnPermissions && !mnPermissions.cluster.indexes.write) ||
                     (mnInitial && mnInitial.storageMode === 'forestdb')">
     <label for="storage_mode_forestdb" class="checkbox">
