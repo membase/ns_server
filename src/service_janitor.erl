@@ -136,6 +136,18 @@ maybe_complete_pending_failovers(Config) ->
     handle_results(RVs).
 
 maybe_complete_pending_failover(Config, Service) ->
+    {ok, RV} =
+        leader_activities:run_activity(
+          {service_janitor, Service, maybe_complete_pending_failover},
+          majority,
+          fun () ->
+                  {ok, maybe_complete_pending_failover_body(Config, Service)}
+          end,
+          [quiet]),
+
+    RV.
+
+maybe_complete_pending_failover_body(Config, Service) ->
     case ns_cluster_membership:service_has_pending_failover(Config, Service) of
         true ->
             ?log_debug("Found unfinished failover for service ~p", [Service]),
@@ -156,7 +168,8 @@ maybe_complete_pending_failover(Config, Service) ->
 complete_service_failover(Config, Service) ->
     true = ns_cluster_membership:service_has_pending_failover(Config, Service),
 
-    RV = case lists:member(Service, ns_cluster_membership:topology_aware_services()) of
+    TopologyAwareServices = ns_cluster_membership:topology_aware_services(),
+    RV = case lists:member(Service, TopologyAwareServices) of
              true ->
                  complete_topology_aware_service_failover(Config, Service);
              false ->
@@ -165,12 +178,15 @@ complete_service_failover(Config, Service) ->
 
     case RV of
         ok ->
-            ns_cluster_membership:service_clear_pending_failover(Service);
+            clear_pending_failover(Service);
         _ ->
             ok
     end,
 
     RV.
+
+clear_pending_failover(Service) ->
+    ns_cluster_membership:service_clear_pending_failover(Service).
 
 complete_topology_aware_service_failover(Config, Service) ->
     NodesLeft = ns_cluster_membership:get_service_map(Config, Service),
@@ -182,7 +198,12 @@ complete_topology_aware_service_failover(Config, Service) ->
     end.
 
 orchestrate_service_failover(Service, Nodes) ->
-    misc:with_trap_exit(?cut(do_orchestrate_service_failover(Service, Nodes))).
+    leader_activities:run_activity(
+      {service_janitor, Service, orchestrate_service_failover}, {all, Nodes},
+      fun () ->
+              misc:with_trap_exit(
+                ?cut(do_orchestrate_service_failover(Service, Nodes)))
+      end).
 
 do_orchestrate_service_failover(Service, Nodes) ->
     {Pid, MRef} = service_rebalancer:spawn_monitor_failover(Service, Nodes),
