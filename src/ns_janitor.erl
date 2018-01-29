@@ -17,6 +17,7 @@
 %%
 -module(ns_janitor).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
@@ -37,11 +38,25 @@ cleanup(Bucket, Options) ->
             case ns_bucket:bucket_type(BucketConfig) of
                 membase ->
                     dcp = ns_bucket:replication_type(BucketConfig),
-                    cleanup_with_membase_bucket_check_servers(Bucket, Options,
-                                                              BucketConfig, FullConfig);
+                    cleanup_membase_bucket(Bucket,
+                                           Options, BucketConfig, FullConfig);
                 _ -> ok
             end
     end.
+
+cleanup_membase_bucket(Bucket, Options, BucketConfig, FullConfig) ->
+    {ok, RV} =
+        leader_activities:run_activity(
+          {ns_janitor, Bucket, cleanup}, majority,
+          fun () ->
+                  {ok, cleanup_with_membase_bucket_check_servers(Bucket,
+                                                                 Options,
+                                                                 BucketConfig,
+                                                                 FullConfig)}
+          end,
+          [quiet]),
+
+    RV.
 
 cleanup_with_membase_bucket_check_servers(Bucket, Options, BucketConfig, FullConfig) ->
     case compute_servers_list_cleanup(BucketConfig, FullConfig) of
@@ -56,7 +71,8 @@ update_servers(Bucket, Servers) ->
     ?log_debug("janitor decided to update "
                "servers list for bucket ~p to ~p", [Bucket, Servers]),
 
-    ns_bucket:set_servers(Bucket, Servers).
+    ns_bucket:set_servers(Bucket, Servers),
+    ok = ns_config_rep:ensure_config_seen_by_nodes().
 
 cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->
     case proplists:get_value(map, BucketConfig, []) of
@@ -97,7 +113,9 @@ set_initial_map(Map, Opts, Bucket, BucketConfig) ->
     end,
 
     ns_bucket:set_map(Bucket, Map),
-    ns_bucket:set_map_opts(Bucket, Opts).
+    ns_bucket:set_map_opts(Bucket, Opts),
+
+    ok = ns_config_rep:ensure_config_seen_by_nodes().
 
 cleanup_with_membase_bucket_vbucket_map(Bucket, Options, BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
@@ -143,17 +161,36 @@ maybe_fixup_vbucket_map(Bucket, BucketConfig, States) ->
         true ->
             ok;
         false ->
-            ?log_info("Janitor is going to change "
-                      "bucket config for bucket ~p", [Bucket]),
-            ?log_info("VBucket states:~n~p", [States]),
-            ?log_info("Old bucket config:~n~p", [BucketConfig]),
-            ok = ns_bucket:set_bucket_config(Bucket, NewBucketConfig)
+            fixup_vbucket_map(Bucket, BucketConfig, NewBucketConfig, States)
     end,
 
     {NewBucketConfig, IgnoredVBuckets}.
 
-cleanup_apply_config(Bucket, Servers,
-                     BucketConfig, IgnoredVBuckets, Options) ->
+fixup_vbucket_map(Bucket, BucketConfig, NewBucketConfig, States) ->
+    ?log_info("Janitor is going to change "
+              "bucket config for bucket ~p", [Bucket]),
+    ?log_info("VBucket states:~n~p", [States]),
+    ?log_info("Old bucket config:~n~p", [BucketConfig]),
+
+    ok = ns_bucket:set_bucket_config(Bucket, NewBucketConfig),
+    ok = ns_config_rep:ensure_config_seen_by_nodes().
+
+cleanup_apply_config(Bucket,
+                     Servers, BucketConfig, IgnoredVBuckets, Options) ->
+    {ok, Result} =
+        leader_activities:run_activity(
+          {ns_janitor, Bucket, apply_config}, {all, Servers},
+          fun () ->
+                  {ok, cleanup_apply_config_body(Bucket,
+                                                 Servers, BucketConfig,
+                                                 IgnoredVBuckets, Options)}
+          end,
+          [quiet]),
+
+    Result.
+
+cleanup_apply_config_body(Bucket, Servers,
+                          BucketConfig, IgnoredVBuckets, Options) ->
     ApplyTimeout = proplists:get_value(apply_config_timeout,
                                        Options,
                                        undefined_timeout),
