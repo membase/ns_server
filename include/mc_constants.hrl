@@ -102,6 +102,9 @@
 -define(CMD_SEQNO_PERSISTENCE, 16#b7).
 -define(CMD_GET_KEYS, 16#b8).
 
+-define(CMD_SUBDOC_GET, 16#c5).
+-define(CMD_SUBDOC_MULTI_LOOKUP, 16#d0).
+
 -define(CMD_ISASL_REFRESH, 16#f1).
 -define(CMD_SSL_CERTS_REFRESH, 16#f2).
 -define(CMD_RBAC_REFRESH, 16#f7).
@@ -139,6 +142,28 @@
 -define(EINTERNAL,        16#84).
 -define(EBUSY,            16#85).
 -define(ETMPFAIL,         16#86).
+
+-define(SUBDOC_PATH_NOT_EXIST,      16#c0).
+-define(SUBDOC_NOT_DICT,            16#c1).
+-define(SUBDOC_BAD_PATH_SYNTAX,     16#c2).
+-define(SUBDOC_PATH_TOO_LARGE,      16#c3).
+-define(SUBDOC_MANY_LEVELS,         16#c4).
+-define(SUBDOC_INVALID_VALUE,       16#c5).
+-define(SUBDOC_DOC_NOT_JSON,        16#c6).
+-define(SUBDOC_BAD_ARITH,           16#c7).
+-define(SUBDOC_INVALID_RES_NUM,     16#c8).
+-define(SUBDOC_PATH_EXISTS,         16#c9).
+-define(SUBDOC_RES_TOO_DEEP,        16#ca).
+-define(SUBDOC_INVALID_COMMANDS,    16#cb).
+-define(SUBDOC_PATH_FAILED,         16#cc).
+-define(SUBDOC_SUCC_ON_DELETED,     16#cd).
+-define(SUBDOC_INVALID_FLAGS,       16#ce).
+-define(SUBDOC_XATTR_COMB,          16#cf).
+-define(SUBDOC_UNKNOWN_MACRO,       16#d0).
+-define(SUBDOC_UNKNOWN_ATTR,        16#d1).
+-define(SUBDOC_VIRT_ATTR,           16#d2).
+-define(SUBDOC_FAILED_ON_DELETED,   16#d3).
+-define(SUBDOC_INVALID_XATTR_ORDER, 16#d4).
 
 % Vbucket States
 -define(VB_STATE_ACTIVE, 1).
@@ -188,3 +213,15 @@
 -define(DCP_CONNECTION_FLAG_PRODUCER, 16#01).
 -define(DCP_CONNECTION_FLAG_NOTIFIER, 16#02).
 -define(DCP_CONNECTION_FLAG_XATTR,    16#04).
+
+%% Definitions of sub-document path flags (this is a bitmap)
+-define(SUBDOC_FLAG_NONE, 16#00).
+-define(SUBDOC_FLAG_MKDIR_P, 16#01).
+-define(SUBDOC_FLAG_XATTR_PATH, 16#04).
+-define(SUBDOC_FLAG_EXPAND_MACROS, 16#10).
+
+%%  Definitions of sub-document doc flags (this is a bitmap).
+-define(SUBDOC_DOC_NONE, 16#00).
+-define(SUBDOC_DOC_MKDOC, 16#01).
+-define(SUBDOC_DOC_ADD, 16#02).
+-define(SUBDOC_DOC_ACCESS_DELETED, 16#04).

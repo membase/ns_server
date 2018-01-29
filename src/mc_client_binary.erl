@@ -66,7 +66,8 @@
          config_reload/1,
          audit_put/3,
          audit_config_reload/1,
-         refresh_rbac/1
+         refresh_rbac/1,
+         subdoc_multi_lookup/5
         ]).
 
 -type recv_callback() :: fun((_, _, _) -> any()) | undefined.
@@ -90,7 +91,7 @@
                      ?RDECR | ?RDECRQ | ?SYNC | ?CMD_CHECKPOINT_PERSISTENCE |
                      ?CMD_SEQNO_PERSISTENCE | ?CMD_GET_RANDOM_KEY |
                      ?CMD_COMPACT_DB | ?CMD_AUDIT_PUT | ?CMD_AUDIT_CONFIG_RELOAD |
-                     ?CMD_RBAC_REFRESH.
+                     ?CMD_RBAC_REFRESH | ?CMD_SUBDOC_MULTI_LOOKUP.
 
 
 %% A memcached client that speaks binary protocol.
@@ -430,6 +431,38 @@ get_meta(Sock, Key, VBucket) ->
             process_error_response(Response)
     end.
 
+subdoc_multi_lookup(Sock, Key, VBucket, Paths, Options) ->
+    {SubDocFlags, SubDocDocFlags} = parse_subdoc_flags(Options),
+    Ext = <<SubDocDocFlags:8>>,
+    Header = #mc_header{vbucket = VBucket},
+    Specs = [<<?CMD_SUBDOC_GET:8, SubDocFlags:8, (byte_size(P)):16, P/binary>>
+                || P <- Paths],
+    Entry = #mc_entry{ext = Ext, key = Key, data = Specs},
+    case cmd(?CMD_SUBDOC_MULTI_LOOKUP, Sock, undefined, undefined,
+             {Header, Entry}) of
+        {ok, #mc_header{status = ?SUCCESS},
+             #mc_entry{cas = CAS, data = DataResp}, _NCB} ->
+            {ok, CAS, parse_multiget_res(DataResp)};
+        Other ->
+            process_error_response(Other)
+    end.
+
+parse_subdoc_flags(Options) ->
+    lists:foldl(
+        fun (mkdir_p, {F, D}) -> {F bor ?SUBDOC_FLAG_MKDIR_P, D};
+            (xattr_path, {F, D}) -> {F bor ?SUBDOC_FLAG_XATTR_PATH, D};
+            (expand_macros, {F, D}) -> {F bor ?SUBDOC_FLAG_EXPAND_MACROS, D};
+            (mkdoc, {F, D}) -> {F, D bor ?SUBDOC_DOC_MKDOC};
+            (add, {F, D}) -> {F, D bor ?SUBDOC_DOC_ADD};
+            (access_deleted, {F, D}) -> {F, D bor ?SUBDOC_DOC_ACCESS_DELETED}
+        end, {?SUBDOC_FLAG_NONE, ?SUBDOC_DOC_NONE}, Options).
+
+parse_multiget_res(Binary) -> parse_multiget_res(Binary, []).
+parse_multiget_res(<<>>, Res) -> lists:reverse(Res);
+parse_multiget_res(<<_Status:16, Len:32, Data/binary>>, Res) ->
+    <<JSON:Len/binary, Tail/binary>> = Data,
+    parse_multiget_res(Tail, [JSON|Res]).
+
 -spec update_with_rev(Sock :: port(), VBucket :: vbucket_id(),
                       Key :: binary(), Value :: binary() | undefined,
                       Rev :: rev(),
@@ -592,6 +625,48 @@ map_status(?ERANGE) ->
     erange;
 map_status(?ROLLBACK) ->
     rollback;
+map_status(?SUBDOC_PATH_NOT_EXIST) ->
+    subdoc_path_not_exist;
+map_status(?SUBDOC_NOT_DICT) ->
+    subdoc_not_dict;
+map_status(?SUBDOC_BAD_PATH_SYNTAX) ->
+    subdoc_bad_path_syntax;
+map_status(?SUBDOC_PATH_TOO_LARGE) ->
+    subdoc_path_too_large;
+map_status(?SUBDOC_MANY_LEVELS) ->
+    subdoc_many_levels;
+map_status(?SUBDOC_INVALID_VALUE) ->
+    subdoc_invalid_value;
+map_status(?SUBDOC_DOC_NOT_JSON) ->
+    subdoc_doc_not_json;
+map_status(?SUBDOC_BAD_ARITH) ->
+    subdoc_bad_arith;
+map_status(?SUBDOC_INVALID_RES_NUM) ->
+    subdoc_invalid_res_num;
+map_status(?SUBDOC_PATH_EXISTS) ->
+    subdoc_path_exists;
+map_status(?SUBDOC_RES_TOO_DEEP) ->
+    subdoc_res_too_deep;
+map_status(?SUBDOC_INVALID_COMMANDS) ->
+    subdoc_invalid_commands;
+map_status(?SUBDOC_PATH_FAILED) ->
+    subdoc_path_failed;
+map_status(?SUBDOC_SUCC_ON_DELETED) ->
+    subdoc_succ_on_deleted;
+map_status(?SUBDOC_INVALID_FLAGS) ->
+    subdoc_invalid_flags;
+map_status(?SUBDOC_XATTR_COMB) ->
+    subdoc_xattr_comb;
+map_status(?SUBDOC_UNKNOWN_MACRO) ->
+    subdoc_unknown_macro;
+map_status(?SUBDOC_UNKNOWN_ATTR) ->
+    subdoc_unknown_attr;
+map_status(?SUBDOC_VIRT_ATTR) ->
+    subdoc_virt_attr;
+map_status(?SUBDOC_FAILED_ON_DELETED) ->
+    subdoc_failed_on_deleted;
+map_status(?SUBDOC_INVALID_XATTR_ORDER) ->
+    subdoc_invalid_xattr_order;
 map_status(_) ->
     unknown.
 

@@ -111,6 +111,7 @@
          sync/4, add/4, get/3, delete/3, delete/4,
          get_from_replica/3,
          get_meta/3,
+         subdoc_multi_lookup/5,
          update_with_rev/7,
          get_seqno_stats/2,
          eval/2,
@@ -948,6 +949,19 @@ get_meta(Bucket, Key, VBucket) ->
               {reply, mc_client_binary:get_meta(Sock, Key, VBucket)}
       end, Bucket).
 
+%% @doc send an subdoc multi lookup command to memcached
+-spec subdoc_multi_lookup(bucket_name(), binary(), integer(),
+                          [binary()], [atom()]) ->
+    {ok, integer(), [binary()]}
+    | {memcached_error, key_enoent, integer()}
+    | mc_error().
+subdoc_multi_lookup(Bucket, Key, VBucket, Paths, Options) ->
+    perform_very_long_call(
+      fun (Sock) ->
+              {reply, mc_client_binary:subdoc_multi_lookup(Sock, Key, VBucket,
+                                                           Paths, Options)}
+      end, Bucket).
+
 %% @doc send a set command to memcached instance
 -spec delete(bucket_name(), binary(), integer(), integer()) ->
     {ok, #mc_header{}, #mc_entry{}, any()} | {memcached_error, any(), any()}.
@@ -1182,7 +1196,10 @@ connect(Tries) ->
                                        {list_to_binary(User),
                                         list_to_binary(Pass)}}),
         S of
-        Sock -> {ok, Sock}
+        Sock ->
+            %% We want to be able to get xattrs for UI via this connection
+            {ok, true} = dcp_commands:negotiate_xattr(Sock, "regular"),
+            {ok, Sock}
     catch
         E:R ->
             case Tries of
