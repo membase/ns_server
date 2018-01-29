@@ -48,10 +48,15 @@ cleanup_with_membase_bucket_check_servers(Bucket, Options, BucketConfig, FullCon
         none ->
             cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig);
         {update_servers, NewServers} ->
-            ?log_debug("janitor decided to update servers list"),
-            ns_bucket:set_servers(Bucket, NewServers),
+            update_servers(Bucket, NewServers),
             cleanup(Bucket, Options)
     end.
+
+update_servers(Bucket, Servers) ->
+    ?log_debug("janitor decided to update "
+               "servers list for bucket ~p to ~p", [Bucket, Servers]),
+
+    ns_bucket:set_servers(Bucket, Servers).
 
 cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->
     case proplists:get_value(map, BucketConfig, []) of
@@ -75,20 +80,24 @@ cleanup_with_membase_bucket_check_map(Bucket, Options, BucketConfig) ->
                                 ns_rebalancer:generate_initial_map(BucketConfig)
                         end,
 
-                    case ns_rebalancer:unbalanced(NewMap, BucketConfig) of
-                        false ->
-                            ns_bucket:update_vbucket_map_history(NewMap, Opts);
-                        true ->
-                            ok
-                    end,
+                    set_initial_map(NewMap, Opts, Bucket, BucketConfig),
 
-                    ns_bucket:set_map(Bucket, NewMap),
-                    ns_bucket:set_map_opts(Bucket, Opts),
                     cleanup(Bucket, Options)
             end;
         _ ->
             cleanup_with_membase_bucket_vbucket_map(Bucket, Options, BucketConfig)
     end.
+
+set_initial_map(Map, Opts, Bucket, BucketConfig) ->
+    case ns_rebalancer:unbalanced(Map, BucketConfig) of
+        false ->
+            ns_bucket:update_vbucket_map_history(Map, Opts);
+        true ->
+            ok
+    end,
+
+    ns_bucket:set_map(Bucket, Map),
+    ns_bucket:set_map_opts(Bucket, Opts).
 
 cleanup_with_membase_bucket_vbucket_map(Bucket, Options, BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig, []),
@@ -103,20 +112,10 @@ cleanup_with_states(Bucket, _Options, _BucketConfig,
     ?log_info("Bucket ~p not yet ready on ~p", [Bucket, Zombies]),
     {error, wait_for_memcached_failed, Zombies};
 cleanup_with_states(Bucket, Options, BucketConfig, Servers, States,
-                    [] = Zombies) ->
-    {NewBucketConfig, IgnoredVBuckets} =
-        compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies),
-
-    case NewBucketConfig =:= BucketConfig of
-        true ->
-            ok;
-        false ->
-            ?log_info("Janitor is going to change bucket config for bucket ~p",
-                      [Bucket]),
-            ?log_info("VBucket states:~n~p", [States]),
-            ?log_info("Old bucket config:~n~p", [BucketConfig]),
-            ok = ns_bucket:set_bucket_config(Bucket, NewBucketConfig)
-    end,
+                    [] = _Zombies) ->
+    {NewBucketConfig, IgnoredVBuckets} = maybe_fixup_vbucket_map(Bucket,
+                                                                 BucketConfig,
+                                                                 States),
 
     %% Find all the unsafe nodes (nodes on which memcached restarted within
     %% the auto-failover timeout) using the vbucket states. If atleast one
@@ -131,27 +130,46 @@ cleanup_with_states(Bucket, Options, BucketConfig, Servers, States,
         true ->
             {error, unsafe_nodes, UnsafeNodes};
         false ->
-            ApplyTimeout = proplists:get_value(apply_config_timeout, Options,
-                                               undefined_timeout),
-            ok = janitor_agent:apply_new_bucket_config_with_timeout(Bucket, undefined,
-                                                                    Servers,
-                                                                    NewBucketConfig,
-                                                                    IgnoredVBuckets,
-                                                                    ApplyTimeout),
+            cleanup_apply_config(Bucket, Servers,
+                                 NewBucketConfig, IgnoredVBuckets, Options)
+    end.
 
-            case Zombies =:= [] andalso
-                proplists:get_bool(consider_stopping_rebalance_status, Options) of
-                true ->
-                    maybe_stop_rebalance_status();
-                _ -> ok
-            end,
+maybe_fixup_vbucket_map(Bucket, BucketConfig, States) ->
+    {NewBucketConfig, IgnoredVBuckets} = compute_vbucket_map_fixup(Bucket,
+                                                                   BucketConfig,
+                                                                   States),
 
-            case janitor_agent:mark_bucket_warmed(Bucket, Servers) of
-                ok ->
-                    ok;
-                {error, BadNodes, _BadReplies} ->
-                    {error, marking_as_warmed_failed, BadNodes}
-            end
+    case NewBucketConfig =:= BucketConfig of
+        true ->
+            ok;
+        false ->
+            ?log_info("Janitor is going to change "
+                      "bucket config for bucket ~p", [Bucket]),
+            ?log_info("VBucket states:~n~p", [States]),
+            ?log_info("Old bucket config:~n~p", [BucketConfig]),
+            ok = ns_bucket:set_bucket_config(Bucket, NewBucketConfig)
+    end,
+
+    {NewBucketConfig, IgnoredVBuckets}.
+
+cleanup_apply_config(Bucket, Servers,
+                     BucketConfig, IgnoredVBuckets, Options) ->
+    ApplyTimeout = proplists:get_value(apply_config_timeout,
+                                       Options,
+                                       undefined_timeout),
+    ok = janitor_agent:apply_new_bucket_config_with_timeout(Bucket, undefined,
+                                                            Servers,
+                                                            BucketConfig,
+                                                            IgnoredVBuckets,
+                                                            ApplyTimeout),
+
+    maybe_stop_rebalance_status(Options),
+
+    case janitor_agent:mark_bucket_warmed(Bucket, Servers) of
+        ok ->
+            ok;
+        {error, BadNodes, _BadReplies} ->
+            {error, marking_as_warmed_failed, BadNodes}
     end.
 
 should_check_for_unsafe_nodes(BCfg, Options) ->
@@ -190,8 +208,7 @@ find_unsafe_nodes_with_vbucket_states(BucketConfig, States, true) ->
 data_loss_possible(VBucket, Chain, States) ->
     {_NodeStates, ChainStates, ExtraStates} = construct_vbucket_states(VBucket,
                                                                        Chain,
-                                                                       States,
-                                                                       []),
+                                                                       States),
     case ChainStates of
         [{Master, State}|ReplicaStates] when State =:= missing ->
             OtherNodeStates = ReplicaStates ++ ExtraStates,
@@ -232,6 +249,14 @@ stop_rebalance_status(Fn) ->
           end,
 
     ok = ns_config:update(Fun).
+
+maybe_stop_rebalance_status(Options) ->
+    case proplists:get_bool(consider_stopping_rebalance_status, Options) of
+        true ->
+            maybe_stop_rebalance_status();
+        false ->
+            ok
+    end.
 
 maybe_stop_rebalance_status() ->
     Status = try ns_orchestrator:rebalance_progress_full()
@@ -299,9 +324,9 @@ enumerate_chains(BucketConfig) ->
                                   EffectiveFFMap),
     {EnumeratedChains, OrigMap, Map}.
 
-compute_vbucket_map_fixup(Bucket, BucketConfig, States, [] = Zombies) ->
+compute_vbucket_map_fixup(Bucket, BucketConfig, States) ->
     {EnumeratedChains, OrigMap, AdjustedMap} = enumerate_chains(BucketConfig),
-    MapUpdates = [sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies)
+    MapUpdates = [sanify_chain(Bucket, States, Chain, FutureChain, VBucket)
                   || {VBucket, Chain, FutureChain} <- EnumeratedChains],
 
     MapLen = length(AdjustedMap),
@@ -330,8 +355,8 @@ maybe_adjust_chain_size(Map, BucketConfig) ->
             ns_janitor_map_recoverer:align_replicas(Map, NumReplicas)
     end.
 
-sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies) ->
-    NewChain = do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies),
+sanify_chain(Bucket, States, Chain, FutureChain, VBucket) ->
+    NewChain = do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket),
     %% Fill in any missing replicas
     case is_list(NewChain) andalso length(NewChain) < length(Chain) of
         false ->
@@ -341,7 +366,7 @@ sanify_chain(Bucket, States, Chain, FutureChain, VBucket, Zombies) ->
                                         undefined)
     end.
 
-construct_vbucket_states(VBucket, Chain, States, Zombies) ->
+construct_vbucket_states(VBucket, Chain, States) ->
     NodeStates = [{N, S} || {N, V, S} <- States, V == VBucket],
     ChainStates = lists:map(
                     fun (N) ->
@@ -357,7 +382,6 @@ construct_vbucket_states(VBucket, Chain, States, Zombies) ->
                                 %%                  _ -> missing
                                 %%              end};
                                 false ->
-                                    [] = Zombies,
                                     {N, missing};
                                 X -> X
                             end
@@ -367,11 +391,10 @@ construct_vbucket_states(VBucket, Chain, States, Zombies) ->
     {NodeStates, ChainStates, ExtraStates}.
 
 %% this will decide what vbucket map chain is right for this vbucket
-do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
+do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket) ->
     {NodeStates, ChainStates, ExtraStates} = construct_vbucket_states(VBucket,
                                                                       Chain,
-                                                                      States,
-                                                                      Zombies),
+                                                                      States),
     case ChainStates of
         [{undefined, _}|_] ->
             %% if for some reason (failovers most likely) we don't
@@ -473,36 +496,36 @@ do_sanify_chain(Bucket, States, Chain, FutureChain, VBucket, [] = Zombies) ->
 sanify_basic_test() ->
     %% normal case when everything matches vb map
     [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, replica}],
-                             [a, b], [], 0, []),
+                             [a, b], [], 0),
 
     %% yes, the code will keep both masters as long as expected master
     %% is there. Possibly something to fix in future
     [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, active}],
-                             [a, b], [], 0, []),
+                             [a, b], [], 0),
 
     %% main chain doesn't match but fast-forward chain does
     [b, c] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, active}, {c, 0, replica}],
-                             [a, b], [b, c], 0, []),
+                             [a, b], [b, c], 0),
 
     %% main chain doesn't match but ff chain does. And old master is already deleted
     [b, c] = do_sanify_chain("B", [{b, 0, active}, {c, 0, replica}],
-                             [a, b], [b, c], 0, []),
+                             [a, b], [b, c], 0),
 
     %% lets make sure we touch all paths just in case
     %% this runs "there are >1 unexpected master" case
     ignore = do_sanify_chain("B", [{a, 0, active}, {b, 0, active}],
-                             [c, a, b], [], 0, []),
+                             [c, a, b], [], 0),
     %% this runs "master is one of replicas" case
     [b] = do_sanify_chain("B", [{b, 0, active}, {c, 0, replica}],
-                          [a, b], [], 0, []),
+                          [a, b], [], 0),
     %% and this runs "master is some non-chain member node" case
     [c] = do_sanify_chain("B", [{c, 0, active}],
-                          [a, b], [], 0, []),
+                          [a, b], [], 0),
 
     %% lets also test rebalance stopped prior to complete takeover
     [a, b] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, replica},
                                    {c, 0, pending}, {d, 0, replica}],
-                             [a, b], [c, d], 0, []),
+                             [a, b], [c, d], 0),
     ok.
 
 sanify_doesnt_lose_replicas_on_stopped_rebalance_test() ->
@@ -512,21 +535,21 @@ sanify_doesnt_lose_replicas_on_stopped_rebalance_test() ->
     %% fast-forward map and is supposed to recover perfectly from this
     %% condition.
     [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, dead}],
-                            [b, a], [a, b], 0, []),
+                            [b, a], [a, b], 0),
 
     %% rebalance can be stopped after updating vbucket states but
     %% before vbucket map update
     [a, b] = do_sanify_chain("B", [{a, 0, active}, {b, 0, replica}],
-                            [b, a], [a, b], 0, []),
+                            [b, a], [a, b], 0),
     %% same stuff but prior to takeover
     [a, b] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, pending}],
-                             [a, b], [b, a], 0, []),
+                             [a, b], [b, a], 0),
     %% lets test more usual case too
     [c, d] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, replica},
                                    {c, 0, active}, {d, 0, replica}],
-                             [a, b], [c, d], 0, []),
+                             [a, b], [c, d], 0),
     %% but without FF map we're (too) conservative (should be fixable
     %% someday)
     [c] = do_sanify_chain("B", [{a, 0, dead}, {b, 0, replica},
                                 {c, 0, active}, {d, 0, replica}],
-                          [a, b], [], 0, []).
+                          [a, b], [], 0).
