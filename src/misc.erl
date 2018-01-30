@@ -499,13 +499,24 @@ uniqc_test() ->
 unique(Xs) ->
     [X || {X, _} <- uniqc(Xs)].
 
-groupby(Fun, List) ->
-    WithKeys = [{Fun(X), X} || X <- List],
-    Groups   = sort_and_keygroup(1, WithKeys),
-
+groupby_map(Fun, List) ->
+    Groups  = sort_and_keygroup(1, lists:map(Fun, List)),
     [{Key, [X || {_, X} <- Group]} || {Key, Group} <- Groups].
 
+groupby(Fun, List) ->
+    groupby_map(?cut({Fun(_1), _1}), List).
+
 -ifdef(EUNIT).
+groupby_map_test() ->
+    List = [{a, 1}, {a, 2}, {b, 2}, {b, 3}],
+    ?assertEqual([{a, [1, 2]}, {b, [2, 3]}],
+                 groupby_map(fun functools:id/1, List)),
+
+    ?assertEqual([{a, [-1, -2]}, {b, [-2, -3]}],
+                 groupby_map(fun ({K, V}) ->
+                                     {K, -V}
+                             end, List)).
+
 groupby_test() ->
     Groups = groupby(_ rem 2, lists:seq(0, 10)),
 
