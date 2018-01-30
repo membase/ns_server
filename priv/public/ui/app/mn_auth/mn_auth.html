@@ -49,6 +49,7 @@
              ng-model-options="{updateOn: 'default'}"
              name="username"
              placeholder="Username"
+             required
              mn-focus>
           <div
              ng-messages="loginForm.username.$error"
@@ -67,6 +68,7 @@
            ng-model-options="{updateOn: 'default'}"
            name="password"
            placeholder="Password"
+           required
            mn-autocomplete-off>
         <div
            ng-messages="loginForm.password.$error"
