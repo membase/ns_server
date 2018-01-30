@@ -77,7 +77,7 @@ run_failover(Node) ->
 
 orchestrate_failover(Node) ->
     ale:info(?USER_LOGGER, "Starting failing over ~p", [Node]),
-    master_activity_events:note_failover(Node),
+    master_activity_events:note_failover([Node]),
     failover(Node),
     ale:info(?USER_LOGGER, "Failed over ~p: ok", [Node]),
     ns_cluster:counter_inc(failover_node),
@@ -95,7 +95,7 @@ failover_buckets(Node) ->
     FailoverVBuckets =
         lists:foldl(
           fun (Bucket, Acc) ->
-                  master_activity_events:note_bucket_failover_started(Bucket, Node),
+                  master_activity_events:note_bucket_failover_started(Bucket, [Node]),
 
                   {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
                   NewAcc =
@@ -110,7 +110,7 @@ failover_buckets(Node) ->
                               [{Bucket, node_vbuckets(Map, Node)} | Acc]
                       end,
 
-                  master_activity_events:note_bucket_failover_ended(Bucket, Node),
+                  master_activity_events:note_bucket_failover_ended(Bucket, [Node]),
 
                   NewAcc
           end, [], ns_bucket:get_bucket_names()),

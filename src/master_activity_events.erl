@@ -86,8 +86,8 @@ note_vbucket_mover(Pid, BucketName, Node, VBucketId, OldChain, NewChain) ->
 note_move_done(BucketName, VBucketId) ->
     submit_cast({vbucket_move_done, BucketName, VBucketId}).
 
-note_failover(Node) ->
-    submit_cast({failover, Node}).
+note_failover(Nodes) ->
+    submit_cast({failover, Nodes}).
 
 note_became_master() ->
     submit_cast({became_master, node()}).
@@ -123,11 +123,11 @@ note_bucket_rebalance_started(BucketName) ->
 note_bucket_rebalance_ended(BucketName) ->
     submit_cast({bucket_rebalance_ended, BucketName, self()}).
 
-note_bucket_failover_started(BucketName, Node) ->
-    submit_cast({bucket_failover_started, BucketName, Node, self()}).
+note_bucket_failover_started(BucketName, Nodes) ->
+    submit_cast({bucket_failover_started, BucketName, Nodes, self()}).
 
-note_bucket_failover_ended(BucketName, Node) ->
-    submit_cast({bucket_failover_ended, BucketName, Node, self()}).
+note_bucket_failover_ended(BucketName, Nodes) ->
+    submit_cast({bucket_failover_ended, BucketName, Nodes, self()}).
 
 note_indexing_initiated(_BucketName, [], _VBucket) -> ok;
 note_indexing_initiated(BucketName, [MasterNode], VBucket) ->
@@ -358,6 +358,9 @@ node_to_host(Node, Config) ->
             format_mcd_pair(HostPort)
     end.
 
+nodes_to_hosts(Nodes) ->
+    nodes_to_hosts(Nodes, ns_config:latest()).
+
 nodes_to_hosts(Nodes, Config) ->
     {list, lists:map(node_to_host(_, Config), Nodes)}.
 
@@ -450,26 +453,29 @@ event_to_jsons({TS, bucket_rebalance_ended, BucketName, Pid}) ->
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
-event_to_jsons({TS, bucket_failover_started, BucketName, Node, Pid}) ->
+event_to_jsons({TS, bucket_failover_started, BucketName, Nodes, Pid})
+  when is_list(Nodes) ->
     [format_simple_plist_as_json([{type, bucketFailoverStarted},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {host, node_to_host(Node, ns_config:latest())},
+                                  {hosts, nodes_to_hosts(Nodes)},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
-event_to_jsons({TS, bucket_failover_ended, BucketName, Node, Pid}) ->
+event_to_jsons({TS, bucket_failover_ended, BucketName, Nodes, Pid})
+  when is_list(Nodes) ->
     [format_simple_plist_as_json([{type, bucketFailoverEnded},
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
-                                  {host, node_to_host(Node, ns_config:latest())},
+                                  {hosts, nodes_to_hosts(Nodes)},
                                   {pid, Pid},
                                   {node, maybe_get_pids_node(Pid)}])];
 
-event_to_jsons({TS, failover, Node}) ->
+event_to_jsons({TS, failover, Nodes})
+  when is_list(Nodes) ->
     [format_simple_plist_as_json([{type, failover},
                                   {ts, misc:time_to_epoch_float(TS)},
-                                  {host, node_to_host(Node, ns_config:latest())}])];
+                                  {hosts, nodes_to_hosts(Nodes)}])];
 
 event_to_jsons({TS, became_master, Node}) ->
     [format_simple_plist_as_json([{type, becameMaster},
