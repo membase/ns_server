@@ -318,25 +318,31 @@ stream_events_loop(Ref, LinkPid, Callback, State, EofRef, CallPredicate) ->
 format_simple_plist_as_json(PList) ->
     [PList0H | PList0T] = lists:keysort(1, PList),
     {_, PList1} = lists:foldl(fun ({K, _} = Pair, {PrevK, Acc}) ->
-                                 case K =:= PrevK of
-                                     true ->
-                                         {PrevK, Acc};
-                                     false ->
-                                         {K, [Pair | Acc]}
-                                 end
-                         end, {element(1, PList0H), [PList0H]}, PList0T),
-    [{Key, if is_list(Value) ->
-                   iolist_to_binary(Value);
-              is_binary(Value) ->
-                   Value;
-              is_atom(Value) ->
-                   Value;
-              is_number(Value) ->
-                   Value;
-              true -> iolist_to_binary(io_lib:format("~p", [Value]))
-           end}
-     || {Key, Value} <- PList1,
-        Value =/= skip_this_pair_please].
+                                      case K =:= PrevK of
+                                          true ->
+                                              {PrevK, Acc};
+                                          false ->
+                                              {K, [Pair | Acc]}
+                                      end
+                              end, {element(1, PList0H), [PList0H]}, PList0T),
+    [{Key, format_simple_value(Value)} || {Key, Value} <- PList1,
+                                          Value =/= skip_this_pair_please].
+
+format_simple_value(Value) ->
+    case Value of
+        _ when is_list(Value) ->
+            iolist_to_binary(Value);
+        _ when is_binary(Value) ->
+            Value;
+        _ when is_atom(Value) ->
+            Value;
+        _ when is_number(Value) ->
+            Value;
+        {list, List} ->
+            lists:map(fun format_simple_value/1, List);
+        _ ->
+            iolist_to_binary(io_lib:format("~p", [Value]))
+    end.
 
 format_mcd_pair({Host, Port}) ->
     iolist_to_binary([Host, $:, integer_to_list(Port)]).
