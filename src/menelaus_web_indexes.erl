@@ -149,10 +149,20 @@ acceptable_values(logLevel) ->
     ["silent", "fatal", "error", "warn", "info", "verbose", "timing", "debug",
      "trace"];
 acceptable_values(storageMode) ->
-    [binary_to_list(X) ||
-        X <- [?INDEX_STORAGE_MODE_FORESTDB,
-              ?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED,
-              ?INDEX_STORAGE_MODE_PLASMA]].
+    Modes = case cluster_compat_mode:is_enterprise() of
+                true ->
+                    case cluster_compat_mode:is_cluster_50() of
+                        true ->
+                            [?INDEX_STORAGE_MODE_PLASMA,
+                             ?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED];
+                        false ->
+                            [?INDEX_STORAGE_MODE_FORESTDB,
+                             ?INDEX_STORAGE_MODE_MEMORY_OPTIMIZED]
+                    end;
+                false ->
+                    [?INDEX_STORAGE_MODE_FORESTDB]
+            end,
+    [binary_to_list(X) || X <- Modes].
 
 validate_string(State, Param) ->
     validate_one_of(Param, acceptable_values(Param), State,
