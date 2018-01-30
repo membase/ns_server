@@ -499,6 +499,20 @@ uniqc_test() ->
 unique(Xs) ->
     [X || {X, _} <- uniqc(Xs)].
 
+groupby(Fun, List) ->
+    WithKeys = [{Fun(X), X} || X <- List],
+    Groups   = sort_and_keygroup(1, WithKeys),
+
+    [{Key, [X || {_, X} <- Group]} || {Key, Group} <- Groups].
+
+-ifdef(EUNIT).
+groupby_test() ->
+    Groups = groupby(_ rem 2, lists:seq(0, 10)),
+
+    {0, [0,2,4,6,8,10]} = lists:keyfind(0, 1, Groups),
+    {1, [1,3,5,7,9]}    = lists:keyfind(1, 1, Groups).
+-endif.
+
 keygroup(Index, List) ->
     keygroup(Index, List, []).
 
