@@ -349,7 +349,7 @@ compression_mode_cfg_string(CompMode) ->
         undefined ->
             [];
         _ ->
-            io_lib:format("compression_mode=~s;", [CompMode])
+            io_lib:format("compression_mode=~p;", [CompMode])
     end.
 
 -spec storage_mode([{_,_}]) -> atom().

@@ -299,9 +299,11 @@ build_bucket_info(Id, BucketConfig, InfoLevel, LocalAddr, MayExposeAuth,
                          case cluster_compat_mode:is_enterprise() andalso
                              cluster_compat_mode:is_cluster_vulcan() of
                              true ->
-                                 CMode = proplists:get_value(compression_mode, BucketConfig, "off"),
-                                 [{maxTTL, proplists:get_value(max_ttl, BucketConfig, 0)},
-                                  {compressionMode, list_to_binary(CMode)} |
+                                 CMode = proplists:get_value(compression_mode,
+                                                             BucketConfig, off),
+                                 [{maxTTL, proplists:get_value(max_ttl,
+                                                               BucketConfig, 0)},
+                                  {compressionMode, CMode} |
                                   BucketParams];
                              false ->
                                  BucketParams
@@ -1412,29 +1414,33 @@ parse_validate_replica_index(_ReplicaValue) -> {error, replicaIndex, <<"replicaI
 
 parse_validate_compression_mode(Params, BucketConfig, IsNew) ->
     CompMode = proplists:get_value("compressionMode", Params),
-    parse_validate_compression_mode_inner(cluster_compat_mode:is_enterprise(),
-                                          cluster_compat_mode:is_cluster_vulcan(),
-                                          CompMode, BucketConfig, IsNew).
+    do_parse_validate_compression_mode(cluster_compat_mode:is_enterprise(),
+                                       cluster_compat_mode:is_cluster_vulcan(),
+                                       CompMode, BucketConfig, IsNew).
 
-parse_validate_compression_mode_inner(false, _, undefined, _BucketCfg, _IsNew) ->
-    {ok, compression_mode, "off"};
-parse_validate_compression_mode_inner(_, false, undefined, _BucketCfg, _IsNew) ->
+do_parse_validate_compression_mode(false, _, undefined, _BucketCfg, _IsNew) ->
+    {ok, compression_mode, off};
+do_parse_validate_compression_mode(_, false, undefined, _BucketCfg, _IsNew) ->
     ignore;
-parse_validate_compression_mode_inner(false, _, _CompMode, _BucketCfg, _IsNew) ->
-    {error, compressionMode, <<"Compression mode is supported in enterprise edition only">>};
-parse_validate_compression_mode_inner(_, false, _CompMode, _BucketCfg, _IsNew) ->
-    {error, compressionMode, <<"Compression mode can not be set until the cluster is fully vulcan">>};
-parse_validate_compression_mode_inner(true, true, CompMode, BucketCfg, IsNew) ->
+do_parse_validate_compression_mode(false, _, _CompMode, _BucketCfg, _IsNew) ->
+    {error, compressionMode,
+     <<"Compression mode is supported in enterprise edition only">>};
+do_parse_validate_compression_mode(_, false, _CompMode, _BucketCfg, _IsNew) ->
+    {error, compressionMode,
+     <<"Compression mode can not be set until the cluster is fully vulcan">>};
+do_parse_validate_compression_mode(true, true, CompMode, BucketCfg, IsNew) ->
     DefaultVal = case IsNew of
-                     true -> "off";
+                     true -> off;
                      false -> proplists:get_value(compression_mode, BucketCfg)
                  end,
-    validate_with_missing(CompMode, DefaultVal, IsNew, fun validate_compression_mode/1).
+    validate_with_missing(CompMode, atom_to_list(DefaultVal), IsNew,
+                          fun parse_compression_mode/1).
 
-validate_compression_mode(V) when V =:= "off" orelse V =:= "passive" orelse V =:= "active" ->
-    {ok, compression_mode, V};
-validate_compression_mode(_) ->
-    {error, compressionMode, <<"compressionMode can be set to 'off', 'passive' or 'active'">>}.
+parse_compression_mode(V) when V =:= "off"; V =:= "passive"; V =:= "active" ->
+    {ok, compression_mode, list_to_atom(V)};
+parse_compression_mode(_) ->
+    {error, compressionMode,
+     <<"compressionMode can be set to 'off', 'passive' or 'active'">>}.
 
 parse_validate_max_ttl(Params, BucketConfig, IsNew) ->
     MaxTTL = proplists:get_value("maxTTL", Params),

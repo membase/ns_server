@@ -1405,7 +1405,7 @@ maybe_set_max_ttl(Sock, Bucket, NewMaxTTL, ActualMaxTTLBin) ->
 maybe_set_compression_mode(_Sock, _Bucket, undefined, _) ->
     ok;
 maybe_set_compression_mode(Sock, Bucket, NewCompMode, ActualCompModeBin) ->
-    NewCompModeBin = list_to_binary(NewCompMode),
+    NewCompModeBin = list_to_binary(atom_to_list(NewCompMode)),
     maybe_set_engine_param(Sock, Bucket, <<"compression_mode">>, NewCompModeBin,
                            ActualCompModeBin, "compression mode", flush).
 
