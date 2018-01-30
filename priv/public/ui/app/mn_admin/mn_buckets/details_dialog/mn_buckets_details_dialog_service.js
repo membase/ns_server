@@ -48,6 +48,13 @@
       }
       if (bucketConf.bucketType === "membase" || bucketConf.bucketType === "ephemeral") {
         copyProperties(["threadsNumber", "replicaNumber"]);
+        if (pools.isEnterprise && poolDefault.compat.atLeast55) {
+          if (!bucketConf.enableMaxTTL) {
+            conf.maxTTL = 0;
+          } else {
+            copyProperty("maxTTL");
+          }
+        }
         if (bucketConf.isNew) {
           if (bucketConf.bucketType !== "ephemeral") {
             copyProperty("replicaIndex");
@@ -109,6 +116,7 @@
         bucketConf.ramQuotaMB = mnBytesToMBFilter(bucketConf.quota.rawRAM);
         bucketConf.threadsNumber = bucketConf.threadsNumber.toString();
         bucketConf.isDefault = bucketConf.name === 'default';
+        bucketConf.enableMaxTTL = bucketConf.maxTTL !== 0;
         bucketConf.replicaIndex = bucketConf.replicaIndex ? 1 : 0;
         bucketConf.flushEnabled = (bucketConf.controllers !== undefined && bucketConf.controllers.flush !== undefined) ? 1 : 0;
         return bucketConf;

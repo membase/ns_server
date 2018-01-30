@@ -128,6 +128,49 @@
       </div>
     </div>
 
+    <div
+       class="formrow"
+       ng-if="pools.isEnterprise &&
+              poolDefault.compat.atLeast55 &&
+              (bucketConf.bucketType === 'membase' ||
+              bucketConf.bucketType === 'ephemeral')">
+      <label class="inline">Bucket Max Time-To-Live</label>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip-html="'The maximum time-to-live (TTL) for all documents in
+            this bucket in seconds. If enabled and a document is mutated with no TTL
+            or a TTL greater than than the maximum, its TTL will be set to the
+            maximum bucket TTL. The largest TTL allowed is 2147483647. This option is
+            only available for Couchbase and Ephemeral buckets in Couchbase
+            Enterprise Edition.'"
+         tooltip-placement="top">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
+      <div class="row flex-left">
+        <span class="width-3">
+          <input
+             type="checkbox"
+             id="enable_bucket_ttl"
+             ng-model="bucketConf.enableMaxTTL">
+          <label for="enable_bucket_ttl">Enable</label>
+        </span>
+        <span class="row flex-left width-9">
+          <input
+             type="text"
+             ng-model="bucketConf.maxTTL"
+             ng-disabled="!bucketConf.enableMaxTTL"
+             class="margin-right-half width-5">
+          <small> seconds</small>
+        </span>
+      </div>
+      <div
+         class="error"
+         ng-show="validation.result.errors.maxTTL">
+        {{validation.result.errors.maxTTL}}
+      </div>
+    </div>
+
     <div ng-if="pools.isEnterprise && (bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral') && (bucketConf.isWizard || poolDefault.compat.atLeast46)">
       <label class="inline">Conflict Resolution</label>
       <span
