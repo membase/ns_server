@@ -1013,16 +1013,8 @@ maybe_cleanup_old_buckets(KeepNodes) ->
     end.
 
 node_vbuckets(Map, Node) ->
-    lists:reverse(
-      lists:foldl(
-        fun ({V, Chain}, Acc) ->
-                case lists:member(Node, Chain) of
-                    true ->
-                        [V | Acc];
-                    false ->
-                        Acc
-                end
-        end, [], misc:enumerate(Map, 0))).
+    [V || {V, Chain} <- misc:enumerate(Map, 0),
+          lists:member(Node, Chain)].
 
 find_delta_recovery_map(Config, AllNodes, DeltaNodes, Bucket, BucketConfig) ->
     {map, CurrentMap} = lists:keyfind(map, 1, BucketConfig),
