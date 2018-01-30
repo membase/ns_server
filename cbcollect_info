@@ -378,10 +378,11 @@ class TaskRunner(object):
         p = re.compile('(<ud>)(.+?)(</ud>)')
         op_file = os.path.join(redact_dir, f_name)
         try:
-            with open(ip_file, 'r') as ip, open(op_file, 'w+') as op:
-                for line in ip:
-                    result = self._parse_helper(p, line)
-                    op.write('%s' % result)
+            with open(ip_file, 'r') as ip:
+                with open(op_file, 'w+') as op:
+                    for line in ip:
+                        result = self._parse_helper(p, line)
+                        op.write('%s' % result)
         except IOError as e:
             log("I/O error(%s): %s" % (e.errno, e.strerror))
         return op_file
