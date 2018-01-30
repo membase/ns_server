@@ -21,6 +21,7 @@
 
 -module(ns_rebalancer).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
 -include("ns_stats.hrl").
 
@@ -75,72 +76,79 @@ run_failover(Node) ->
               end
       end).
 
-orchestrate_failover(Node) ->
-    ale:info(?USER_LOGGER, "Starting failing over ~p", [Node]),
-    master_activity_events:note_failover([Node]),
-    failover(Node),
-    ale:info(?USER_LOGGER, "Failed over ~p: ok", [Node]),
+orchestrate_failover(Node)
+  when is_atom(Node) ->
+    orchestrate_failover([Node]);
+
+orchestrate_failover(Nodes) ->
+    ale:info(?USER_LOGGER, "Starting failing over ~p", [Nodes]),
+    master_activity_events:note_failover(Nodes),
+    failover(Nodes),
+    ale:info(?USER_LOGGER, "Failed over ~p: ok", [Nodes]),
     ns_cluster:counter_inc(failover_node),
-    ns_config:set({node, Node, membership}, inactiveFailed),
+    ns_cluster_membership:deactivate(Nodes),
     ok.
 
 
-%% @doc Fail a node. Doesn't eject the node from the cluster. Takes
+%% @doc Fail one or more nodes. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
-failover(Node) ->
-    ok = failover_buckets(Node),
-    ok = failover_services(Node).
+failover(Nodes) ->
+    ok = failover_buckets(Nodes),
+    ok = failover_services(Nodes).
 
-failover_buckets(Node) ->
-    FailoverVBuckets =
-        lists:foldl(
-          fun (Bucket, Acc) ->
-                  master_activity_events:note_bucket_failover_started(Bucket, [Node]),
+failover_buckets(Nodes) ->
+    BucketConfigs = ns_bucket:get_buckets(),
+    Results       =
+        lists:flatmap(fun ({Bucket, BucketConfig}) ->
+                              failover_bucket(Bucket, BucketConfig, Nodes)
+                      end, BucketConfigs),
 
-                  {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
-                  NewAcc =
-                      case ns_bucket:bucket_type(BucketConfig) of
-                          memcached ->
-                              failover_memcached_bucket(Node, Bucket, BucketConfig),
-                              Acc;
-                          membase ->
-                              Map = proplists:get_value(map, BucketConfig, []),
-                              failover_membase_bucket(Node, Bucket, BucketConfig, Map),
+    lists:foreach(
+      fun ({N, FailoverVBuckets0}) ->
+              FailoverVBuckets = [{B, VBs} || {B, _, VBs} <- FailoverVBuckets0],
+              ns_config:set({node, N, failover_vbuckets}, FailoverVBuckets)
+      end, misc:sort_and_keygroup(2, Results)).
 
-                              [{Bucket, node_vbuckets(Map, Node)} | Acc]
-                      end,
+failover_bucket(Bucket, BucketConfig, Nodes) ->
+    master_activity_events:note_bucket_failover_started(Bucket, Nodes),
 
-                  master_activity_events:note_bucket_failover_ended(Bucket, [Node]),
+    Type   = ns_bucket:bucket_type(BucketConfig),
+    Result = do_failover_bucket(Type, Bucket, BucketConfig, Nodes),
 
-                  NewAcc
-          end, [], ns_bucket:get_bucket_names()),
+    master_activity_events:note_bucket_failover_ended(Bucket, Nodes),
 
-    ns_config:set({node, Node, failover_vbuckets}, FailoverVBuckets),
-    ok.
+    Result.
 
-failover_services(Node) ->
-    Config = ns_config:get(),
-    NodeServices = ns_cluster_membership:node_services(Config, Node) -- [kv],
+do_failover_bucket(memcached, Bucket, BucketConfig, Nodes) ->
+    failover_memcached_bucket(Nodes, Bucket, BucketConfig),
+    [];
+do_failover_bucket(membase, Bucket, BucketConfig, Nodes) ->
+    Map = proplists:get_value(map, BucketConfig, []),
+    failover_membase_bucket(Nodes, Bucket, BucketConfig, Map),
+    [{Bucket, N, node_vbuckets(Map, N)} || N <- Nodes].
+
+failover_services(Nodes) ->
+    Config    = ns_config:get(),
+    Services0 = lists:flatmap(
+                  ns_cluster_membership:node_services(Config, _), Nodes),
+    Services  = lists:usort(Services0) -- [kv],
 
     case cluster_compat_mode:is_cluster_41() of
         true ->
-            lists:foreach(
-              fun (Service) ->
-                      failover_service(Config, Service, Node)
-              end, NodeServices);
+            lists:foreach(failover_service(Config, _, Nodes), Services);
         false ->
             ok
     end.
 
-failover_service(Config, Service, Node) ->
-    ns_cluster_membership:failover_service_node(Config, Service, Node),
+failover_service(Config, Service, Nodes) ->
+    ns_cluster_membership:failover_service_nodes(Config, Service, Nodes),
     case service_janitor:complete_service_failover(Service) of
         ok ->
-            ?log_debug("Failed over node ~p for service ~p successfully",
-                       [Node, Service]);
+            ?log_debug("Failed over service ~p on nodes ~p successfully",
+                       [Service, Nodes]);
         Error ->
-            ?log_error("Failed to complete node ~p failover for service ~p: ~p",
-                       [Node, Service, Error])
+            ?log_error("Failed to failover service ~p on nodes ~p: ~p",
+                       [Service, Nodes, Error])
     end.
 
 get_failover_vbuckets(Config, Node) ->
@@ -176,30 +184,29 @@ validate_autofailover_bucket(BucketConfig, Node) ->
             true
     end.
 
-failover_memcached_bucket(Node, Bucket, BucketConfig) ->
-    Servers = proplists:get_value(servers, BucketConfig),
-    ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)).
+failover_memcached_bucket(Nodes, Bucket, BucketConfig) ->
+    remove_nodes_from_server_list(Nodes, Bucket, BucketConfig).
 
-failover_membase_bucket(Node, Bucket, BucketConfig, Map) when Map =:= [] ->
+failover_membase_bucket(Nodes, Bucket, BucketConfig, Map) when Map =:= [] ->
     %% this is possible if bucket just got created and ns_janitor didn't get a
     %% chance to create a map yet; or alternatively, if it failed to do so
     %% because, for example, one of the nodes was down
-    failover_membase_bucket_with_no_map(Node, Bucket, BucketConfig);
-failover_membase_bucket(Node, Bucket, BucketConfig, Map) ->
-    failover_membase_bucket_with_map(Node, Bucket, BucketConfig, Map).
+    failover_membase_bucket_with_no_map(Nodes, Bucket, BucketConfig);
+failover_membase_bucket(Nodes, Bucket, BucketConfig, Map) ->
+    failover_membase_bucket_with_map(Nodes, Bucket, BucketConfig, Map).
 
-failover_membase_bucket_with_no_map(Node, Bucket, BucketConfig) ->
+failover_membase_bucket_with_no_map(Nodes, Bucket, BucketConfig) ->
     ?log_debug("Skipping failover of bucket ~p because it has no vbuckets. "
                "Config:~n~p", [Bucket, BucketConfig]),
 
     %% we still need to make sure to remove ourselves from the bucket server
     %% list
-    remove_node_from_server_list(Node, Bucket, BucketConfig),
+    remove_nodes_from_server_list(Nodes, Bucket, BucketConfig),
     ok.
 
-failover_membase_bucket_with_map(Node, Bucket, BucketConfig, Map) ->
+failover_membase_bucket_with_map(Nodes, Bucket, BucketConfig, Map) ->
     %% Promote replicas of vbuckets on this node
-    NewMap = mb_map:promote_replicas(Map, [Node]),
+    NewMap = mb_map:promote_replicas(Map, Nodes),
     true = (NewMap =/= undefined),
 
     case [I || {I, [undefined|_]} <- misc:enumerate(NewMap, 0)] of
@@ -213,7 +220,7 @@ failover_membase_bucket_with_map(Node, Bucket, BucketConfig, Map) ->
 
     ns_bucket:set_fast_forward_map(Bucket, undefined),
     ns_bucket:set_map(Bucket, NewMap),
-    remove_node_from_server_list(Node, Bucket, BucketConfig),
+    remove_nodes_from_server_list(Nodes, Bucket, BucketConfig),
     try ns_janitor:cleanup(Bucket, []) of
         ok ->
             ok;
@@ -226,13 +233,13 @@ failover_membase_bucket_with_map(Node, Bucket, BucketConfig, Map) ->
     catch
         E:R ->
             ?rebalance_error("Janitor cleanup of ~p failed after failover of ~p: ~p",
-                             [Bucket, Node, {E, R}]),
+                             [Bucket, Nodes, {E, R}]),
             janitor_failed
     end.
 
-remove_node_from_server_list(Node, Bucket, BucketConfig) ->
+remove_nodes_from_server_list(Nodes, Bucket, BucketConfig) ->
     Servers = proplists:get_value(servers, BucketConfig),
-    ns_bucket:set_servers(Bucket, lists:delete(Node, Servers)).
+    ns_bucket:set_servers(Bucket, Servers -- Nodes).
 
 generate_vbucket_map_options(KeepNodes, BucketConfig) ->
     Config = ns_config:get(),

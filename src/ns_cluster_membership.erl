@@ -50,7 +50,7 @@
          default_services/0,
          set_service_map/2,
          get_service_map/2,
-         failover_service_node/3,
+         failover_service_nodes/3,
          service_has_pending_failover/2,
          service_clear_pending_failover/1,
          node_active_services/1,
@@ -306,9 +306,9 @@ get_service_map(Config, kv) ->
 get_service_map(Config, Service) ->
     ns_config:search(Config, {service_map, Service}, []).
 
-failover_service_node(Config, Service, Node) ->
+failover_service_nodes(Config, Service, Nodes) ->
     Map = ns_cluster_membership:get_service_map(Config, Service),
-    NewMap = lists:delete(Node, Map),
+    NewMap = Map -- Nodes,
     ok = ns_config:set([{{service_map, Service}, NewMap},
                         {{service_failover_pending, Service}, true}]).
 
