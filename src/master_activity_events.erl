@@ -474,7 +474,7 @@ event_to_jsons({TS, create_bucket, BucketName, BucketType, NewConfig}) ->
                                   {ts, misc:time_to_epoch_float(TS)},
                                   {bucket, BucketName},
                                   {bucketType, BucketType}])
-                                 ++ [{params, {struct, format_simple_plist_as_json(SanitizedConfig)}}]];
+     ++ [{params, {struct, format_simple_plist_as_json(SanitizedConfig)}}]];
 
 event_to_jsons({TS, delete_bucket, BucketName}) ->
     [format_simple_plist_as_json([{type, deleteBucket},
