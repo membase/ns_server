@@ -15,6 +15,7 @@
 %%
 -module(master_activity_events).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
 
 -export([start_link_timestamper/0,
@@ -357,6 +358,9 @@ node_to_host(Node, Config) ->
             format_mcd_pair(HostPort)
     end.
 
+nodes_to_hosts(Nodes, Config) ->
+    {list, lists:map(node_to_host(_, Config), Nodes)}.
+
 maybe_get_pids_node(Pid) when is_pid(Pid) ->
     erlang:node(Pid);
 maybe_get_pids_node(_PerhapsBinary) ->
@@ -392,13 +396,14 @@ event_to_jsons({TS, SetMap, BucketName, Diff}) when SetMap =:= set_map orelse Se
 
 event_to_jsons({TS, rebalance_start, Pid, KeepNodes, EjectNodes, FailedNodes, DeltaNodes}) ->
     Config = ns_config:get(),
-    [format_simple_plist_as_json([{type, rebalanceStart},
-                                  {ts, misc:time_to_epoch_float(TS)},
-                                  {pid, Pid}])
-     ++ [{keepNodes, [node_to_host(N, Config) || N <- KeepNodes]},
-         {ejectNodes, [node_to_host(N, Config) || N <- EjectNodes]},
-         {failedNodes, [node_to_host(N, Config) || N <- FailedNodes]},
-         {deltaNodes, [node_to_host(N, Config) || N <- DeltaNodes]}]];
+    [format_simple_plist_as_json(
+       [{type, rebalanceStart},
+        {ts, misc:time_to_epoch_float(TS)},
+        {pid, Pid},
+        {keepNodes, nodes_to_hosts(KeepNodes, Config)},
+        {ejectNodes, nodes_to_hosts(EjectNodes, Config)},
+        {failedNodes, nodes_to_hosts(FailedNodes, Config)},
+        {deltaNodes, nodes_to_hosts(DeltaNodes, Config)}])];
 event_to_jsons({TS, rebalance_end, Pid, Reason}) ->
     [format_simple_plist_as_json([{type, rebalanceEnd},
                                   {ts, misc:time_to_epoch_float(TS)},
