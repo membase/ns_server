@@ -95,17 +95,24 @@ failover(Nodes) ->
     ok = failover_services(Nodes).
 
 failover_buckets(Nodes) ->
-    BucketConfigs = ns_bucket:get_buckets(),
-    Results       =
-        lists:flatmap(fun ({Bucket, BucketConfig}) ->
-                              failover_bucket(Bucket, BucketConfig, Nodes)
-                      end, BucketConfigs),
+    Results = lists:flatmap(fun ({Bucket, BucketConfig}) ->
+                                    failover_bucket(Bucket, BucketConfig, Nodes)
+                            end, ns_bucket:get_buckets()),
+    failover_buckets_handle_failover_vbuckets(Results),
+    ok.
 
-    lists:foreach(
-      fun ({N, FailoverVBuckets0}) ->
-              FailoverVBuckets = [{B, VBs} || {B, _, VBs} <- FailoverVBuckets0],
-              ns_config:set({node, N, failover_vbuckets}, FailoverVBuckets)
-      end, misc:sort_and_keygroup(2, Results)).
+failover_buckets_handle_failover_vbuckets(Results) ->
+    FailoverVBuckets =
+        misc:groupby_map(fun (Result) ->
+                                 Node   = proplists:get_value(node, Result),
+                                 Bucket = proplists:get_value(bucket, Result),
+                                 VBs    = proplists:get_value(vbuckets, Result),
+
+                                 {Node, {Bucket, VBs}}
+                         end, Results),
+
+    KVs = [{{node, N, failover_vbuckets}, VBs} || {N, VBs} <- FailoverVBuckets],
+    ns_config:set(KVs).
 
 failover_bucket(Bucket, BucketConfig, Nodes) ->
     master_activity_events:note_bucket_failover_started(Bucket, Nodes),
@@ -122,8 +129,12 @@ do_failover_bucket(memcached, Bucket, BucketConfig, Nodes) ->
     [];
 do_failover_bucket(membase, Bucket, BucketConfig, Nodes) ->
     Map = proplists:get_value(map, BucketConfig, []),
-    failover_membase_bucket(Nodes, Bucket, BucketConfig, Map),
-    [{Bucket, N, node_vbuckets(Map, N)} || N <- Nodes].
+    R = failover_membase_bucket(Nodes, Bucket, BucketConfig, Map),
+
+    [[{bucket, Bucket},
+      {node, N},
+      {status, R},
+      {vbuckets, node_vbuckets(Map, N)}] || N <- Nodes].
 
 failover_services(Nodes) ->
     Config    = ns_config:get(),
