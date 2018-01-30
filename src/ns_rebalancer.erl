@@ -81,7 +81,7 @@ orchestrate_failover(Nodes) ->
     master_activity_events:note_failover(Nodes),
     failover(Nodes),
     ale:info(?USER_LOGGER, "Failed over ~p: ok", [Nodes]),
-    ns_cluster:counter_inc(failover_node),
+    ns_cluster:counter_inc(failover),
     ns_cluster_membership:deactivate(Nodes),
     ok.
 
