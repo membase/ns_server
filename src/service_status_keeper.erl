@@ -27,11 +27,22 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--define(REFRESH_INTERVAL,
-        ns_config:get_timeout(service_status_keeper_refresh, 5000)).
 -define(WORKER, service_status_keeper_worker).
--define(STALE_THRESHOLD,
-        ns_config:read_key_fast(service_status_keeper_stale_threshold, 2)).
+
+get_refresh_interval(Service) ->
+    ns_config:get_timeout(
+      {Service:get_type(), service_status_keeper_refresh},
+      ns_config:get_timeout(index_status_keeper_refresh, 5000)).
+
+get_stale_threshold(Service) ->
+    ns_config:read_key_fast(
+      {Service:get_type(), service_status_keeper_stale_threshold},
+      ns_config:read_key_fast(index_status_keeper_stale_threshold, 2)).
+
+dont_restart_service(Service) ->
+    ns_config:read_key_fast(
+      {Service:get_type(), dont_restart_service},
+      ns_config:read_key_fast(dont_restart_indexer, false)).
 
 server_name(Service) ->
     list_to_atom(?MODULE_STRING "-" ++ atom_to_list(Service:get_type())).
@@ -115,7 +126,7 @@ handle_cast({refresh_done, Result}, #state{service = Service} = State) ->
                 increment_stale(State)
         end,
 
-    erlang:send_after(?REFRESH_INTERVAL, self(), refresh),
+    erlang:send_after(get_refresh_interval(Service), self(), refresh),
     {noreply, NewState};
 handle_cast(restart_done, #state{restart_pending = true} = State) ->
     {noreply, State#state{restart_pending = false}}.
@@ -137,8 +148,9 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 %% internal
-maybe_restart_service(#state{restart_pending = false} = State) ->
-    case ns_config:read_key_fast(dont_restart_services, false) of
+maybe_restart_service(#state{restart_pending = false,
+                             service = Service} = State) ->
+    case dont_restart_service(Service) of
         true ->
             State;
         false ->
@@ -322,7 +334,8 @@ set_stale(#state{items = Items} = State) ->
 set_stale(Items, State) ->
     set_stale(State#state{items = Items}).
 
-increment_stale(#state{stale = StaleInfo} = State) ->
+increment_stale(#state{stale = StaleInfo,
+                       service = Service} = State) ->
     case StaleInfo of
         true ->
             %% we're already stale; no need to do anything
@@ -330,7 +343,7 @@ increment_stale(#state{stale = StaleInfo} = State) ->
         {false, StaleCount} ->
             NewStaleCount = StaleCount + 1,
 
-            case NewStaleCount >= ?STALE_THRESHOLD of
+            case NewStaleCount >= get_stale_threshold(Service) of
                 true ->
                     set_stale(State);
                 false ->
