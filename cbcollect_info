@@ -672,8 +672,6 @@ def make_os_tasks():
         UnixTask("couchbase user definition", "getent passwd couchbase"),
         UnixTask("couchbase user limits", "su couchbase -c \"ulimit -a\"",
                  privileged=True),
-        UnixTask("couchbase user limits", "su couchbase -c \"ulimit -a\"",
-                 privileged=True),
         UnixTask("Interrupt status", "intrstat 1 10"),
         UnixTask("Processor status", "mpstat 1 10"),
         UnixTask("System log", "cat /var/adm/messages"),
