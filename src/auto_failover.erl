@@ -116,7 +116,10 @@
           reported_rebalance_running = false :: boolean(),
           %% Whether we reported that we could not auto failover because of
           %% recovery mode
-          reported_in_recovery = false :: boolean()
+          reported_in_recovery = false :: boolean(),
+          %% Whether we reported that we could not auto failover because there
+          %% was no quorum
+          reported_orchestration_unsafe = false :: boolean()
          }).
 
 %%
@@ -532,7 +535,11 @@ process_failover_error(rebalance_running, Nodes, S) ->
                           "Rebalance is running.", Nodes, S);
 process_failover_error(in_recovery, Nodes, S) ->
     report_failover_error(#state.reported_in_recovery,
-                          "Cluster is in recovery mode.", Nodes, S).
+                          "Cluster is in recovery mode.", Nodes, S);
+process_failover_error(orchestration_unsafe, Nodes, S) ->
+    report_failover_error(#state.reported_orchestration_unsafe,
+                          "Could not contact majority of servers. "
+                          "Orchestration may be compromised.", Nodes, S).
 
 report_failover_error(Flag, ErrMsg, Nodes, State) ->
     case should_report(Flag, State) of
@@ -820,7 +827,8 @@ init_reported(State) ->
     State#state{reported_autofailover_unsafe = false,
                 reported_max_reached = false,
                 reported_rebalance_running = false,
-                reported_in_recovery = false}.
+                reported_in_recovery = false,
+                reported_orchestration_unsafe = false}.
 
 update_reported_flags_by_actions(Actions, State) ->
     case lists:keymember(failover, 1, Actions) orelse

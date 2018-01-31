@@ -160,19 +160,27 @@ flush_bucket(BucketName) ->
     gen_fsm:sync_send_event(?SERVER, {flush_bucket, BucketName}, infinity).
 
 
--spec failover(atom()) -> ok | rebalance_running |
-                          in_recovery | last_node | unknown_node |
-                          %% the following is needed just to trick the
-                          %% dialyzer; otherwise it wouldn't let the callers
-                          %% cover what it believes to be an impossible return
-                          %% value if all other options are also covered
-                          any().
+-spec failover(atom()) ->
+                      ok |
+                      rebalance_running |
+                      in_recovery |
+                      last_node |
+                      unknown_node |
+                      orchestration_unsafe |
+                      %% the following is needed just to trick the dialyzer;
+                      %% otherwise it wouldn't let the callers cover what it
+                      %% believes to be an impossible return value if all
+                      %% other options are also covered
+                      any().
 failover(Node) ->
     wait_for_orchestrator(),
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
 
 
--spec try_autofailover(list()) -> ok | rebalance_running | in_recovery |
+-spec try_autofailover(list()) -> ok |
+                                  rebalance_running |
+                                  in_recovery |
+                                  orchestration_unsafe |
                                   {autofailover_unsafe, [bucket_name()]}.
 try_autofailover(Nodes) ->
     wait_for_orchestrator(),

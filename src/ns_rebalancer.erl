@@ -67,8 +67,17 @@ run_failover(Nodes) ->
     ok = check_no_tap_buckets(),
     case check_failover_possible(Nodes) of
         ok ->
-            leader_activities:run_activity(failover, majority,
-                                           ?cut(orchestrate_failover(Nodes)));
+            Result = leader_activities:run_activity(
+                       failover, majority, ?cut(orchestrate_failover(Nodes))),
+
+            case Result of
+                {leader_activities_error, _, quorum_lost} ->
+                    orchestration_unsafe;
+                {leader_activities_error, _, {no_quorum, _}} ->
+                    orchestration_unsafe;
+                _ ->
+                    Result
+            end;
         Error ->
             Error
     end.

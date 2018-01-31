@@ -610,6 +610,13 @@ handle_failover(Req) ->
                     reply_text(Req, "Rebalance running.", 503);
                 in_recovery ->
                     reply_text(Req, "Cluster is in recovery mode.", 503);
+                orchestration_unsafe ->
+                    reply_text(Req,
+                               "Cannot safely perform a failover at the moment",
+                               %% 504 is a stretch here of course, but we do
+                               %% need to convey the information to the client
+                               %% somehow.
+                               504);
                 last_node ->
                     reply_text(Req, "Last active node cannot be failed over.", 400);
                 unknown_node ->
