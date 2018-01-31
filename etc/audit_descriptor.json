@@ -814,7 +814,8 @@
           },
           "optional_fields" : {
               "sessionid" : "",
-              "tmp_dir" : ""
+              "tmp_dir" : "",
+              "log_dir" : ""
           }
       },
       {

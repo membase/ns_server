@@ -115,8 +115,8 @@ stringify_one_node_upload_error({not_enterprise, log_redaction}) ->
     {logRedactionLevel, "log redaction is an enterprise only feature"};
 stringify_one_node_upload_error({unknown, log_redaction}) ->
     {logRedactionLevel, "log redaction should be none or partial"};
-stringify_one_node_upload_error({invalid_directory, tmpDir}) ->
-    {tmpDir, "Must be an absolute path"}.
+stringify_one_node_upload_error({invalid_directory, R}) ->
+    {R, "Must be an absolute path"}.
 
 
 parse_nodes("*", Config) ->
@@ -190,6 +190,13 @@ parse_validate_collect_params(Params, Config) ->
     %% we handle no ticket or empty ticket the same
     Ticket = proplists:get_value("ticket", Params, ""),
 
+    LogDir = case proplists:get_value("logDir", Params) of
+                 undefined -> [];
+                 Val -> case misc:is_absolute_path(Val) of
+                            true -> [{log_dir, Val}];
+                            false -> [{error, {invalid_directory, logDir}}]
+                        end
+             end,
     TmpDir = case proplists:get_value("tmpDir", Params) of
                  undefined -> [];
                  Value -> case misc:is_absolute_path(Value) of
@@ -236,13 +243,13 @@ parse_validate_collect_params(Params, Config) ->
                           [{error, missing_customer}]
                   end,
 
-    BasicErrors = [E || {error, E} <-
-                        NodesRV ++ TmpDir ++ RedactLevel ++ MaybeUpload],
+    BasicErrors = [E || {error, E} <- NodesRV ++ TmpDir ++ LogDir ++
+                                      RedactLevel ++ MaybeUpload],
     case BasicErrors of
         [] ->
             [{ok, Nodes}] = NodesRV,
             [{ok, Upload}] = MaybeUpload,
-            Options = RedactLevel ++ TmpDir,
+            Options = RedactLevel ++ TmpDir ++ LogDir,
             {ok, Nodes, Upload, Options};
         _ ->
             {errors, BasicErrors}

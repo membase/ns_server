@@ -261,14 +261,19 @@ maybe_upload_node_result(Node, Path, BaseURL, Options) ->
 
 start_collection_per_node(TimestampS, Parent, Options) ->
     Basename = "collectinfo-" ++ TimestampS ++ "-" ++ atom_to_list(node()),
-    Filename = path_config:component_path(tmp, Basename ++ ".zip"),
     InitargsFilename = path_config:component_path(data, "initargs"),
+
+    LogPath = case proplists:get_value(log_dir, Options) of
+                  undefined -> path_config:component_path(tmp);
+                  Val -> Val
+              end,
+    Filename = filename:join(LogPath, Basename ++ ".zip"),
     proc_lib:init_ack(Parent, {ok, self(), Filename}),
 
     {UploadFilename, MaybeLogRedaction} =
         case proplists:get_value(redact_level, Options) of
             partial ->
-                {path_config:component_path(tmp, Basename ++ "-redacted" ++ ".zip"),
+                {filename:join(LogPath, Basename ++ "-redacted" ++ ".zip"),
                  ["--log-redaction=partial"]};
             _ ->
                 {Filename, []}
