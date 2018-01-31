@@ -27,8 +27,10 @@
 -export([start_collection_per_node/3,
          start_upload_per_node/4]).
 
-start_link(Nodes, BaseURL, RedactLevel) ->
-    proc_lib:start_link(erlang, apply, [fun collect_cluster_logs/3, [Nodes, BaseURL, RedactLevel]]).
+start_link(Nodes, BaseURL, Options) ->
+    proc_lib:start_link(erlang, apply, [fun collect_cluster_logs/3, [Nodes,
+                                                                     BaseURL,
+                                                                     Options]]).
 
 start_link_ets_holder() ->
     misc:start_event_link(
@@ -131,7 +133,7 @@ format_timestamp({{Year,Month,Day},{Hour,Min,Sec}}) ->
       io_lib:format("~4.10.0B-~2.10.0B-~2.10.0BT~2.10.0B~2.10.0B~2.10.0B",
                     [Year, Month, Day, Hour, Min, Sec])).
 
-collect_cluster_logs(Nodes, BaseURL, RedactLevel) ->
+collect_cluster_logs(Nodes, BaseURL, Options) ->
     Timestamp = erlang:universaltime(),
     TimestampS = format_timestamp(Timestamp),
     ets:delete_all_objects(cluster_logs_collection_task_status),
@@ -162,11 +164,10 @@ collect_cluster_logs(Nodes, BaseURL, RedactLevel) ->
                                 []
                         end,
 
-    Options = [{redact_level, RedactLevel} | MaybeNoSingleNode],
-
     misc:parallel_map(
       fun (N) ->
-              run_node_collection(N, BaseURL, TimestampS, Options)
+              run_node_collection(N, BaseURL, TimestampS,
+                                  Options ++ MaybeNoSingleNode)
       end, Nodes, infinity),
 
     update_ets_status({cluster, Nodes, BaseURL, Timestamp, completed}).
@@ -280,8 +281,13 @@ start_collection_per_node(TimestampS, Parent, Options) ->
                               ["--multi-node-diag"]
                       end,
 
-    Args0 = ["--watch-stdin"] ++ MaybeSingleNode ++ MaybeLogRedaction
-        ++ ["--initargs=" ++ InitargsFilename, Filename],
+    MaybeTmpDir = case proplists:get_value(tmp_dir, Options) of
+                      undefined -> [];
+                      Value -> ["--tmp-dir=" ++ Value]
+                  end,
+
+    Args0 = ["--watch-stdin"] ++ MaybeSingleNode ++ MaybeLogRedaction ++
+        MaybeTmpDir ++ ["--initargs=" ++ InitargsFilename, Filename],
 
     ExtraArgs = ns_config:search_node_with_default(cbcollect_info_extra_args, []),
     Env = ns_config:search_node_with_default(cbcollect_info_extra_env, []),

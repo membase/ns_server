@@ -63,10 +63,11 @@ handle_start_collect_logs(Req) ->
     Params = Req:parse_post(),
 
     case parse_validate_collect_params(Params, ns_config:get()) of
-        {ok, Nodes, BaseURL, RedactLevel} ->
+        {ok, Nodes, BaseURL, Options} ->
             case cluster_logs_collection_task:preflight_base_url(BaseURL) of
                 ok ->
-                    case cluster_logs_sup:start_collect_logs(Nodes, BaseURL, RedactLevel) of
+                    case cluster_logs_sup:start_collect_logs(Nodes, BaseURL,
+                                                             Options) of
                         ok ->
                             ns_audit:start_log_collection(Req, Nodes, BaseURL,
                                                           RedactLevel),
@@ -109,13 +110,15 @@ stringify_one_node_upload_error({cluster_too_old, log_redaction}) ->
 stringify_one_node_upload_error({not_enterprise, log_redaction}) ->
     {logRedactionLevel, "log redaction is an enterprise only feature"};
 stringify_one_node_upload_error({unknown, log_redaction}) ->
-    {logRedactionLevel, "log redaction should be none or partial"}.
+    {logRedactionLevel, "log redaction should be none or partial"};
+stringify_one_node_upload_error({invalid_directory, tmpDir}) ->
+    {tmpDir, "Must be an absolute path"}.
 
 
 parse_nodes("*", Config) ->
-    {ok, ns_node_disco:nodes_wanted(Config)};
+    [{ok, ns_node_disco:nodes_wanted(Config)}];
 parse_nodes(undefined, _) ->
-    {error, missing_nodes};
+    [{error, missing_nodes}];
 parse_nodes(NodesParam, Config) ->
     KnownNodes = sets:from_list([atom_to_list(N) || N <- ns_node_disco:nodes_wanted(Config)]),
     Nodes = string:tokens(NodesParam, ","),
@@ -126,11 +129,11 @@ parse_nodes(NodesParam, Config) ->
     case Bad of
         [] ->
             case Nodes of
-                [] -> {error, missing_nodes};
-                _ -> {ok, lists:usort([list_to_atom(N) || N <- Nodes])}
+                [] -> [{error, missing_nodes}];
+                _ -> [{ok, lists:usort([list_to_atom(N) || N <- Nodes])}]
             end;
         _ ->
-            {error, {unknown_nodes, Bad}}
+            [{error, {unknown_nodes, Bad}}]
     end.
 
 is_field_valid(customer, Customer) ->
@@ -183,24 +186,31 @@ parse_validate_collect_params(Params, Config) ->
     %% we handle no ticket or empty ticket the same
     Ticket = proplists:get_value("ticket", Params, ""),
 
+    TmpDir = case proplists:get_value("tmpDir", Params) of
+                 undefined -> [];
+                 Value -> case misc:is_absolute_path(Value) of
+                              true -> [{tmp_dir, Value}];
+                              false -> [{error, {invalid_directory, tmpDir}}]
+                          end
+             end,
     RedactLevel =
         case proplists:get_value("logRedactionLevel", Params) of
             undefined ->
-                none;
+                [];
             N when N =:= "none"; N =:= "partial" ->
                 case cluster_compat_mode:is_enterprise() of
                     true ->
                         case cluster_compat_mode:is_cluster_vulcan() of
                             true ->
-                                list_to_atom(N);
+                                [{redact_level, list_to_atom(N)}];
                             false ->
-                                {error, {cluster_too_old, log_redaction}}
+                                [{error, {cluster_too_old, log_redaction}}]
                         end;
                     false ->
-                        {error, {not_enterprise, log_redaction}}
+                        [{error, {not_enterprise, log_redaction}}]
                 end;
             _ ->
-                {error, {unknown, log_redaction}}
+                [{error, {unknown, log_redaction}}]
         end,
 
     MaybeUpload = case [F || {F, P} <- [{upload, UploadHost},
@@ -222,12 +232,14 @@ parse_validate_collect_params(Params, Config) ->
                           [{error, missing_customer}]
                   end,
 
-    BasicErrors = [E || {error, E} <- [NodesRV | [RedactLevel | MaybeUpload]]],
+    BasicErrors = [E || {error, E} <-
+                        NodesRV ++ TmpDir ++ RedactLevel ++ MaybeUpload],
     case BasicErrors of
         [] ->
-            {ok, Nodes} = NodesRV,
+            [{ok, Nodes}] = NodesRV,
             [{ok, Upload}] = MaybeUpload,
-            {ok, Nodes, Upload, RedactLevel};
+            Options = RedactLevel ++ TmpDir,
+            {ok, Nodes, Upload, Options};
         _ ->
             {errors, BasicErrors}
     end.

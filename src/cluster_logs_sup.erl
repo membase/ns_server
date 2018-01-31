@@ -40,13 +40,14 @@ init([]) ->
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-start_collect_logs(Nodes, BaseURL, RedactLevel) ->
+start_collect_logs(Nodes, BaseURL, Options) ->
     {Results, _} = MCResult = rpc:multicall(?MODULE, check_local_collect, [], ?TASK_CHECK_TIMEOUT),
     ?log_debug("check_local_collect returned: ~p", [MCResult]),
     case lists:any(fun (Res) -> Res =:= true end, Results) of
         false ->
             Spec = {collect_task,
-                    {cluster_logs_collection_task, start_link, [Nodes, BaseURL, RedactLevel]},
+                    {cluster_logs_collection_task, start_link, [Nodes, BaseURL,
+                                                                Options]},
                     temporary,
                     brutal_kill,
                     worker, []},
