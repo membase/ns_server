@@ -670,7 +670,7 @@ def make_os_tasks():
         UnixTask("System uptime", "uptime"),
         UnixTask("Last logins of users and ttys", "last -x || last"),
         UnixTask("couchbase user definition", "getent passwd couchbase"),
-        UnixTask("couchbase user limits", "su couchbase -c \"ulimit -a\"",
+        UnixTask("couchbase user limits", "su couchbase -s /bin/sh -c \"ulimit -a\"",
                  privileged=True),
         UnixTask("Interrupt status", "intrstat 1 10"),
         UnixTask("Processor status", "mpstat 1 10"),
