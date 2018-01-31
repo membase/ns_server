@@ -149,81 +149,101 @@ handle_commit_vbucket_post_apply(Bucket, VBucket, RecoveryState, State) ->
 
 handle_start_recovery(Bucket, FromPid) ->
     try
-        BucketConfig0 = case ns_bucket:get_bucket(Bucket) of
-                            {ok, V} ->
-                                V;
-                            Error0 ->
-                                throw(Error0)
-                        end,
+        check_bucket(Bucket),
 
-        case ns_bucket:bucket_type(BucketConfig0) of
-            membase ->
-                ok;
-            _ ->
-                throw(not_needed)
-        end,
-
-        FailedOverNodes = ns_cluster_membership:get_nodes_with_status(inactiveFailed),
-        Servers0 = ns_node_disco:nodes_wanted() -- FailedOverNodes,
-        Servers = ns_cluster_membership:service_nodes(Servers0, kv),
-        BucketConfig = misc:update_proplist(BucketConfig0, [{servers, Servers}]),
+        Servers = get_recovery_servers(),
         ns_cluster_membership:activate(Servers),
-        FromPidNode = erlang:node(FromPid),
-        SyncServers = Servers -- [FromPidNode] ++ [FromPidNode],
-        case ns_config_rep:ensure_config_seen_by_nodes(SyncServers) of
-            ok ->
-                ok;
-            {error, BadNodes} ->
-                ?log_error("Failed to syncrhonize config to some nodes: ~p", [BadNodes]),
-                throw({error, {failed_nodes, BadNodes}})
-        end,
 
-        case ns_rebalancer:maybe_cleanup_old_buckets(Servers) of
-            ok ->
-                ok;
-            {buckets_cleanup_failed, FailedNodes0} ->
-                throw({error, {failed_nodes, FailedNodes0}})
-        end,
-
-        ns_bucket:set_servers(Bucket, Servers),
-
-        case ns_janitor:cleanup(Bucket, [{query_states_timeout, 10000}]) of
-            ok ->
-                ok;
-            {error, _, FailedNodes1} ->
-                error({error, {failed_nodes, FailedNodes1}})
-        end,
-
-        {ok, RecoveryMap, {NewServers, NewBucketConfig}, RecoveryState} =
-            case recovery:start_recovery(BucketConfig) of
-                {ok, _, _, _} = R ->
-                    R;
-                Error1 ->
-                    throw(Error1)
-            end,
-
-        true = (Servers =:= NewServers),
-
-        RV = apply_recovery_bucket_config(Bucket, NewBucketConfig, NewServers),
-        case RV of
-            ok ->
-                RecoveryUUID = couch_uuids:random(),
-                ensure_recovery_status(Bucket, RecoveryUUID),
-
-                ale:info(?USER_LOGGER, "Put bucket `~s` into recovery mode", [Bucket]),
-
-                State = #state{bucket=Bucket,
-                               uuid=RecoveryUUID,
-                               recovery_state=RecoveryState},
-
-                {reply, {ok, self(), RecoveryUUID, RecoveryMap}, State};
-            Error2 ->
-                throw(Error2)
-        end
-
+        sync_config(Servers, FromPid),
+        cleanup_old_buckets(Servers),
+        BucketConfig = prepare_bucket(Bucket, Servers),
+        complete_start_recovery(Bucket, BucketConfig, Servers)
     catch
-        throw:E ->
-            {stop, normal, E, undefined}
+        throw:Error ->
+            {stop, normal, Error, undefined}
+    end.
+
+get_recovery_servers() ->
+    FailedOverNodes = get_failed_over_nodes(),
+    LiveNodes = ns_node_disco:nodes_wanted() -- FailedOverNodes,
+    ns_cluster_membership:service_nodes(LiveNodes, kv).
+
+check_bucket(Bucket) ->
+    case ns_bucket:get_bucket(Bucket) of
+        {ok, BucketConfig} ->
+            case ns_bucket:bucket_type(BucketConfig) of
+                membase ->
+                    ok;
+                _ ->
+                    throw(not_needed)
+            end;
+        not_present ->
+            throw(not_present)
+    end.
+
+get_failed_over_nodes() ->
+    ns_cluster_membership:get_nodes_with_status(inactiveFailed).
+
+sync_config(Servers, FromPid) ->
+    FromPidNode = erlang:node(FromPid),
+    SyncServers = lists:usort([FromPidNode | Servers]),
+
+    case ns_config_rep:ensure_config_seen_by_nodes(SyncServers) of
+        ok ->
+            ok;
+        {error, BadNodes} ->
+            ?log_error("Failed to "
+                       "synchronize config to some nodes: ~p", [BadNodes]),
+            throw({error, {failed_nodes, BadNodes}})
+    end.
+
+cleanup_old_buckets(Servers) ->
+    case ns_rebalancer:maybe_cleanup_old_buckets(Servers) of
+        ok ->
+            ok;
+        {buckets_cleanup_failed, FailedNodes} ->
+            throw({error, {failed_nodes, FailedNodes}})
+    end.
+
+prepare_bucket(Bucket, Servers) ->
+    ns_bucket:set_servers(Bucket, Servers),
+    case ns_janitor:cleanup(Bucket, [{query_states_timeout, 10000}]) of
+        ok ->
+            {ok, BucketConfig} = ns_bucket:get_bucket(Bucket),
+            BucketConfig;
+        {error, _, FailedNodes} ->
+            throw({error, {failed_nodes, FailedNodes}})
+    end.
+
+init_recovery_state(Servers, BucketConfig) ->
+    case recovery:start_recovery(BucketConfig) of
+        {ok, Map, {NewServers, NewBucketConfig}, RecoveryState} ->
+            true = (NewServers =:= Servers),
+            {Map, NewBucketConfig, RecoveryState};
+        Error ->
+            throw(Error)
+    end.
+
+complete_start_recovery(Bucket, BucketConfig, Servers) ->
+    {Map, NewBucketConfig, RecoveryState} =
+        init_recovery_state(Servers, BucketConfig),
+    RV = apply_recovery_bucket_config(Bucket, NewBucketConfig, Servers),
+
+    case RV of
+        ok ->
+            UUID = couch_uuids:random(),
+
+            ensure_recovery_status(Bucket, UUID),
+            ale:info(?USER_LOGGER,
+                     "Put bucket `~s` into recovery mode", [Bucket]),
+
+            State = #state{bucket         = Bucket,
+                           uuid           = UUID,
+                           recovery_state = RecoveryState},
+
+            {reply, {ok, self(), UUID, Map}, State};
+        Error ->
+            throw(Error)
     end.
 
 apply_recovery_bucket_config(Bucket, BucketConfig, Servers) ->
