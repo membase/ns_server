@@ -18,7 +18,10 @@
 -include("ns_common.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
--export([active_nodes/0,
+-export([get_nodes_with_status/1,
+         get_nodes_with_status/2,
+         get_nodes_with_status/3,
+         active_nodes/0,
          active_nodes/1,
          inactive_added_nodes/0,
          actual_active_nodes/0,
@@ -68,24 +71,30 @@
          should_run_service/3,
          user_friendly_service_name/1]).
 
+get_nodes_with_status(Status) ->
+    get_nodes_with_status(ns_config:latest(), Status).
+
+get_nodes_with_status(Config, Status) ->
+    get_nodes_with_status(Config, ns_node_disco:nodes_wanted(Config), Status).
+
+get_nodes_with_status(Config, Nodes, Status) ->
+    [Node || Node <- Nodes,
+             get_cluster_membership(Node, Config) =:= Status].
+
 active_nodes() ->
     active_nodes(ns_config:get()).
 
 active_nodes(Config) ->
-    [Node || Node <- ns_node_disco:nodes_wanted(Config),
-             get_cluster_membership(Node, Config) == active].
+    get_nodes_with_status(Config, active).
 
 inactive_added_nodes() ->
-    Config = ns_config:latest(),
-    [Node || Node <- ns_node_disco:nodes_wanted(Config),
-             get_cluster_membership(Node, Config) == inactiveAdded].
+    get_nodes_with_status(inactiveAdded).
 
 actual_active_nodes() ->
     actual_active_nodes(ns_config:get()).
 
 actual_active_nodes(Config) ->
-    [Node || Node <- ns_node_disco:nodes_actual(),
-             get_cluster_membership(Node, Config) == active].
+    get_nodes_with_status(Config, ns_node_disco:nodes_actual(), active).
 
 get_nodes_cluster_membership() ->
     get_nodes_cluster_membership(ns_node_disco:nodes_wanted()).
