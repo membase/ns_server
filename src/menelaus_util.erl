@@ -72,6 +72,7 @@
          validate_required/2,
          validate_prohibited/2,
          execute_if_validated/3,
+         execute_if_validated/4,
          get_values/1,
          return_value/3,
          return_error/3,
@@ -600,6 +601,10 @@ execute_if_validated(Fun, Req, {_, Values, Errors}) ->
         {false, _} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 400)
     end.
+
+execute_if_validated(Fun, Req, Args, Validators) ->
+    execute_if_validated(Fun, Req,
+                         functools:chain({Args, [], []}, Validators)).
 
 get_values({_, Values, _}) ->
     Values.

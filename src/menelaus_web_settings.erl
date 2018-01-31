@@ -17,6 +17,7 @@
 
 -module(menelaus_web_settings).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
 
 -export([build_kvs/1,
@@ -64,7 +65,7 @@
          validate_by_fun/3,
          validate_any_value/2,
          validate_unsupported_params/1,
-         execute_if_validated/3]).
+         execute_if_validated/4]).
 
 get_bool("true") ->
     {ok, true};
@@ -539,29 +540,30 @@ handle_settings_audit(Req) ->
                      end, Props),
     reply_json(Req, {Json}).
 
-validate_settings_audit(Args) ->
-    R = validate_has_params({Args, [], []}),
-    R0 = validate_boolean(auditdEnabled, R),
-    R1 = validate_dir(logPath, validate_any_value(logPath, R0)),
-    R2 = validate_integer(rotateInterval, R1),
-    R3 = validate_range(
-           rotateInterval, 15*60, 60*60*24*7,
-           fun (Name, _Min, _Max) ->
-                   io_lib:format("The value of ~p must be in range from 15 minutes to 7 days",
-                                 [Name])
-           end, R2),
-    R4 = validate_by_fun(
-           fun (Value) ->
-                   case Value rem 60 of
-                       0 ->
-                           ok;
-                       _ ->
-                           {error, "Value must not be a fraction of minute"}
-                   end
-           end, rotateInterval, R3),
-    R5 = validate_integer(rotateSize, R4),
-    R6 = validate_range(rotateSize, 0, 500*1024*1024, R5),
-    validate_unsupported_params(R6).
+settings_audit_validators() ->
+    [validate_has_params(_),
+     validate_boolean(auditdEnabled, _),
+     validate_any_value(logPath, _),
+     validate_dir(logPath, _),
+     validate_integer(rotateInterval, _),
+     validate_range(
+       rotateInterval, 15*60, 60*60*24*7,
+       fun (Name, _Min, _Max) ->
+               io_lib:format("The value of ~p must be in range from 15 minutes "
+                             "to 7 days", [Name])
+       end, _),
+     validate_by_fun(
+       fun (Value) ->
+               case Value rem 60 of
+                   0 ->
+                       ok;
+                   _ ->
+                       {error, "Value must not be a fraction of minute"}
+               end
+       end, rotateInterval, _),
+     validate_integer(rotateSize, _),
+     validate_range(rotateSize, 0, 500*1024*1024, _),
+     validate_unsupported_params(_)].
 
 handle_settings_audit_post(Req) ->
     menelaus_util:assert_is_enterprise(),
@@ -571,4 +573,4 @@ handle_settings_audit_post(Req) ->
     execute_if_validated(fun (Values) ->
                                  ns_audit_cfg:set_global(Values),
                                  reply(Req, 200)
-                         end, Req, validate_settings_audit(Args)).
+                         end, Req, Args, settings_audit_validators()).
