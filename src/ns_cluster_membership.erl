@@ -43,6 +43,7 @@
         ]).
 
 -export([supported_services/0,
+         allowed_services/1,
          supported_services_for_version/1,
          cluster_supported_services/0,
          topology_aware_services/0,
@@ -219,6 +220,11 @@ update_recovery_type(Node, NewType) ->
 supported_services() ->
     supported_services_for_version(cluster_compat_mode:supported_compat_version()).
 
+allowed_services(enterprise) ->
+    supported_services();
+allowed_services(community) ->
+    supported_services() -- enterprise_only_services().
+
 maybe_example_service() ->
     case os:getenv("ENABLE_EXAMPLE_SERVICE") =/= false of
         true ->
@@ -227,6 +233,8 @@ maybe_example_service() ->
             []
     end.
 
+enterprise_only_services() ->
+    [cbas, eventing].
 
 services_by_version() ->
     [{[0, 0],      kv},
