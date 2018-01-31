@@ -58,7 +58,8 @@
         ns_config:get_timeout({ns_rebalancer, query_states}, 10000)).
 -define(REBALANCER_APPLY_CONFIG_TIMEOUT,
         ns_config:get_timeout({ns_rebalancer, apply_config}, 300000)).
-
+-define(FAILOVER_CONFIG_SYNC_TIMEOUT,
+        ns_config:get_timeout({ns_rebalancer, failover_config_sync}, 2000)).
 %%
 %% API
 %%
@@ -115,7 +116,8 @@ deactivate_nodes(Nodes) ->
     OtherNodes = ns_node_disco:nodes_wanted() -- Nodes,
     LiveNodes  = leader_utils:live_nodes(OtherNodes),
 
-    ns_config_rep:ensure_config_seen_by_nodes(LiveNodes).
+    ns_config_rep:ensure_config_seen_by_nodes(LiveNodes,
+                                              ?FAILOVER_CONFIG_SYNC_TIMEOUT).
 
 %% @doc Fail one or more nodes. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
