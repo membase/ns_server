@@ -13,7 +13,7 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 
--module(recoverer).
+-module(recovery).
 
 -include("ns_common.hrl").
 -include_lib("eunit/include/eunit.hrl").

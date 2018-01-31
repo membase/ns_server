@@ -36,7 +36,7 @@
                             type}).
 -record(recovery_state, {uuid :: binary(),
                          bucket :: bucket_name(),
-                         recoverer_state :: any()}).
+                         recovery_state :: any()}).
 
 
 %% API
@@ -767,8 +767,8 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From, State) ->
                 error({error, {failed_nodes, FailedNodes1}})
         end,
 
-        {ok, RecoveryMap, {NewServers, NewBucketConfig}, RecovererState} =
-            case recoverer:start_recovery(BucketConfig) of
+        {ok, RecoveryMap, {NewServers, NewBucketConfig}, RecoveryState} =
+            case recovery:start_recovery(BucketConfig) of
                 {ok, _, _, _} = R ->
                     R;
                 Error1 ->
@@ -777,14 +777,14 @@ idle({start_recovery, Bucket}, {FromPid, _} = _From, State) ->
 
         true = (Servers =:= NewServers),
 
-        RV = apply_recoverer_bucket_config(Bucket, NewBucketConfig, NewServers),
+        RV = apply_recovery_bucket_config(Bucket, NewBucketConfig, NewServers),
         case RV of
             ok ->
                 RecoveryUUID = couch_uuids:random(),
                 NewState =
                     #recovery_state{bucket=Bucket,
                                     uuid=RecoveryUUID,
-                                    recoverer_state=RecovererState},
+                                    recovery_state=RecoveryState},
 
                 ensure_recovery_status(Bucket, RecoveryUUID),
 
@@ -873,39 +873,39 @@ recovery(Event, State) ->
 recovery({start_recovery, Bucket}, _From,
          #recovery_state{bucket=BucketInRecovery,
                          uuid=RecoveryUUID,
-                         recoverer_state=RState} = State) ->
+                         recovery_state=RState} = State) ->
     case Bucket =:= BucketInRecovery of
         true ->
-            RecoveryMap = recoverer:get_recovery_map(RState),
+            RecoveryMap = recovery:get_recovery_map(RState),
             {reply, {ok, RecoveryUUID, RecoveryMap}, recovery, State};
         false ->
             {reply, recovery_running, recovery, State}
     end;
 
 recovery({commit_vbucket, Bucket, UUID, VBucket}, _From,
-         #recovery_state{recoverer_state=RState} = State) ->
+         #recovery_state{recovery_state=RState} = State) ->
     Bucket = State#recovery_state.bucket,
     UUID = State#recovery_state.uuid,
 
-    case recoverer:commit_vbucket(VBucket, RState) of
+    case recovery:commit_vbucket(VBucket, RState) of
         {ok, {Servers, NewBucketConfig}, RState1} ->
-            RV = apply_recoverer_bucket_config(Bucket, NewBucketConfig, Servers),
+            RV = apply_recovery_bucket_config(Bucket, NewBucketConfig, Servers),
             case RV of
                 ok ->
-                    {ok, Map, RState2} = recoverer:note_commit_vbucket_done(VBucket, RState1),
+                    {ok, Map, RState2} = recovery:note_commit_vbucket_done(VBucket, RState1),
                     ns_bucket:set_map(Bucket, Map),
-                    case recoverer:is_recovery_complete(RState2) of
+                    case recovery:is_recovery_complete(RState2) of
                         true ->
                             ale:info(?USER_LOGGER, "Recovery of bucket `~s` completed", [Bucket]),
                             {reply, recovery_completed, idle, #idle_state{}};
                         false ->
                             ?log_debug("Committed vbucket ~b (recovery of `~s`)", [VBucket, Bucket]),
                             {reply, ok, recovery,
-                             State#recovery_state{recoverer_state=RState2}}
+                             State#recovery_state{recovery_state=RState2}}
                     end;
                 Error ->
                     {reply, Error, recovery,
-                     State#recovery_state{recoverer_state=RState1}}
+                     State#recovery_state{recovery_state=RState1}}
             end;
         Error ->
             {reply, Error, recovery, State}
@@ -924,8 +924,8 @@ recovery({stop_recovery, Bucket, UUID}, _From, State) ->
 recovery(recovery_status, _From,
          #recovery_state{uuid=RecoveryUUID,
                          bucket=Bucket,
-                         recoverer_state=RState} = State) ->
-    RecoveryMap = recoverer:get_recovery_map(RState),
+                         recovery_state=RState} = State) ->
+    RecoveryMap = recovery:get_recovery_map(RState),
 
     Status = [{bucket, Bucket},
               {uuid, RecoveryUUID},
@@ -935,8 +935,8 @@ recovery(recovery_status, _From,
 recovery({recovery_map, Bucket, RecoveryUUID}, _From,
          #recovery_state{uuid=RecoveryUUID,
                          bucket=Bucket,
-                         recoverer_state=RState} = State) ->
-    RecoveryMap = recoverer:get_recovery_map(RState),
+                         recovery_state=RState} = State) ->
+    RecoveryMap = recovery:get_recovery_map(RState),
     {reply, {ok, RecoveryMap}, recovery, State};
 
 recovery(rebalance_progress, _From, State) ->
@@ -1142,7 +1142,7 @@ do_flush_old_style(BucketName, BucketConfig) ->
             {old_style_flush_failed, Results, BadNodes}
     end.
 
-apply_recoverer_bucket_config(Bucket, BucketConfig, Servers) ->
+apply_recovery_bucket_config(Bucket, BucketConfig, Servers) ->
     {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, ?RECOVERY_QUERY_STATES_TIMEOUT),
     case Zombies of
         [] ->
