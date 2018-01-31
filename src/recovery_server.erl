@@ -150,8 +150,10 @@ handle_commit_vbucket_post_apply(Bucket, VBucket, RecoveryState, State) ->
 handle_start_recovery(Bucket, FromPid) ->
     try
         check_bucket(Bucket),
-
         Servers = get_recovery_servers(),
+
+        leader_activities:register_process({recovery, Bucket}, {all, Servers}),
+
         ns_cluster_membership:activate(Servers),
 
         sync_config(Servers, FromPid),
