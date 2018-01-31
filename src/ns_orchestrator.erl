@@ -34,9 +34,8 @@
                             failed_nodes,
                             stop_timer,
                             type}).
--record(recovery_state, {uuid :: binary(),
-                         bucket :: bucket_name(),
-                         recovery_state :: any()}).
+
+-record(recovery_state, {pid :: pid()}).
 
 
 %% API
@@ -77,8 +76,6 @@
 -define(DELETE_BUCKET_TIMEOUT, ns_config:get_timeout(delete_bucket, 30000)).
 -define(FLUSH_BUCKET_TIMEOUT, ns_config:get_timeout(flush_bucket, 60000)).
 -define(CREATE_BUCKET_TIMEOUT, ns_config:get_timeout(create_bucket, 5000)).
--define(RECOVERY_QUERY_STATES_TIMEOUT,
-        ns_config:get_timeout(recovery_query_states, 5000)).
 -define(JANITOR_RUN_TIMEOUT, ns_config:get_timeout(ensure_janitor_run, 30000)).
 -define(JANITOR_INTERVAL, ns_config:read_key_fast(janitor_interval, 5000)).
 -define(STOP_REBALANCE_TIMEOUT, ns_config:get_timeout(stop_rebalance_timeout, 60000)).
@@ -346,12 +343,7 @@ stop_recovery(Bucket, UUID) ->
 
 -spec is_recovery_running() -> boolean().
 is_recovery_running() ->
-    case ns_config:search(recovery_status) of
-        {value, {running, _Bucket, _UUID}} ->
-            true;
-        _ ->
-            false
-    end.
+    recovery_server:is_recovery_running().
 
 %%
 %% gen_fsm callbacks
@@ -451,18 +443,7 @@ handle_sync_event(Msg, From, StateName, State)
        element(1, Msg) =:= stop_recovery ->
     case StateName of
         recovery ->
-            Bucket = element(2, Msg),
-            UUID = element(3, Msg),
-
-            #recovery_state{bucket=BucketInRecovery,
-                            uuid=RecoveryUUID} = State,
-
-            case Bucket =:= BucketInRecovery andalso UUID =:= RecoveryUUID of
-                true ->
-                    ?MODULE:recovery(Msg, From, State);
-                false ->
-                    {reply, bad_recovery, recovery, State}
-            end;
+            ?MODULE:recovery(Msg, From, State);
         _ ->
             {reply, bad_recovery, StateName, State}
     end;
@@ -486,6 +467,11 @@ handle_info(janitor, StateName, StateData) ->
 handle_info({'EXIT', Pid, Reason}, rebalancing,
             #rebalancing_state{rebalancer=Pid} = State) ->
     handle_rebalance_completion(Reason, State);
+
+handle_info({'EXIT', Pid, Reason}, recovery, #recovery_state{pid = Pid}) ->
+    ale:error(?USER_LOGGER,
+              "Recovery process ~p terminated unexpectedly: ~p", [Pid, Reason]),
+    {next_state, idle, #idle_state{}};
 
 handle_info({cleanup_done, UnsafeNodes, ID}, janitor_running,
             #janitor_state{cleanup_id = CleanupID}) ->
@@ -720,84 +706,11 @@ idle(stop_rebalance, _From, State) ->
       end),
     {reply, not_rebalancing, idle, State};
 idle({start_recovery, Bucket}, {FromPid, _} = _From, State) ->
-    try
-
-        BucketConfig0 = case ns_bucket:get_bucket(Bucket) of
-                            {ok, V} ->
-                                V;
-                            Error0 ->
-                                throw(Error0)
-                        end,
-
-        case ns_bucket:bucket_type(BucketConfig0) of
-            membase ->
-                ok;
-            _ ->
-                throw(not_needed)
-        end,
-
-        FailedOverNodes = [N || {N, inactiveFailed} <- ns_cluster_membership:get_nodes_cluster_membership()],
-        Servers0 = ns_node_disco:nodes_wanted() -- FailedOverNodes,
-        Servers = ns_cluster_membership:service_nodes(Servers0, kv),
-        BucketConfig = misc:update_proplist(BucketConfig0, [{servers, Servers}]),
-        ns_cluster_membership:activate(Servers),
-        FromPidNode = erlang:node(FromPid),
-        SyncServers = Servers -- [FromPidNode] ++ [FromPidNode],
-        case ns_config_rep:ensure_config_seen_by_nodes(SyncServers) of
-            ok ->
-                ok;
-            {error, BadNodes} ->
-                ?log_error("Failed to syncrhonize config to some nodes: ~p", [BadNodes]),
-                throw({error, {failed_nodes, BadNodes}})
-        end,
-
-        case ns_rebalancer:maybe_cleanup_old_buckets(Servers) of
-            ok ->
-                ok;
-            {buckets_cleanup_failed, FailedNodes0} ->
-                throw({error, {failed_nodes, FailedNodes0}})
-        end,
-
-        ns_bucket:set_servers(Bucket, Servers),
-
-        case ns_janitor:cleanup(Bucket, [{query_states_timeout, 10000}]) of
-            ok ->
-                ok;
-            {error, _, FailedNodes1} ->
-                error({error, {failed_nodes, FailedNodes1}})
-        end,
-
-        {ok, RecoveryMap, {NewServers, NewBucketConfig}, RecoveryState} =
-            case recovery:start_recovery(BucketConfig) of
-                {ok, _, _, _} = R ->
-                    R;
-                Error1 ->
-                    throw(Error1)
-            end,
-
-        true = (Servers =:= NewServers),
-
-        RV = apply_recovery_bucket_config(Bucket, NewBucketConfig, NewServers),
-        case RV of
-            ok ->
-                RecoveryUUID = couch_uuids:random(),
-                NewState =
-                    #recovery_state{bucket=Bucket,
-                                    uuid=RecoveryUUID,
-                                    recovery_state=RecoveryState},
-
-                ensure_recovery_status(Bucket, RecoveryUUID),
-
-                ale:info(?USER_LOGGER, "Put bucket `~s` into recovery mode", [Bucket]),
-
-                {reply, {ok, RecoveryUUID, RecoveryMap}, recovery, NewState};
-            Error2 ->
-                throw(Error2)
-        end
-
-    catch
-        throw:E ->
-            {reply, E, idle, State}
+    case recovery_server:start_recovery(Bucket, FromPid) of
+        {ok, Pid, UUID, Map} ->
+            {reply, {ok, UUID, Map}, recovery, #recovery_state{pid = Pid}};
+        Error ->
+            {reply, Error, idle, State}
     end;
 idle({ensure_janitor_run, Item}, From, State) ->
     do_request_janitor_run(Item, fun(Reason) -> gen_fsm:reply(From, Reason) end,
@@ -870,74 +783,30 @@ recovery(Event, State) ->
     {next_state, recovery, State}.
 
 %% Synchronous recovery events
-recovery({start_recovery, Bucket}, _From,
-         #recovery_state{bucket=BucketInRecovery,
-                         uuid=RecoveryUUID,
-                         recovery_state=RState} = State) ->
-    case Bucket =:= BucketInRecovery of
-        true ->
-            RecoveryMap = recovery:get_recovery_map(RState),
-            {reply, {ok, RecoveryUUID, RecoveryMap}, recovery, State};
-        false ->
-            {reply, recovery_running, recovery, State}
+recovery({start_recovery, _Bucket}, _From, State) ->
+    {reply, recovery_running, recovery, State};
+recovery({commit_vbucket, Bucket, UUID, VBucket}, _From, State) ->
+    Result = call_recovery_server(State,
+                                  commit_vbucket, [Bucket, UUID, VBucket]),
+    case Result of
+        recovery_completed ->
+            {reply, Result, idle, #idle_state{}};
+        _ ->
+            {reply, Result, recovery, State}
     end;
-
-recovery({commit_vbucket, Bucket, UUID, VBucket}, _From,
-         #recovery_state{recovery_state=RState} = State) ->
-    Bucket = State#recovery_state.bucket,
-    UUID = State#recovery_state.uuid,
-
-    case recovery:commit_vbucket(VBucket, RState) of
-        {ok, {Servers, NewBucketConfig}, RState1} ->
-            RV = apply_recovery_bucket_config(Bucket, NewBucketConfig, Servers),
-            case RV of
-                ok ->
-                    {ok, Map, RState2} = recovery:note_commit_vbucket_done(VBucket, RState1),
-                    ns_bucket:set_map(Bucket, Map),
-                    case recovery:is_recovery_complete(RState2) of
-                        true ->
-                            ale:info(?USER_LOGGER, "Recovery of bucket `~s` completed", [Bucket]),
-                            {reply, recovery_completed, idle, #idle_state{}};
-                        false ->
-                            ?log_debug("Committed vbucket ~b (recovery of `~s`)", [VBucket, Bucket]),
-                            {reply, ok, recovery,
-                             State#recovery_state{recovery_state=RState2}}
-                    end;
-                Error ->
-                    {reply, Error, recovery,
-                     State#recovery_state{recovery_state=RState1}}
-            end;
+recovery({stop_recovery, Bucket, UUID}, _From, State) ->
+    case call_recovery_server(State, stop_recovery, [Bucket, UUID]) of
+        ok ->
+            {reply, ok, idle, #idle_state{}};
         Error ->
             {reply, Error, recovery, State}
     end;
-
-recovery({stop_recovery, Bucket, UUID}, _From, State) ->
-    Bucket = State#recovery_state.bucket,
-    UUID = State#recovery_state.uuid,
-
-    ns_config:set(recovery_status, not_running),
-
-    ale:info(?USER_LOGGER, "Recovery of bucket `~s` aborted", [Bucket]),
-
-    {reply, ok, idle, #idle_state{}};
-
-recovery(recovery_status, _From,
-         #recovery_state{uuid=RecoveryUUID,
-                         bucket=Bucket,
-                         recovery_state=RState} = State) ->
-    RecoveryMap = recovery:get_recovery_map(RState),
-
-    Status = [{bucket, Bucket},
-              {uuid, RecoveryUUID},
-              {recovery_map, RecoveryMap}],
-
-    {reply, {ok, Status}, recovery, State};
-recovery({recovery_map, Bucket, RecoveryUUID}, _From,
-         #recovery_state{uuid=RecoveryUUID,
-                         bucket=Bucket,
-                         recovery_state=RState} = State) ->
-    RecoveryMap = recovery:get_recovery_map(RState),
-    {reply, {ok, RecoveryMap}, recovery, State};
+recovery(recovery_status, _From, State) ->
+    {reply, call_recovery_server(State, recovery_status), recovery, State};
+recovery({recovery_map, Bucket, RecoveryUUID}, _From, State) ->
+    {reply,
+     call_recovery_server(State, recovery_map, [Bucket, RecoveryUUID]),
+     recovery, State};
 
 recovery(rebalance_progress, _From, State) ->
     {reply, not_running, recovery, State};
@@ -1142,21 +1011,6 @@ do_flush_old_style(BucketName, BucketConfig) ->
             {old_style_flush_failed, Results, BadNodes}
     end.
 
-apply_recovery_bucket_config(Bucket, BucketConfig, Servers) ->
-    {ok, _, Zombies} = janitor_agent:query_states(Bucket, Servers, ?RECOVERY_QUERY_STATES_TIMEOUT),
-    case Zombies of
-        [] ->
-            janitor_agent:apply_new_bucket_config_with_timeout(
-              Bucket, undefined, Servers,
-              BucketConfig, [], undefined_timeout);
-        _ ->
-            ?log_error("Failed to query states from some of the nodes: ~p", [Zombies]),
-            {error, {failed_nodes, Zombies}}
-    end.
-
-ensure_recovery_status(Bucket, UUID) ->
-    ns_config:set(recovery_status, {running, Bucket, UUID}).
-
 %% NOTE: 2.0.1 and earlier nodes only had
 %% ns_port_sup. I believe it's harmless not to clean
 %% their moxis
@@ -1357,3 +1211,9 @@ need_exit(_, service_upgrade) ->
     true;
 need_exit(_, _) ->
     false.
+
+call_recovery_server(State, Call) ->
+    call_recovery_server(State, Call, []).
+
+call_recovery_server(#recovery_state{pid = Pid}, Call, Args) ->
+    erlang:apply(recovery_server, Call, [Pid | Args]).
