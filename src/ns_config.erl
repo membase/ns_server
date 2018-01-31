@@ -1378,17 +1378,7 @@ sync_announcements() ->
     %% queued we'll receive reply only after all currently queued
     %% messages to ns_config_events_local are consumed
     gen_event:which_handlers(ns_config_events_local),
-    misc:wait_for_process(Pid, infinity),
-    receive
-        %% if our process is trapping exits we need to consume exit
-        %% message. And do that 'linked process died badly' handling
-        %% ourselves
-        {'EXIT', Pid, Reason} ->
-            normal = Reason,
-            ok
-    after 0 ->
-            ok
-    end.
+    misc:wait_for_process(Pid, infinity).
 
 latest() ->
     'latest-config-marker'.
