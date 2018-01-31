@@ -45,7 +45,8 @@
 
 % API
 -export([ensure_config_pushed/0,
-         ensure_config_seen_by_nodes/0, ensure_config_seen_by_nodes/1,
+         ensure_config_seen_by_nodes/0,
+         ensure_config_seen_by_nodes/1, ensure_config_seen_by_nodes/2,
          pull_and_push/1, pull_from_one_node_directly/1]).
 
 -export([get_remote/2, pull_remotes/1]).
@@ -263,8 +264,11 @@ ensure_config_seen_by_nodes() ->
     ensure_config_seen_by_nodes(ns_node_disco:nodes_actual_other()).
 
 ensure_config_seen_by_nodes(Nodes) ->
+    ensure_config_seen_by_nodes(Nodes, ?SYNCHRONIZE_TIMEOUT).
+
+ensure_config_seen_by_nodes(Nodes, Timeout) ->
     ns_config:sync_announcements(),
-    synchronize_remote(Nodes).
+    synchronize_remote(Nodes, Timeout).
 
 pull_and_push([]) -> ok;
 pull_and_push(Nodes) ->
@@ -285,11 +289,11 @@ pull_remotes(Nodes) ->
 synchronize_local() ->
     gen_server:call(?MODULE, synchronize, ?SYNCHRONIZE_TIMEOUT).
 
-synchronize_remote(Nodes) ->
+synchronize_remote(Nodes, Timeout) ->
     ok = synchronize_local(),
     {_Replies, BadNodes} =
         misc:multi_call(Nodes, ?MODULE,
-                        synchronize_everything, ?SYNCHRONIZE_TIMEOUT,
+                        synchronize_everything, Timeout,
                         fun (R) ->
                                 R =:= ok
                         end),
