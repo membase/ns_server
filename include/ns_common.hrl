@@ -251,4 +251,21 @@
                             end
                     end)).
 
+-define(must_flush(Pattern), ?must_flush(Pattern, 1, 15000)).
+-define(must_flush(Pattern, N, Timeout),
+        misc:letrec(
+          [0],
+          fun (_Rec, I)
+                when I =:= N ->
+                  ok;
+              (Rec, I) ->
+                  receive
+                      Pattern ->
+                          Rec(Rec, I + 1)
+                  after
+                      Timeout ->
+                          throw({error, {no_messages, Timeout, ??Pattern}})
+                  end
+          end)).
+
 -endif.
