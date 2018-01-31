@@ -585,8 +585,7 @@ do_handle_add_node(Req, GroupUUID) ->
             reply_json(Req, ErrorList, 400)
     end.
 
-parse_failover_args(Req) ->
-    Params = Req:parse_post(),
+parse_common_failover_args(Params) ->
     NodeArg = proplists:get_value("otpNode", Params, "undefined"),
     Node = (catch list_to_existing_atom(NodeArg)),
     case Node of
@@ -598,11 +597,23 @@ parse_failover_args(Req) ->
             {ok, Node}
     end.
 
+parse_graceful_failover_args(Req) ->
+    parse_common_failover_args(Req:parse_post()).
+
+parse_hard_failover_args(Req) ->
+    Params = Req:parse_post(),
+    case parse_common_failover_args(Params) of
+        {ok, Node} ->
+            AllowUnsafe = proplists:get_value("allowUnsafe", Params),
+            {ok, Node, AllowUnsafe =:= "true"};
+        Error ->
+            Error
+    end.
 
 handle_failover(Req) ->
-    case parse_failover_args(Req) of
-        {ok, Node} ->
-            case ns_cluster_membership:failover(Node) of
+    case parse_hard_failover_args(Req) of
+        {ok, Node, AllowUnsafe} ->
+            case ns_cluster_membership:failover(Node, AllowUnsafe) of
                 ok ->
                     ns_audit:failover_node(Req, Node, hard),
                     reply(Req, 200);
@@ -631,7 +642,7 @@ handle_failover(Req) ->
     end.
 
 handle_start_graceful_failover(Req) ->
-    case parse_failover_args(Req) of
+    case parse_graceful_failover_args(Req) of
         {ok, Node} ->
             Msg = case ns_orchestrator:start_graceful_failover(Node) of
                       ok ->

@@ -34,7 +34,7 @@
          get_node_server_group/2,
          activate/1,
          deactivate/1,
-         failover/1,
+         failover/2,
          re_failover/1,
          system_joinable/0,
          start_rebalance/3,
@@ -179,8 +179,8 @@ stop_rebalance_if_safe() ->
 is_balanced() ->
     not ns_orchestrator:needs_rebalance().
 
-failover(Node) ->
-    ns_orchestrator:failover(Node).
+failover(Node, AllowUnsafe) ->
+    ns_orchestrator:failover(Node, AllowUnsafe).
 
 re_failover_possible(NodeString) ->
     case (catch list_to_existing_atom(NodeString)) of

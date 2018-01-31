@@ -43,7 +43,7 @@
          update_bucket/4,
          delete_bucket/1,
          flush_bucket/1,
-         failover/1,
+         failover/2,
          try_autofailover/1,
          needs_rebalance/0,
          request_janitor_run/1,
@@ -160,7 +160,7 @@ flush_bucket(BucketName) ->
     gen_fsm:sync_send_event(?SERVER, {flush_bucket, BucketName}, infinity).
 
 
--spec failover(atom()) ->
+-spec failover(atom(), boolean()) ->
                       ok |
                       rebalance_running |
                       in_recovery |
@@ -172,9 +172,9 @@ flush_bucket(BucketName) ->
                       %% believes to be an impossible return value if all
                       %% other options are also covered
                       any().
-failover(Node) ->
+failover(Node, AllowUnsafe) ->
     wait_for_orchestrator(),
-    gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
+    gen_fsm:sync_send_event(?SERVER, {failover, [Node], AllowUnsafe}, infinity).
 
 
 -spec try_autofailover(list()) -> ok |
@@ -616,17 +616,19 @@ idle({delete_bucket, BucketName}, _From, State) ->
     end,
 
     {reply, Reply, idle, State};
-idle({failover, Node}, From, State) when is_atom(Node) ->
-    idle({failover, [Node]}, From, State);
-idle({failover, Nodes}, _From, State) ->
-    Result = ns_rebalancer:run_failover(Nodes),
+idle({failover, Node}, From, State) ->
+    %% calls from pre-vulcan nodes
+    idle({failover, [Node], false}, From, State);
+idle({failover, Nodes, AllowUnsafe}, _From, State) ->
+    Result = ns_rebalancer:run_failover(Nodes, AllowUnsafe),
+
     {reply, Result, idle, State};
 idle({try_autofailover, Nodes}, From, State) ->
     case ns_rebalancer:validate_autofailover(Nodes) of
         {error, UnsafeBuckets} ->
             {reply, {autofailover_unsafe, UnsafeBuckets}, idle, State};
         ok ->
-            idle({failover, Nodes}, From, State)
+            idle({failover, Nodes, false}, From, State)
     end;
 idle({start_graceful_failover, Node}, _From, State) ->
     case ns_rebalancer:start_link_graceful_failover(Node) of

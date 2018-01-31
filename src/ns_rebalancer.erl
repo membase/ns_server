@@ -41,7 +41,7 @@
          verify_replication/3,
          start_link_graceful_failover/1,
          generate_vbucket_map_options/2,
-         run_failover/1,
+         run_failover/2,
          rebalance_topology_aware_services/4]).
 
 -export([wait_local_buckets_shutdown_complete/0]). % used via rpc:multicall
@@ -63,12 +63,14 @@
 %% API
 %%
 
-run_failover(Nodes) ->
+run_failover(Nodes, AllowUnsafe) ->
     ok = check_no_tap_buckets(),
     case check_failover_possible(Nodes) of
         ok ->
             Result = leader_activities:run_activity(
-                       failover, majority, ?cut(orchestrate_failover(Nodes))),
+                       failover, majority,
+                       ?cut(orchestrate_failover(Nodes)),
+                       [{unsafe, AllowUnsafe}]),
 
             case Result of
                 {leader_activities_error, _, quorum_lost} ->
