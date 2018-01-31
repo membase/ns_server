@@ -76,30 +76,48 @@ run_failover(Nodes) ->
 orchestrate_failover(Nodes) ->
     ale:info(?USER_LOGGER, "Starting failing over ~p", [Nodes]),
     master_activity_events:note_failover(Nodes),
-    failover(Nodes),
-    ale:info(?USER_LOGGER, "Failed over ~p: ok", [Nodes]),
+
+    ErrorNodes = failover(Nodes),
+
+    case ErrorNodes of
+        [] ->
+            ns_cluster:counter_inc(failover_complete),
+            ale:info(?USER_LOGGER, "Failed over ~p: ok", [Nodes]);
+        _ ->
+            ns_cluster:counter_inc(failover_incomplete),
+            ale:error(?USER_LOGGER,
+                      "Failover couldn't "
+                      "complete on some nodes:~n~p", [ErrorNodes])
+    end,
+
     ns_cluster:counter_inc(failover),
+    deactivate_nodes(Nodes),
+
+    ok.
+
+deactivate_nodes([]) ->
+    ok;
+deactivate_nodes(Nodes) ->
+    ale:info(?USER_LOGGER, "Deactivating failed over nodes ~p", [Nodes]),
     ns_cluster_membership:deactivate(Nodes),
 
     OtherNodes = ns_node_disco:nodes_wanted() -- Nodes,
     LiveNodes  = leader_utils:live_nodes(OtherNodes),
 
-    ns_config_rep:ensure_config_seen_by_nodes(LiveNodes),
-
-    ok.
+    ns_config_rep:ensure_config_seen_by_nodes(LiveNodes).
 
 %% @doc Fail one or more nodes. Doesn't eject the node from the cluster. Takes
 %% effect immediately.
 failover(Nodes) ->
-    ok = failover_buckets(Nodes),
-    ok = failover_services(Nodes).
+    lists:umerge([failover_buckets(Nodes),
+                  failover_services(Nodes)]).
 
 failover_buckets(Nodes) ->
     Results = lists:flatmap(fun ({Bucket, BucketConfig}) ->
                                     failover_bucket(Bucket, BucketConfig, Nodes)
                             end, ns_bucket:get_buckets()),
     failover_buckets_handle_failover_vbuckets(Results),
-    ok.
+    failover_handle_results(Results).
 
 failover_buckets_handle_failover_vbuckets(Results) ->
     FailoverVBuckets =
@@ -113,6 +131,26 @@ failover_buckets_handle_failover_vbuckets(Results) ->
 
     KVs = [{{node, N, failover_vbuckets}, VBs} || {N, VBs} <- FailoverVBuckets],
     ns_config:set(KVs).
+
+failover_handle_results(Results) ->
+    NodeStatuses =
+        misc:groupby_map(fun (Result) ->
+                                 Node   = proplists:get_value(node, Result),
+                                 Status = proplists:get_value(status, Result),
+
+                                 {Node, Status}
+                         end, Results),
+
+    lists:filtermap(fun ({Node, Statuses}) ->
+                            NonOKs = [S || S <- Statuses, S =/= ok],
+
+                            case NonOKs of
+                                [] ->
+                                    false;
+                                _ ->
+                                    {true, Node}
+                            end
+                    end, NodeStatuses).
 
 failover_bucket(Bucket, BucketConfig, Nodes) ->
     master_activity_events:note_bucket_failover_started(Bucket, Nodes),
@@ -137,17 +175,18 @@ do_failover_bucket(membase, Bucket, BucketConfig, Nodes) ->
       {vbuckets, node_vbuckets(Map, N)}] || N <- Nodes].
 
 failover_services(Nodes) ->
+    failover_services(cluster_compat_mode:is_cluster_41(), Nodes).
+
+failover_services(false, _Nodes) ->
+    [];
+failover_services(true, Nodes) ->
     Config    = ns_config:get(),
     Services0 = lists:flatmap(
                   ns_cluster_membership:node_services(Config, _), Nodes),
     Services  = lists:usort(Services0) -- [kv],
 
-    case cluster_compat_mode:is_cluster_41() of
-        true ->
-            lists:foreach(failover_service(Config, _, Nodes), Services);
-        false ->
-            ok
-    end.
+    Results = lists:flatmap(failover_service(Config, _, Nodes), Services),
+    failover_handle_results(Results).
 
 failover_service(Config, Service, Nodes) ->
     ns_cluster_membership:failover_service_nodes(Config, Service, Nodes),
@@ -161,10 +200,14 @@ failover_service(Config, Service, Nodes) ->
         ok ->
             ?log_debug("Failed over service ~p on nodes ~p successfully",
                        [Service, Nodes]);
-        Error ->
+        _ ->
             ?log_error("Failed to failover service ~p on nodes ~p: ~p",
-                       [Service, Nodes, Error])
-    end.
+                       [Service, Nodes, Result])
+    end,
+
+    [[{node, Node},
+      {status, Result},
+      {service, Service}] || Node <- Nodes].
 
 get_failover_vbuckets(Config, Node) ->
     ns_config:search(Config, {node, Node, failover_vbuckets}, []).
