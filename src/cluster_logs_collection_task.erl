@@ -315,10 +315,16 @@ start_collection_per_node(TimestampS, Parent, Options) ->
             Parent ! {self(), {error, Status, Output}}
     end.
 
-start_upload_per_node(Path, BaseURL, Parent, _Options) ->
+start_upload_per_node(Path, BaseURL, Parent, Options) ->
     URL = BaseURL ++ mochiweb_util:quote_plus(filename:basename(Path)),
     proc_lib:init_ack(Parent, {ok, self(), URL}),
-    Args = ["--watch-stdin", "--just-upload-into=" ++ URL, Path],
+    MaybeUploadProxy = case proplists:get_value(upload_proxy, Options) of
+                           undefined -> [];
+                           V -> ["--upload-proxy=" ++ V]
+                       end,
+
+    Args = MaybeUploadProxy ++
+        ["--watch-stdin", "--just-upload-into=" ++ URL, Path],
     ?log_debug("Spawning upload cbcollect_info: ~p", [Args]),
     {Status, Output} =
         misc:run_external_tool(path_config:component_path(bin, "cbcollect_info"),

@@ -815,7 +815,8 @@
           "optional_fields" : {
               "sessionid" : "",
               "tmp_dir" : "",
-              "log_dir" : ""
+              "log_dir" : "",
+              "upload_proxy" : ""
           }
       },
       {

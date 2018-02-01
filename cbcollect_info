@@ -1134,7 +1134,7 @@ class CurlKiller:
     def disarm(self):
         self.p = None
 
-def do_upload_and_exit(path, url):
+def do_upload_and_exit(path, url, proxy):
     output_fd, output_file = tempfile.mkstemp()
     os.close(output_fd)
 
@@ -1142,6 +1142,7 @@ def do_upload_and_exit(path, url):
 
     args = ["curl", "-sS",
             "--output", output_file,
+            "--proxy", proxy,
             "--write-out", "%{http_code}", "--upload-file", path, url]
     AltExit.lock.acquire()
     try:
@@ -1252,6 +1253,8 @@ def main():
                       help="Run only tasks matching regexp. For debugging purposes only.")
     parser.add_option("--tmp-dir", dest="tmp_dir", default=None,
                       help="set the temp dir used while processing collected data. Overrides the TMPDIR env variable if set")
+    parser.add_option("--upload-proxy", dest="upload_proxy", default="",
+                      help="specifies proxy for upload")
     options, args = parser.parse_args()
 
     if len(args) != 1:
@@ -1305,7 +1308,8 @@ def main():
       os.environ['PATH'] = ';'.join(path)
 
     if options.just_upload_into != None:
-        do_upload_and_exit(args[0], options.just_upload_into)
+        do_upload_and_exit(args[0], options.just_upload_into,
+                options.upload_proxy)
 
     runner = TaskRunner(verbosity=options.verbosity,
                         task_regexp=options.task_regexp,
@@ -1385,9 +1389,9 @@ def main():
     runner.zip(zip_filename, zip_node)
 
     if upload_url and options.redact_level != "none":
-        do_upload_and_exit(redact_zip_file, upload_url)
+        do_upload_and_exit(redact_zip_file, upload_url, options.upload_proxy)
     elif upload_url:
-        do_upload_and_exit(zip_filename, upload_url)
+        do_upload_and_exit(zip_filename, upload_url, options.upload_proxy)
 
 def find_primary_addr(default = None):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

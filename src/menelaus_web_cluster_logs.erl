@@ -190,6 +190,10 @@ parse_validate_collect_params(Params, Config) ->
     %% we handle no ticket or empty ticket the same
     Ticket = proplists:get_value("ticket", Params, ""),
 
+    UploadProxy = case proplists:get_value("uploadProxy", Params) of
+                      undefined -> [];
+                      P -> [{upload_proxy, P}]
+                  end,
     LogDir = case proplists:get_value("logDir", Params) of
                  undefined -> [];
                  Val -> case misc:is_absolute_path(Val) of
@@ -244,12 +248,13 @@ parse_validate_collect_params(Params, Config) ->
                   end,
 
     BasicErrors = [E || {error, E} <- NodesRV ++ TmpDir ++ LogDir ++
-                                      RedactLevel ++ MaybeUpload],
+                                      UploadProxy ++ RedactLevel ++
+                                      MaybeUpload],
     case BasicErrors of
         [] ->
             [{ok, Nodes}] = NodesRV,
             [{ok, Upload}] = MaybeUpload,
-            Options = RedactLevel ++ TmpDir ++ LogDir,
+            Options = RedactLevel ++ TmpDir ++ LogDir ++ UploadProxy,
             {ok, Nodes, Upload, Options};
         _ ->
             {errors, BasicErrors}
