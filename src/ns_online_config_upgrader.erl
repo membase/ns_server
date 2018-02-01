@@ -44,11 +44,17 @@ do_upgrade_config(Config, FinalVersion) ->
         {value, Ver} ->
             {NewVersion, Upgrade} = upgrade(Ver, Config),
             ?log_info("Performing online config upgrade to ~p", [NewVersion]),
-            upgrade_compat_version(NewVersion) ++ Upgrade
+            upgrade_compat_version(NewVersion) ++
+                maybe_final_upgrade(NewVersion) ++ Upgrade
     end.
 
 upgrade_compat_version(NewVersion) ->
     [{set, cluster_compat_version, NewVersion}].
+
+maybe_final_upgrade(?LATEST_VERSION_NUM) ->
+    ns_audit_cfg:upgrade_descriptors();
+maybe_final_upgrade(_) ->
+    [].
 
 upgrade(?VERSION_30, Config) ->
     {?VERSION_40,
