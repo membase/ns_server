@@ -16,6 +16,7 @@
 
 -module(ns_online_config_upgrader).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
 
 -export([upgrade_config/1]).
@@ -24,9 +25,7 @@ upgrade_config(NewVersion) ->
     true = (NewVersion =< ?LATEST_VERSION_NUM),
 
     ok = ns_config:upgrade_config_explicitly(
-           fun (Config) ->
-                   do_upgrade_config(Config, NewVersion)
-           end).
+           do_upgrade_config(_, NewVersion)).
 
 do_upgrade_config(Config, FinalVersion) ->
     case ns_config:search(Config, cluster_compat_version) of
@@ -39,46 +38,53 @@ do_upgrade_config(Config, FinalVersion) ->
         %% default config, but that uncovered issues that I'm too scared to
         %% touch at the moment.
         false ->
-            [{set, cluster_compat_version, ?VERSION_30}];
+            upgrade_compat_version(?VERSION_30);
         {value, undefined} ->
-            [{set, cluster_compat_version, ?VERSION_30}];
-        {value, ?VERSION_30} ->
-            [{set, cluster_compat_version, ?VERSION_40} |
-             upgrade_config_from_3_0_to_4_0(Config)];
-        {value, ?VERSION_40} ->
-            [{set, cluster_compat_version, ?VERSION_41} |
-             upgrade_config_from_4_0_to_4_1(Config)];
-        {value, ?VERSION_41} ->
-            [{set, cluster_compat_version, ?VERSION_45} |
-             upgrade_config_from_4_1_to_4_5(Config)];
-        {value, ?VERSION_45} ->
-            [{set, cluster_compat_version, ?VERSION_46}];
-        {value, ?VERSION_46} ->
-            [{set, cluster_compat_version, ?VERSION_50} |
-             upgrade_config_from_4_6_to_5_0(Config)];
-        {value, ?VERSION_50} ->
-            [{set, cluster_compat_version, ?VERSION_51} |
-             upgrade_config_from_5_0_to_5_1(Config)];
-        {value, ?VERSION_51} ->
-            [{set, cluster_compat_version, ?VULCAN_VERSION_NUM} |
-             upgrade_config_from_5_1_to_vulcan(Config)]
+            upgrade_compat_version(?VERSION_30);
+        {value, Ver} ->
+            {NewVersion, Upgrade} = upgrade(Ver, Config),
+            ?log_info("Performing online config upgrade to ~p", [NewVersion]),
+            upgrade_compat_version(NewVersion) ++ Upgrade
     end.
 
-upgrade_config_from_3_0_to_4_0(Config) ->
-    ?log_info("Performing online config upgrade to 4.0 version"),
-    goxdcr_upgrade:config_upgrade(Config) ++
-        index_settings_manager:config_upgrade_to_40().
+upgrade_compat_version(NewVersion) ->
+    [{set, cluster_compat_version, NewVersion}].
 
-upgrade_config_from_4_0_to_4_1(Config) ->
-    ?log_info("Performing online config upgrade to 4.1 version"),
-    create_service_maps(Config, [n1ql, index]).
+upgrade(?VERSION_30, Config) ->
+    {?VERSION_40,
+     goxdcr_upgrade:config_upgrade(Config) ++
+         index_settings_manager:config_upgrade_to_40()};
 
-upgrade_config_from_4_1_to_4_5(Config) ->
-    ?log_info("Performing online config upgrade to 4.5 version"),
-    RV = create_service_maps(Config, [fts]) ++
-        menelaus_users:upgrade_to_4_5(Config),
-    RV1 = index_settings_manager:config_upgrade_to_45(Config) ++ RV,
-    add_index_ram_alert_limit(Config) ++ RV1.
+upgrade(?VERSION_40, Config) ->
+    {?VERSION_41,
+     create_service_maps(Config, [n1ql, index])};
+
+upgrade(?VERSION_41, Config) ->
+    {?VERSION_45,
+     create_service_maps(Config, [fts]) ++
+         menelaus_users:upgrade_to_4_5(Config) ++
+         index_settings_manager:config_upgrade_to_45(Config) ++
+         add_index_ram_alert_limit(Config)};
+
+upgrade(?VERSION_45, _Config) ->
+    {?VERSION_46, []};
+
+upgrade(?VERSION_46, Config) ->
+    {?VERSION_50,
+     [{delete, roles_definitions} | menelaus_users:config_upgrade() ++
+          ns_bucket:config_upgrade_to_50(Config)]};
+
+upgrade(?VERSION_50, Config) ->
+    {?VERSION_51,
+     ns_ssl_services_setup:upgrade_client_cert_auth_to_51(Config) ++
+         ns_bucket:config_upgrade_to_51(Config)};
+
+upgrade(?VERSION_51, Config) ->
+    {?VULCAN_VERSION_NUM,
+     menelaus_web_auto_failover:config_upgrade_to_vulcan(Config) ++
+         query_settings_manager:config_upgrade_to_vulcan() ++
+         eventing_settings_manager:config_upgrade_to_vulcan() ++
+         ns_bucket:config_upgrade_to_vulcan(Config)}.
 
 add_index_ram_alert_limit(Config) ->
     {value, Current} = ns_config:search(Config, alert_limits),
@@ -95,20 +101,3 @@ create_service_maps(Config, Services) ->
     Maps = [{S, ns_cluster_membership:service_nodes(Config, ActiveNodes, S)} ||
                 S <- Services],
     [{set, {service_map, Service}, Map} || {Service, Map} <- Maps].
-
-upgrade_config_from_4_6_to_5_0(Config) ->
-    ?log_info("Performing online config upgrade to 5.0 version"),
-    [{delete, roles_definitions} | menelaus_users:config_upgrade() ++
-         ns_bucket:config_upgrade_to_50(Config)].
-
-upgrade_config_from_5_0_to_5_1(Config) ->
-    ?log_info("Performing online config upgrade to 5.1 version"),
-    ns_ssl_services_setup:upgrade_client_cert_auth_to_51(Config) ++
-        ns_bucket:config_upgrade_to_51(Config).
-
-upgrade_config_from_5_1_to_vulcan(Config) ->
-    ?log_info("Performing online config upgrade to Vulcan"),
-    menelaus_web_auto_failover:config_upgrade_to_vulcan(Config) ++
-        query_settings_manager:config_upgrade_to_vulcan() ++
-        eventing_settings_manager:config_upgrade_to_vulcan() ++
-        ns_bucket:config_upgrade_to_vulcan(Config).
