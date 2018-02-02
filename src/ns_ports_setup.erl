@@ -148,40 +148,6 @@ do_children_loop_continue(Children, Sup, Status) ->
             set_children_and_loop(NewChildren, Sup, Status)
     end.
 
-maybe_create_ssl_proxy_spec(Config) ->
-    UpstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
-    DownstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}, undefined),
-    LocalMemcachedPort = ns_config:search_node_prop(node(), Config, memcached, port),
-    case UpstreamPort =/= undefined andalso DownstreamPort =/= undefined of
-        true ->
-            [create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort)];
-        _ ->
-            []
-    end.
-
-create_ssl_proxy_spec(UpstreamPort, DownstreamPort, LocalMemcachedPort) ->
-    Path = ns_ssl_services_setup:ssl_cert_key_path(),
-    CACertPath = ns_ssl_services_setup:ssl_cacert_key_path(),
-
-    Args = [{upstream_port, UpstreamPort},
-            {downstream_port, DownstreamPort},
-            {local_memcached_port, LocalMemcachedPort},
-            {cert_file, Path},
-            {private_key_file, Path},
-            {cacert_file, CACertPath},
-            {ssl_minimum_protocol, ns_ssl_services_setup:ssl_minimum_protocol()}],
-
-    ErlangArgs = ["-smp", "enable",
-                  "+P", "327680",
-                  "+K", "true",
-                  "-kernel", "error_logger", "false",
-                  "-sasl", "sasl_error_logger", "false",
-                  "-nouser",
-                  "-proto_dist", misc:get_proto_dist_type(),
-                  "-run", "child_erlang", "child_start", "ns_ssl_proxy"],
-
-    create_erl_node_spec(xdcr_proxy, Args, "NS_SSL_PROXY_ENV_ARGS", ErlangArgs).
-
 create_erl_node_spec(Type, Args, EnvArgsVar, ErlangArgs) ->
     PathArgs = ["-pa"] ++ lists:reverse(code:get_path()),
     EnvArgsTail = [{K, V}
@@ -276,8 +242,7 @@ do_dynamic_children(shutdown, Config) ->
     [memcached_spec(),
      moxi_spec(Config),
      saslauthd_port_spec(Config),
-     per_bucket_moxi_specs(Config),
-     maybe_create_ssl_proxy_spec(Config)];
+     per_bucket_moxi_specs(Config)];
 do_dynamic_children(normal, Config) ->
     [memcached_spec(),
      moxi_spec(Config),
@@ -287,7 +252,6 @@ do_dynamic_children(normal, Config) ->
      saslauthd_port_spec(Config),
      goxdcr_spec(Config),
      per_bucket_moxi_specs(Config),
-     maybe_create_ssl_proxy_spec(Config),
      fts_spec(Config),
      eventing_spec(Config),
      cbas_spec(Config),
