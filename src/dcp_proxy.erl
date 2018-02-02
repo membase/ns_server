@@ -279,6 +279,8 @@ do_negotiate_features(_Sock, _Type, _ConnName, []) ->
     ok;
 do_negotiate_features(Sock, Type, ConnName, Features) ->
     case mc_client_binary:hello(Sock, "proxy", list_to_binary(Features)) of
+        {ok, undefined} ->
+            {error, Features};
         {ok, RV} ->
             Negotiated = [<<V:16>> || <<V:16>> <= RV],
             case Features -- Negotiated of
