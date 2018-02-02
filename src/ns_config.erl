@@ -1,4 +1,4 @@
-% Copyright (c) 2009, NorthScale, Inc.
+% Copyright (c) 2009, Couchbase, Inc.
 % Copyright (c) 2008, Cliff Moon
 % Copyright (c) 2008, Powerset, Inc
 %
@@ -32,7 +32,7 @@
 %
 % Original Author: Cliff Moon
 %
-% But very very heavily mutated by northscale and couchbase since
+% But very very heavily mutated by Couchbase and couchbase since
 % then. All bugs are couchbase's.
 
 -module(ns_config).

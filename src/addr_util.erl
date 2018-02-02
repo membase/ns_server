@@ -1,5 +1,5 @@
-%% @author Northscale <info@northscale.com>
-%% @copyright 2010 NorthScale, Inc.
+%% @author Couchbase <info@couchbase.com>
+%% @copyright 2010-2013 Couchbase, Inc.
 %% All rights reserved.
 
 -module(addr_util).
