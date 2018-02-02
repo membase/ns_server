@@ -25,16 +25,51 @@
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, terminate/2, code_change/3]).
 
--export([start_link/0, get_global/0, set_global/1, default_audit_json_path/0, get_log_path/0]).
+-export([start_link/0, get_global/0, set_global/1, default_audit_json_path/0,
+         get_log_path/0]).
 
--export([upgrade_descriptors/0]).
+-export([upgrade_descriptors/0, upgrade_to_vulcan/1, get_descriptors/1]).
 
-string_key(log_path) ->
-    true;
-string_key(descriptors_path) ->
-    true;
-string_key(_) ->
-    false.
+-record(state, {global,
+                merged}).
+
+jsonifier(log_path) ->
+    fun list_to_binary/1;
+jsonifier(descriptors_path) ->
+    fun list_to_binary/1;
+jsonifier(uuid) ->
+    fun list_to_binary/1;
+jsonifier(disabled_users) ->
+    %% TODO: dropping domains on the floor until memcached fixes MB-27839
+    fun (UList) ->
+            [list_to_binary(U) || {U, _} <- UList]
+    end;
+jsonifier(_) ->
+    fun functools:id/1.
+
+version(CompatMode) ->
+    case cluster_compat_mode:is_version_vulcan(CompatMode) of
+        true ->
+            2;
+        false ->
+            1
+    end.
+
+fields(1) ->
+    [version,
+     auditd_enabled,
+     log_path,
+     rotate_interval,
+     rotate_size,
+     descriptors_path,
+     disabled,
+     sync];
+fields(2) ->
+    fields(1) ++
+        %% TODO: add enabled here after MB-27844 is resolved
+        [disabled_users,
+         uuid,
+         filtering_enabled].
 
 key_api_to_config(auditdEnabled) ->
     auditd_enabled;
@@ -60,6 +95,8 @@ is_notable_config_key(audit) ->
     true;
 is_notable_config_key({node, N, audit}) ->
     N =:= node();
+is_notable_config_key(cluster_compat_version) ->
+    true;
 is_notable_config_key(_) ->
     false.
 
@@ -74,6 +111,8 @@ set_global(KVList) ->
 
 init([]) ->
     {Global, Local} = read_config(),
+    CompatMode = cluster_compat_mode:get_compat_version(),
+    Merged = prepare_params(Global, Local, CompatMode),
 
     Self = self(),
     ns_pubsub:subscribe_link(ns_config_events,
@@ -88,10 +127,10 @@ init([]) ->
                                      []
                              end),
 
-    write_audit_json(lists:ukeymerge(1, Local, Global)),
-    {ok, {Global, Local}}.
+    write_audit_json(CompatMode, Merged),
+    {ok, #state{global = Global, merged = Merged}}.
 
-handle_call(get_global, _From, {Global, _Local} = State) ->
+handle_call(get_global, _From, #state{global = Global} = State) ->
     {reply, lists:foldl(fun ({K, V}, Acc) ->
                                 case key_config_to_api(K) of
                                     undefined ->
@@ -113,17 +152,19 @@ handle_info(notify_memcached, State) ->
            end),
     {noreply, State};
 
-handle_info(update_audit_json, {OldGlobal, OldLocal}) ->
+handle_info(update_audit_json, #state{merged = OldMerged}) ->
     misc:flush(update_audit_json),
     {Global, Local} = read_config(),
-    Merged = lists:ukeymerge(1, Local, Global),
-    case lists:ukeymerge(1, OldLocal, OldGlobal) of
-        Merged ->
+    CompatMode = cluster_compat_mode:get_compat_version(),
+    Merged = prepare_params(Global, Local, CompatMode),
+
+    case Merged of
+        OldMerged ->
             ok;
         _ ->
-            write_audit_json(Merged)
+            write_audit_json(CompatMode, Merged)
     end,
-    {noreply, {Global, Local}}.
+    {noreply, #state{global = Global, merged = Merged}}.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
@@ -138,14 +179,16 @@ audit_json_path() ->
     ns_config:search_node_prop(ns_config:latest(), memcached, audit_file).
 
 is_enabled() ->
-    ns_config:search_node_prop(ns_config:latest(), audit, auditd_enabled, false).
+    ns_config:search_node_prop(
+      ns_config:latest(), audit, auditd_enabled, false).
 
 get_log_path() ->
     case is_enabled() of
         false ->
             undefined;
         true ->
-            case ns_config:search_node_prop(ns_config:latest(), audit, log_path) of
+            case ns_config:search_node_prop(
+                   ns_config:latest(), audit, log_path) of
                 undefined ->
                     undefined;
                 Path ->
@@ -153,19 +196,68 @@ get_log_path() ->
             end
     end.
 
-write_audit_json(Params) ->
+prepare_params(Global, Local, CompatMode) ->
+    Merged = lists:ukeymerge(1, Local, Global),
+    massage_params(version(CompatMode), CompatMode, Merged).
+
+calculate_events(Params) ->
+    %% leave only those events that change the default
+    Descriptors = orddict:from_list((get_descriptors(ns_config:latest()))),
+    Enabled = proplists:get_value(enabled, Params, []),
+    Disabled = proplists:get_value(disabled, Params, []),
+
+    Filter =
+        fun (List, IsEnabled) ->
+                lists:filter(
+                  fun (Id) ->
+                          case orddict:find(Id, Descriptors) of
+                              {ok, Props} ->
+                                  proplists:get_value(enabled, Props)
+                                      =/= IsEnabled;
+                              error ->
+                                  false
+                          end
+                  end, List)
+        end,
+    {Filter(Enabled, true), Filter(Disabled, false)}.
+
+massage_params(1, _CompatMode, Params) ->
+    Params;
+massage_params(2, CompatMode, Params) ->
+    {Enabled, Disabled} = calculate_events(Params),
+
+    FilteringEnabled = Enabled =/= [] orelse
+        Disabled =/= [] orelse
+        proplists:get_value(disabled_users, Params, []) =/= [],
+
+    NewParams =
+        misc:update_proplist(Params, [{enabled, Enabled},
+                                      {disabled, Disabled},
+                                      {filtering_enabled, FilteringEnabled}]),
+
+    UID = integer_to_list(erlang:phash2({NewParams, CompatMode})),
+
+    [{uuid, UID} | NewParams].
+
+write_audit_json(CompatMode, Params) ->
+    Version = version(CompatMode),
+    CompleteParams = [{descriptors_path, path_config:component_path(sec)},
+                      {version, Version}] ++ Params,
+
     Path = audit_json_path(),
-    CompleteParams = Params ++ [{version, 1},
-                                {descriptors_path, path_config:component_path(sec)}],
-    ?log_debug("Writing new content to ~p : ~p", [Path, CompleteParams]),
-    Json = lists:map(fun({K, V}) ->
-                             {K, case string_key(K) of
-                                     true ->
-                                         list_to_binary(V);
-                                     false ->
-                                         V
-                                 end}
-                     end, CompleteParams),
+
+    Fields = fields(Version),
+    Json = lists:filtermap(
+             fun({K, V}) ->
+                     case lists:member(K, Fields) of
+                         false ->
+                             false;
+                         true ->
+                             {true, {K, (jsonifier(K))(V)}}
+                     end
+             end, CompleteParams),
+    ?log_debug("Writing new content to ~p : ~p", [Path, Json]),
+
     Bytes = misc:ejson_encode_pretty({Json}),
     ok = misc:atomic_write_file(Path, Bytes),
     self() ! notify_memcached.
@@ -183,6 +275,9 @@ read_config() ->
          false ->
              []
      end}.
+
+get_descriptors(Config) ->
+    ns_config:search(Config, audit_decriptors, []).
 
 editable(n1ql) ->
     true;
@@ -221,3 +316,9 @@ read_descriptors() ->
 
 upgrade_descriptors() ->
     [{set, audit_decriptors, lists:ukeysort(1, read_descriptors())}].
+
+upgrade_to_vulcan(Config) ->
+    {value, Current} = ns_config:search(Config, audit),
+    New =
+        misc:update_proplist(Current, [{enabled, []}, {disabled_users, []}]),
+    [{set, audit, New}].

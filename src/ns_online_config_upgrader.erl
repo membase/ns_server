@@ -90,7 +90,8 @@ upgrade(?VERSION_51, Config) ->
      menelaus_web_auto_failover:config_upgrade_to_vulcan(Config) ++
          query_settings_manager:config_upgrade_to_vulcan() ++
          eventing_settings_manager:config_upgrade_to_vulcan() ++
-         ns_bucket:config_upgrade_to_vulcan(Config)}.
+         ns_bucket:config_upgrade_to_vulcan(Config) ++
+         ns_audit_cfg:upgrade_to_vulcan(Config)}.
 
 add_index_ram_alert_limit(Config) ->
     {value, Current} = ns_config:search(Config, alert_limits),
