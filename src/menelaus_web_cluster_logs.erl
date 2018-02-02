@@ -56,6 +56,7 @@ validate_settings_log_redaction_post(Args) ->
 do_handle_settings_log_redaction_post_body(Req, Values) ->
     Settings = [{redact_level, proplists:get_value(logRedactionLevel, Values)}],
     ns_config:set(log_redaction_default_cfg, Settings),
+    ns_audit:modify_log_redaction_settings(Req, Settings),
     handle_settings_log_redaction(Req).
 
 handle_start_collect_logs(Req) ->
@@ -67,6 +68,8 @@ handle_start_collect_logs(Req) ->
                 ok ->
                     case cluster_logs_sup:start_collect_logs(Nodes, BaseURL, RedactLevel) of
                         ok ->
+                            ns_audit:start_log_collection(Req, Nodes, BaseURL,
+                                                          RedactLevel),
                             menelaus_util:reply_json(Req, [], 200);
                         already_started ->
                             menelaus_util:reply_json(Req, {struct, [{'_', <<"Logs collection task is already started">>}]}, 400)

@@ -65,7 +65,9 @@
          data_key_rotation/2,
          password_policy/2,
          client_cert_auth/2,
-         security_settings/2
+         security_settings/2,
+         start_log_collection/4,
+         modify_log_redaction_settings/2
         ]).
 
 -export([start_link/0, stats/0]).
@@ -276,7 +278,11 @@ code(password_policy) ->
 code(client_cert_auth) ->
     8236;
 code(security_settings) ->
-    8237.
+    8237;
+code(start_log_collection) ->
+    8238;
+code(modify_log_redaction_settings) ->
+    8239.
 
 to_binary({list, List}) ->
     [to_binary(A) || A <- List];
@@ -678,6 +684,15 @@ client_cert_auth(Req, ClientCertAuth) ->
 
 security_settings(Req, Settings) ->
     put(security_settings, Req, [{settings, {prepare_list(Settings)}}]).
+
+start_log_collection(Req, Nodes, BaseURL, RedactLevel) ->
+    put(start_log_collection, Req, [{nodes, {list, Nodes}},
+                                    {base_url, BaseURL},
+                                    {redact_level, RedactLevel}]).
+
+modify_log_redaction_settings(Req, Settings) ->
+    put(modify_log_redaction_settings, Req,
+        [{log_redaction_default_cfg, {prepare_list(Settings)}}]).
 
 print_audit_records(Queue) ->
     case queue:out(Queue) of

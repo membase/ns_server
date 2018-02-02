@@ -797,6 +797,40 @@
           "optional_fields" : {
               "sessionid" : ""
           }
+      },
+      {
+          "id" : 8238,
+          "name" : "start log collection",
+          "description" : "Log collection run was started",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "nodes" : "",
+              "base_url" : "",
+              "redact_level" : ""
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
+      },
+      {
+          "id" : 8239,
+          "name" : "modify log redaction settings",
+          "description" : "Log redaction settings were modified",
+          "sync" : false,
+          "enabled" : true,
+          "mandatory_fields" : {
+              "timestamp" : "",
+              "real_userid" : {"source" : "", "user" : ""},
+              "remote" : {"ip" : "", "port" : 1},
+              "log_redaction_default_cfg" : {"redact_level" : ""}
+          },
+          "optional_fields" : {
+              "sessionid" : ""
+          }
       }
     ]
 }
