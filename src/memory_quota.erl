@@ -31,13 +31,42 @@
          service_to_json_name/1,
          aware_services/1]).
 
+-define(CGROUP_MEM_USAGE_FILE, "/sys/fs/cgroup/memory/memory.usage_in_bytes").
+-define(CGROUP_MEM_LIMIT_FILE, "/sys/fs/cgroup/memory/memory.limit_in_bytes").
+
 this_node_memory_data() ->
     case os:getenv("MEMBASE_RAM_MEGS") of
         false ->
-            memsup:get_memory_data();
+            memory_data();
         X ->
             RAMBytes = list_to_integer(X) * ?MIB,
             {RAMBytes, 0, 0}
+    end.
+
+read_int_from_file(File) ->
+    %% file:read_file/1 doesn't work for some reason for /sys/fs files
+    case misc:with_file(File, [read], fun (FD) -> file:read(FD, 1024) end) of
+        {ok, Data} ->
+            try
+                list_to_integer(string:strip(Data, right, $\n))
+            catch
+                _:_ -> undefined
+            end;
+        _ -> undefined
+    end.
+
+cgroup_memory_data() ->
+    {read_int_from_file(?CGROUP_MEM_LIMIT_FILE),
+     read_int_from_file(?CGROUP_MEM_USAGE_FILE)}.
+
+memory_data() ->
+    {TotalMemory, _, ProcInfo} = MemSupData = memsup:get_memory_data(),
+    case cgroup_memory_data() of
+        {undefined, _} -> MemSupData;
+        {_, undefined} -> MemSupData;
+        {0, _} -> MemSupData;
+        {CgroupLimit, _} when TotalMemory < CgroupLimit -> MemSupData;
+        {CgroupLimit, CgroupUsage} -> {CgroupLimit, CgroupUsage, ProcInfo}
     end.
 
 get_total_buckets_ram_quota(Config) ->
