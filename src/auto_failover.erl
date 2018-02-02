@@ -359,8 +359,7 @@ process_action({failover_group, SG, Nodes0}, #state{count = 1} = S, _, _) ->
         false ->
             S
     end;
-process_action({failover_group, SG, Nodes0}, OldState, DownNodes,
-               NodeStatuses) ->
+process_action({failover_group, SG, Nodes0}, S, DownNodes, NodeStatuses) ->
     Nodes = [N || {N, _} <- Nodes0],
     %% TODO: Add new reported flag in the state for following message
     %% so that this message is dispalyed only once for each unique
@@ -368,66 +367,62 @@ process_action({failover_group, SG, Nodes0}, OldState, DownNodes,
     %% Otherwise it will spam the user log when failover of nodes in SG fails.
     ale:info(?USER_LOGGER, "Attempting auto-failover of server group (~p) "
              "with nodes (~p).", [binary_to_list(SG), Nodes]),
-    lists:foldl(
-      fun (Node, NewState) ->
-              %% Pass OldState instead of NewState for failover of each node.
-              %% This is so that any errors are reported for each of them
-              %% and also the count does not get incremented more than once.
-              NS = failover_node(Node, OldState, DownNodes, NodeStatuses),
-              case NS#state.count > OldState#state.count of
-                  true ->
-                      init_reported(NewState#state{count = NS#state.count});
-                  false ->
-                      update_reported_flags(NewState, NS)
-              end
-      end, OldState, Nodes);
+    failover_nodes(Nodes, S, DownNodes, NodeStatuses);
 process_action({failover, {Node, _UUID}}, S, DownNodes, NodeStatuses) ->
-    failover_node(Node, S, DownNodes, NodeStatuses).
+    failover_nodes([Node], S, DownNodes, NodeStatuses).
 
-failover_node(Node, S, DownNodes, NodeStatuses) ->
-    case ns_orchestrator:try_autofailover(Node) of
+failover_nodes(Nodes, S, DownNodes, NodeStatuses) ->
+    case ns_orchestrator:try_autofailover(Nodes) of
         ok ->
-            {_, DownInfo} = lists:keyfind(Node, 1, DownNodes),
-            case DownInfo of
-                unknown ->
-                    ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                              "Node (~p) was automatically failovered.~n~p",
-                              [Node, ns_doctor:get_node(Node, NodeStatuses)]);
-                {Reason, MARes} ->
-                    MA = [atom_to_list(M) || M <- MARes],
-                    master_activity_events:note_autofailover_done(Node, string:join(MA, ",")),
-                    ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                              "Node (~p) was automatically failed over. Reason: ~s",
-                              [Node, Reason])
-            end,
+            lists:foreach(
+              fun (Node) ->
+                      log_failover_success(Node, DownNodes, NodeStatuses)
+              end, Nodes),
             init_reported(S#state{count = S#state.count + 1});
         Error ->
-            process_failover_error(Error, Node, S)
+            process_failover_error(Error, Nodes, S)
     end.
 
-process_failover_error({autofailover_unsafe, UnsafeBuckets}, Node, S) ->
+log_failover_success(Node, DownNodes, NodeStatuses) ->
+    {_, DownInfo} = lists:keyfind(Node, 1, DownNodes),
+    case DownInfo of
+        unknown ->
+            ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                      "Node (~p) was automatically failovered.~n~p",
+                      [Node, ns_doctor:get_node(Node, NodeStatuses)]);
+        {Reason, MARes} ->
+            MA = [atom_to_list(M) || M <- MARes],
+            master_activity_events:note_autofailover_done(Node,
+                                                          string:join(MA, ",")),
+            ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
+                      "Node (~p) was automatically failed over. Reason: ~s",
+                      [Node, Reason])
+    end.
+
+process_failover_error({autofailover_unsafe, UnsafeBuckets}, Nodes, S) ->
     ErrMsg = lists:flatten(io_lib:format("Would lose vbuckets in the"
                                          " following buckets: ~p",
                                          [UnsafeBuckets])),
     report_failover_error(#state.reported_autofailover_unsafe, ErrMsg,
-                          Node, S);
-process_failover_error(rebalance_running, Node, S) ->
+                          Nodes, S);
+process_failover_error(rebalance_running, Nodes, S) ->
     report_failover_error(#state.reported_rebalance_running,
-                          "Rebalance is running.", Node, S);
-process_failover_error(in_recovery, Node, S) ->
+                          "Rebalance is running.", Nodes, S);
+process_failover_error(in_recovery, Nodes, S) ->
     report_failover_error(#state.reported_in_recovery,
-                          "Cluster is in recovery mode.", Node, S).
+                          "Cluster is in recovery mode.", Nodes, S).
 
-report_failover_error(Flag, ErrMsg, Node, State) ->
+report_failover_error(Flag, ErrMsg, Nodes, State) ->
     case should_report(Flag, State) of
         true ->
             ?user_log(?EVENT_NODE_AUTO_FAILOVERED,
-                      "Could not automatically fail over node (~p). ~s",
-                      [Node, ErrMsg]),
+                      "Could not automatically fail over nodes (~p). ~s",
+                      [Nodes, ErrMsg]),
             note_reported(Flag, State);
         false ->
             State
     end.
+
 %% TODO - move this later to (yet to be created) auto_failover_settings module.
 get_auto_failover_count(Config) ->
     {value, AutoFailoverConfig} = ns_config:search(Config, auto_failover_cfg),
@@ -706,20 +701,6 @@ init_reported(State) ->
                 reported_max_reached = false,
                 reported_rebalance_running = false,
                 reported_in_recovery = false}.
-
-update_reported_flags(NewState0, UpdatedState) ->
-    Flags = [#state.reported_autofailover_unsafe,
-             #state.reported_rebalance_running,
-             #state.reported_in_recovery],
-    lists:foldl(
-      fun (Flag, NewState) ->
-              case element(Flag, UpdatedState) of
-                  true ->
-                      setelement(Flag, NewState, true);
-                  false ->
-                      NewState
-              end
-      end, NewState0, Flags).
 
 update_reported_flags_by_actions(Actions, State) ->
     case lists:keymember(failover, 1, Actions) orelse

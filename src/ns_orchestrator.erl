@@ -175,11 +175,11 @@ failover(Node) ->
     gen_fsm:sync_send_event(?SERVER, {failover, Node}, infinity).
 
 
--spec try_autofailover(atom()) -> ok | rebalance_running | in_recovery |
+-spec try_autofailover(list()) -> ok | rebalance_running | in_recovery |
                                   {autofailover_unsafe, [bucket_name()]}.
-try_autofailover(Node) ->
+try_autofailover(Nodes) ->
     wait_for_orchestrator(),
-    gen_fsm:sync_send_event(?SERVER, {try_autofailover, Node}, infinity).
+    gen_fsm:sync_send_event(?SERVER, {try_autofailover, Nodes}, infinity).
 
 
 -spec needs_rebalance() -> boolean().
@@ -623,15 +623,17 @@ idle({delete_bucket, BucketName}, _From, State) ->
     end,
 
     {reply, Reply, idle, State};
-idle({failover, Node}, _From, State) ->
-    Result = ns_rebalancer:run_failover([Node]),
+idle({failover, Node}, From, State) when is_atom(Node) ->
+    idle({failover, [Node]}, From, State);
+idle({failover, Nodes}, _From, State) ->
+    Result = ns_rebalancer:run_failover(Nodes),
     {reply, Result, idle, State};
-idle({try_autofailover, Node}, From, State) ->
-    case ns_rebalancer:validate_autofailover([Node]) of
+idle({try_autofailover, Nodes}, From, State) ->
+    case ns_rebalancer:validate_autofailover(Nodes) of
         {error, UnsafeBuckets} ->
             {reply, {autofailover_unsafe, UnsafeBuckets}, idle, State};
         ok ->
-            idle({failover, Node}, From, State)
+            idle({failover, Nodes}, From, State)
     end;
 idle({start_graceful_failover, Node}, _From, State) ->
     case ns_rebalancer:start_link_graceful_failover(Node) of
