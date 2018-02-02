@@ -1,0 +1,397 @@
+#!/usr/bin/env bash
+set -o pipefail
+
+function is_tracked() {
+    git ls-files --error-unmatch -- "$1" > /dev/null 2>&1
+}
+
+function is_modified() {
+    git ls-files --error-unmatch --modified --deleted -- "$1" > /dev/null 2>&1
+}
+
+function is_text() {
+    file "$1" | egrep -q "\<text\>"
+}
+
+function get_years() {
+    git log --grep '\[copyright\]' \
+            --invert-grep          \
+            --pretty=format:%cd    \
+            --date=format:%Y -- "$1" | sort -n | uniq
+}
+
+function get_range() {
+    local -a years
+
+    readarray -n2 years < <(get_years "$1" | sed -n '1p; $p')
+
+    declare -g first=${years[0]}
+    declare -g last=${years[1]}
+}
+
+function get_extension() {
+    local name=$(basename "$1")
+    local ext="${name##*.}"
+
+    if [ "$name" = "$ext" ]; then
+        echo ""
+    else
+        echo "$ext"
+    fi
+}
+
+function get_shebang() {
+    awk '/^#!/ && NR == 1 { print; exit 0 }; { exit 1 }' "$1"
+}
+
+function shebang_matches() {
+    echo "$1" | egrep -q '\<('"$2"')\>'
+}
+
+function comment_style() {
+    local file="$1"
+    local ext=$(get_extension "$file")
+    local shebang=$(get_shebang "$file")
+
+    local style
+    case "$ext" in
+        sh | bash | rb | py | awk)
+            style=shell;;
+        erl | hrl)
+            style=erlang;;
+        go)
+            style=c99;;
+        el)
+            style=elisp;;
+    esac
+
+    if [ -n "$style" ]; then
+        echo "$style"
+        return 0
+    fi
+
+    if shebang_matches "$shebang" 'bash|sh|g?awk|python[2-3]?|ruby'; then
+        style=shell
+    elif shebang_matches "$shebang" "escript"; then
+        style=erlang
+    fi
+
+    if [ -z "$style" ]; then
+        echo '<unknown>'
+        return 1
+    fi
+
+    echo $style
+}
+
+function get_comment_seqs() {
+    local style
+
+    if ! style=$(comment_style "$1"); then
+        return 1
+    fi
+
+    local comment
+    local header
+
+    case $style in
+        shell)
+            comment='#'
+            ;;
+        erlang)
+            comment='%'
+            header='%%'
+            ;;
+        elisp)
+            comment=';;'
+            ;;
+        c99)
+            comment='//'
+            ;;
+    esac
+
+    if [ -z "$comment" ]; then
+        return 1
+    fi
+
+    if [ -z "$header" ]; then
+        header="$comment"
+    fi
+
+    declare -g comment_seq="$comment"
+    declare -g header_seq="$header"
+}
+
+function sponge() {
+    local file="$1"
+    local name=$(basename "$file")
+    local tmpfile=$(mktemp -t "$name"_XXXXXXXXX)
+
+    trap 'rm -f "$tmpfile"' EXIT
+
+    # preserve file mode
+    cp -a "$file" "$tmpfile" || return 1
+
+    cat > "$tmpfile" || return 1
+    mv "$tmpfile" "$file"
+}
+
+# Terminal output control (http://www.termsys.demon.co.uk/vtansi.htm)
+TC='\e['
+Rst="${TC}0m"
+
+Green="${TC}32m"
+Yellow="${TC}33m"
+White="${TC}37m"
+
+function msg() {
+    echo -en "${White}$1${Rst}"
+}
+
+function ok() {
+    echo -en "${Green}$1${Rst}"
+}
+
+function warn() {
+    echo -en "${Yellow}$1${Rst}"
+}
+
+declare -a REVIEW_FILES
+declare -a ERROR_FILES
+
+function process_file() {
+    local file="$1"
+
+    msg "Processing '$file' -> "
+
+    if ! is_tracked "$file"; then
+        warn "not under source control\n"
+        return
+    fi
+
+    if is_modified "$file"; then
+        warn "file modified\n"
+        return
+    fi
+
+    if ! is_text "$file"; then
+        warn "not a text file\n"
+        return
+    fi
+
+    if ! get_comment_seqs "$file"; then
+        warn "unrecognized file\n"
+        return
+    fi
+
+    if ! get_range "$file"; then
+        ERROR_FILES+=("$file")
+
+        warn "unknown error\n"
+        return
+    fi
+
+    local header="\
+$header_seq @author Couchbase <info@couchbase.com>
+$header_seq @copyright 2718 Couchbase, Inc.
+$header_seq
+$header_seq Licensed under the Apache License, Version 2.0 (the \"License\");
+$header_seq you may not use this file except in compliance with the License.
+$header_seq You may obtain a copy of the License at
+$header_seq
+$header_seq      http://www.apache.org/licenses/LICENSE-2.0
+$header_seq
+$header_seq Unless required by applicable law or agreed to in writing, software
+$header_seq distributed under the License is distributed on an \"AS IS\" BASIS,
+$header_seq WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+$header_seq See the License for the specific language governing permissions and
+$header_seq limitations under the License.
+"
+
+    local awk_script=$(cat <<'EOF'
+BEGIN {
+    false = 0
+    true  = 1
+
+    collect_header  = true
+    collected_lines = 0
+}
+
+function starts_with(line, seq) {
+    start = substr(line, 0, length(seq))
+    return start == seq
+}
+
+function strip(line, seq) {
+    return substr(line, length(seq) + 1)
+}
+
+function is_shebang(line) {
+    if (starts_with($0, "#!") && NR == 1) {
+        seen_shebang = true
+        return true
+    }
+
+    return false
+}
+
+function is_comment(line) {
+    return starts_with(line, COMMENT_SEQ)
+}
+
+function is_empty(line) {
+    return line ~ /^[[:space:]]*$/
+}
+
+function is_propline(line) {
+    if (!(NR == 1 || NR == 2 && seen_shebang)) {
+        return false
+    }
+
+    if (!starts_with(line, HEADER_SEQ)) {
+        return false
+    }
+
+    rest = strip(line, HEADER_SEQ)
+    if (rest ~ /^[[:space:]]*-\*-.*-\*-[[:space:]]*$/) {
+        seen_propline = true
+        return true
+    }
+}
+
+function collect_line(line) {
+    header = header line "\n"
+    collected_lines += 1
+}
+
+function sanitize_header() {
+    gsub(/info@northscale.com/, "info@couchbase.com", header)
+    gsub(/[Nn]orth[Ss]cale/, "Couchbase", header)
+}
+
+function copyright_line() {
+    if (FIRST_YEAR == LAST_YEAR) {
+        years = sprintf("%d", FIRST_YEAR)
+    } else {
+        years = sprintf("%d-%d", FIRST_YEAR, LAST_YEAR)
+    }
+
+    return sprintf("@copyright %s Couchbase, Inc.", years)
+}
+
+function maybe_update_copyright() {
+    regexp = "@copyright ([[:digit:]]{4})(-[[:digit:]]{4})? Couchbase, Inc\\."
+
+    if (!match(header, regexp, groups)) {
+        return false
+    }
+
+    # if file was renamed, we won't be able to follow the history
+    if (groups[1] < FIRST_YEAR) {
+        FIRST_YEAR = groups[1]
+    }
+
+    gsub(regexp, copyright_line(), header)
+    return true
+}
+
+function have_header() {
+    IGNORECASE = 1
+    result = header ~ /copyright|license/
+    IGNORECASE = 0
+
+    return result
+}
+
+function insert_new_header() {
+    header = HEADER header
+
+    if (seen_shebang || seen_propline) {
+        header = HEADER_SEQ "\n" header
+    }
+}
+
+function handle_header() {
+    sanitize_header()
+
+    if (!have_header()) {
+        insert_new_header()
+    }
+
+    couchbase_copyright = maybe_update_copyright()
+    if (!couchbase_copyright) {
+        needs_attention = true
+    }
+
+    printf("%s", header)
+}
+
+is_shebang($0) {
+    print
+    next
+}
+
+is_propline($0) {
+    print
+    next
+}
+
+collect_header {
+    if (is_comment($0) || is_empty($0)) {
+        collect_line($0)
+    } else {
+        handle_header()
+        collect_header = false
+    }
+}
+
+!collect_header {
+    print
+}
+
+END {
+    if (needs_attention) {
+        exit 1
+    }
+}
+
+EOF
+)
+
+    gawk -v COMMENT_SEQ="$comment_seq" \
+         -v HEADER_SEQ="$header_seq"   \
+         -v FIRST_YEAR="$first"        \
+         -v LAST_YEAR="$last"          \
+         -v HEADER="$header"           \
+         "$awk_script" "$file" | sponge "$file"
+
+    if [ $? -eq 0 ]; then
+        ok "OK\n"
+    else
+        REVIEW_FILES+=("$file")
+
+        warn "attention required\n"
+    fi
+}
+
+for file in "$@"; do
+    process_file "$file"
+done
+
+if [ ${#REVIEW_FILES[@]} -ne 0 ]; then
+    warn "\nThe following files seem to already have incompatible headers:\n\n"
+
+    for file in ${REVIEW_FILES[@]}; do
+        msg "    $file\n"
+    done
+fi
+
+if [ ${#ERROR_FILES[@]} -ne 0 ]; then
+    warn "\nEncountered unexpected errors while processing these files:\n\n"
+
+    for file in ${ERROR_FILES[@]}; do
+        msg "    $file\n"
+    done
+fi
+
+ok "\nAll done\n"
