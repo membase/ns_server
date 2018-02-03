@@ -47,7 +47,8 @@
          validate_cred/2,
          handle_get_password_policy/1,
          handle_post_password_policy/1,
-         assert_no_users_upgrade/0]).
+         assert_no_users_upgrade/0,
+         domain_to_atom/1]).
 
 -define(MIN_USERS_PAGE_SIZE, 2).
 -define(MAX_USERS_PAGE_SIZE, 100).
