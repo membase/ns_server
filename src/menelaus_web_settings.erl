@@ -17,7 +17,6 @@
 
 -module(menelaus_web_settings).
 
--include("cut.hrl").
 -include("ns_common.hrl").
 
 -export([build_kvs/1,
@@ -43,10 +42,7 @@
          handle_settings_max_parallel_indexers_post/1,
 
          handle_settings_view_update_daemon/1,
-         handle_settings_view_update_daemon_post/1,
-
-         handle_settings_audit/1,
-         handle_settings_audit_post/1]).
+         handle_settings_view_update_daemon_post/1]).
 
 -import(menelaus_util,
         [parse_validate_number/3,
@@ -55,17 +51,7 @@
          reply_json/2,
          reply_json/3,
          reply_text/3,
-         reply/2,
-         validate_has_params/1,
-         validate_boolean/2,
-         validate_dir/2,
-         validate_integer/2,
-         validate_range/5,
-         validate_range/4,
-         validate_by_fun/3,
-         validate_any_value/2,
-         validate_unsupported_params/1,
-         execute_if_validated/4]).
+         reply/2]).
 
 get_bool("true") ->
     {ok, true};
@@ -527,50 +513,3 @@ handle_reset_alerts(Req) ->
     Params = Req:parse_qs(),
     Token = list_to_binary(proplists:get_value("token", Params, "")),
     reply_json(Req, menelaus_web_alerts_srv:consume_alerts(Token)).
-
-handle_settings_audit(Req) ->
-    menelaus_util:assert_is_enterprise(),
-    menelaus_util:assert_is_40(),
-
-    Props = ns_audit_cfg:get_global(),
-    Json = lists:map(fun ({K, V}) when is_list(V) ->
-                             {K, list_to_binary(V)};
-                         (Other) ->
-                             Other
-                     end, Props),
-    reply_json(Req, {Json}).
-
-settings_audit_validators() ->
-    [validate_has_params(_),
-     validate_boolean(auditdEnabled, _),
-     validate_any_value(logPath, _),
-     validate_dir(logPath, _),
-     validate_integer(rotateInterval, _),
-     validate_range(
-       rotateInterval, 15*60, 60*60*24*7,
-       fun (Name, _Min, _Max) ->
-               io_lib:format("The value of ~p must be in range from 15 minutes "
-                             "to 7 days", [Name])
-       end, _),
-     validate_by_fun(
-       fun (Value) ->
-               case Value rem 60 of
-                   0 ->
-                       ok;
-                   _ ->
-                       {error, "Value must not be a fraction of minute"}
-               end
-       end, rotateInterval, _),
-     validate_integer(rotateSize, _),
-     validate_range(rotateSize, 0, 500*1024*1024, _),
-     validate_unsupported_params(_)].
-
-handle_settings_audit_post(Req) ->
-    menelaus_util:assert_is_enterprise(),
-    menelaus_util:assert_is_40(),
-
-    Args = Req:parse_post(),
-    execute_if_validated(fun (Values) ->
-                                 ns_audit_cfg:set_global(Values),
-                                 reply(Req, 200)
-                         end, Req, Args, settings_audit_validators()).

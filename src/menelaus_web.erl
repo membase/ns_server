@@ -337,7 +337,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_cert:handle_client_cert_auth_settings/1};
                 ["settings", "audit"] ->
                     {{[admin, security], read},
-                     fun menelaus_web_settings:handle_settings_audit/1};
+                     fun menelaus_web_audit:handle_get/1};
                 ["settings", "rbac", "roles"] ->
                     {{[admin, security], read},
                      fun menelaus_web_rbac:handle_get_roles/1};
@@ -511,7 +511,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                      fun menelaus_web_cert:handle_client_cert_auth_settings_post/1};
                 ["settings", "audit"] ->
                     {{[admin, security], write},
-                     fun menelaus_web_settings:handle_settings_audit_post/1};
+                     fun menelaus_web_audit:handle_post/1};
                 ["settings", "passwordPolicy"] ->
                     {{[admin, security], write},
                      fun menelaus_web_rbac:handle_post_password_policy/1};
