@@ -462,7 +462,8 @@ is_valid_positive_integer_in_range(String, Min, Max) ->
     (is_integer(Int) andalso (Int >= Min) andalso (Int =< Max)).
 
 return_value(Name, Value, {OutList, InList, Errors}) ->
-    {lists:keydelete(atom_to_list(Name), 1, OutList), [{Name, Value} | InList], Errors}.
+    {lists:keydelete(atom_to_list(Name), 1, OutList),
+     lists:keystore(Name, 1, InList, {Name, Value}), Errors}.
 
 return_error(Name, Error, {OutList, InList, Errors}) ->
     {lists:keydelete(atom_to_list(Name), 1, OutList), InList,
