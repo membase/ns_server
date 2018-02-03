@@ -145,7 +145,9 @@ function sponge() {
     # preserve file mode
     cp -a "$file" "$tmpfile" || return 1
 
-    cat > "$tmpfile" || return 1
+    shift
+
+    "$@" > "$tmpfile" || return $?
     mv "$tmpfile" "$file"
 }
 
@@ -379,27 +381,32 @@ collect_header {
 
 END {
     if (needs_attention) {
-        exit 1
+        exit 42
     }
 }
 
 EOF
 )
 
-    gawk -v COMMENT_SEQ="$COMMENT_SEQ" \
-         -v HEADER_SEQ="$HEADER_SEQ"   \
-         -v FIRST_YEAR="$FIRST"        \
-         -v LAST_YEAR="$LAST"          \
-         -v HEADER="$header"           \
-         "$awk_script" "$file" | sponge "$file"
+    sponge "$file" gawk  -v COMMENT_SEQ="$COMMENT_SEQ" \
+                         -v HEADER_SEQ="$HEADER_SEQ"   \
+                         -v FIRST_YEAR="$FIRST"        \
+                         -v LAST_YEAR="$LAST"          \
+                         -v HEADER="$header"           \
+                         "$awk_script" "$file"
 
-    if [ $? -eq 0 ]; then
-        ok "OK\n"
-    else
-        REVIEW_FILES+=("$file")
-
-        warn "attention required\n"
-    fi
+    case $? in
+        0)
+            ok "OK\n"
+            ;;
+        42)
+            REVIEW_FILES+=("$file")
+            warn "attention required\n"
+            ;;
+        *)
+            ERROR_FILES+=("$file")
+            warn "unknown error\n"
+    esac
 }
 
 for file in "$@"; do
