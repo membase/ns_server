@@ -239,6 +239,10 @@ function strip(line, seq) {
     return substr(line, length(seq) + 1)
 }
 
+function replace(str, ix, len, with) {
+    return substr(str, 1, ix - 1) with substr(str, ix + len)
+}
+
 function is_shebang(line) {
     if (starts_with($0, "#!") && NR == 1) {
         seen_shebang = true
@@ -282,30 +286,41 @@ function sanitize_header() {
     gsub(/[Nn]orth[Ss]cale/, "Couchbase", header)
 }
 
-function copyright_line() {
+function copyright_years() {
     if (FIRST_YEAR == LAST_YEAR) {
-        years = sprintf("%d", FIRST_YEAR)
+        return sprintf("%d", FIRST_YEAR)
     } else {
-        years = sprintf("%d-%d", FIRST_YEAR, LAST_YEAR)
+        return sprintf("%d-%d", FIRST_YEAR, LAST_YEAR)
     }
-
-    return sprintf("@copyright %s Couchbase, Inc.", years)
 }
 
-function maybe_update_copyright() {
-    regexp = "@copyright ([[:digit:]]{4})(-[[:digit:]]{4})? Couchbase, Inc\\."
-
+function update_copyright_regexp(regexp, years_ix) {
     if (!match(header, regexp, groups)) {
         return false
     }
 
+    years        = groups[years_ix]
+    years_start  = groups[years_ix, "start"]
+    years_length = groups[years_ix, "length"]
+
+    if (!match(years, /^([[:digit:]]{4})(-[[:digit:]]{4})?/, groups)) {
+        return false
+    }
+
     # if file was renamed, we won't be able to follow the history
-    if (groups[1] < FIRST_YEAR) {
+    if (FIRST_YEAR > groups[1]) {
         FIRST_YEAR = groups[1]
     }
 
-    gsub(regexp, copyright_line(), header)
+    new_years = copyright_years()
+    header    = replace(header, years_start, years_length, new_years)
+
     return true
+}
+
+function maybe_update_copyright() {
+    regexp = "@copyright ([[:digit:]]{4}(-[[:digit:]]{4})?) Couchbase, Inc\\."
+    return update_copyright_regexp(regexp, 1)
 }
 
 function have_header() {
