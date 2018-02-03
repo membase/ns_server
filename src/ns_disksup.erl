@@ -2,6 +2,7 @@
 %% %CopyrightBegin%
 %%
 %% Copyright Ericsson AB 1996-2013. All Rights Reserved.
+%% Copyright Couchbase, Inc 2014-2017. All Rights Reserved.
 %%
 %% The contents of this file are subject to the Erlang Public License,
 %% Version 1.1, (the "License"); you may not use this file except in

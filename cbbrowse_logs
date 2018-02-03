@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) 2011, Couchbase, Inc.
+# Copyright (c) 2011-2013, Couchbase, Inc.
 # All rights reserved.
 
 COUCHBASE_BIN="$(cd "$(dirname "$0")" && pwd)"

@@ -1,4 +1,4 @@
-% Copyright (c) 2009, Couchbase, Inc
+% Copyright (c) 2009-2012, Couchbase, Inc.
 
 -record(mc_entry, {key = undefined,
                    ext = undefined,

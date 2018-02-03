@@ -34,6 +34,8 @@
 %% @author Aliaksey Kandratsenka <alk@tut.by> (turned into
 %% ns_connection_pool, all bugs are mine)
 %%
+%% @copyright @copyright 2013-2015 Couchbase, Inc.
+%%
 %%% @doc Connection manager for the more or less arbitrary protocol tcp sockets.
 %%% This gen_server is responsible for keeping track of persistent
 %%% connections to HTTP servers.

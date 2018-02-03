@@ -1,4 +1,4 @@
-% Copyright (c) 2009-2016, Couchbase, Inc.
+% Copyright (c) 2009-2018, Couchbase, Inc.
 % Copyright (c) 2008, Cliff Moon
 % Copyright (c) 2008, Powerset, Inc
 %

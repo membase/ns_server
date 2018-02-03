@@ -1,4 +1,5 @@
 %% @copyright 2007-2008 Basho Technologies
+%% @copyright 2010-2014 Couchbase, Inc.
 
 %% @reference Leslie Lamport (1978). "Time, clocks, and the ordering of events in a distributed system". Communications of the ACM 21 (7): 558-565.
 
