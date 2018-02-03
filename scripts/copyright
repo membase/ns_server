@@ -36,12 +36,10 @@ function get_years() {
 }
 
 function get_range() {
-    local -a years
+    set -- $(get_years "$1" | sed -n '1p; $p')
 
-    readarray -n2 years < <(get_years "$1" | sed -n '1p; $p')
-
-    declare -g first=${years[0]}
-    declare -g last=${years[1]}
+    FIRST="$1"
+    LAST="$2"
 }
 
 function get_extension() {
@@ -133,8 +131,8 @@ function get_comment_seqs() {
         header="$comment"
     fi
 
-    declare -g comment_seq="$comment"
-    declare -g header_seq="$header"
+    COMMENT_SEQ="$comment"
+    HEADER_SEQ="$header"
 }
 
 function sponge() {
@@ -373,10 +371,10 @@ END {
 EOF
 )
 
-    gawk -v COMMENT_SEQ="$comment_seq" \
-         -v HEADER_SEQ="$header_seq"   \
-         -v FIRST_YEAR="$first"        \
-         -v LAST_YEAR="$last"          \
+    gawk -v COMMENT_SEQ="$COMMENT_SEQ" \
+         -v HEADER_SEQ="$HEADER_SEQ"   \
+         -v FIRST_YEAR="$FIRST"        \
+         -v LAST_YEAR="$LAST"          \
          -v HEADER="$header"           \
          "$awk_script" "$file" | sponge "$file"
 
