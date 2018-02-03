@@ -184,7 +184,7 @@ function process_file() {
         return
     fi
 
-    if is_modified "$file"; then
+    if [ -z "$FORCE_ALLOW_MODIFIED" ] && is_modified "$file"; then
         warn "file modified\n"
         return
     fi
@@ -423,6 +423,19 @@ EOF
             warn "unknown error\n"
     esac
 }
+
+while getopts "m" opt; do
+    case "$opt" in
+        m)
+            FORCE_ALLOW_MODIFIED=true
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+done
+
+shift $(( $OPTIND - 1 ))
 
 for file in "$@"; do
     process_file "$file"
