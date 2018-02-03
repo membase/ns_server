@@ -322,7 +322,22 @@ function update_copyright_regexp(regexp, years_ix) {
 
 function maybe_update_copyright() {
     regexp = "@copyright ([[:digit:]]{4}(-[[:digit:]]{4})?) Couchbase, Inc\\."
-    return update_copyright_regexp(regexp, 1)
+    if (update_copyright_regexp(regexp, 1)) {
+        return true
+    }
+
+    regexp = "Copyright (\\(c\\) )?" \
+             "([[:digit:]]{4}(-[[:digit:]]{4})?), Couchbase, Inc\\."
+    if (update_copyright_regexp(regexp, 2)) {
+        return true
+    }
+
+    regexp = "Copyright Couchbase, Inc ([[:digit:]]{4}(-[[:digit:]]{4})?)"
+    if (update_copyright_regexp(regexp, 1)) {
+        return true
+    }
+
+    return false
 }
 
 function have_header() {
