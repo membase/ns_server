@@ -87,7 +87,7 @@
              type="radio"
              value="none"
              id="redaction_none"
-             ng-model="settingsClusterCtl.logRedactionSettings.redact_level"
+             ng-model="settingsClusterCtl.logRedactionSettings.logRedactionLevel"
              ng-disabled="!rbac.cluster.settings.write">
           <label for="redaction_none" class="checkbox">
             None
@@ -97,7 +97,7 @@
              type="radio"
              value="partial"
              id="redaction_partial"
-             ng-model="settingsClusterCtl.logRedactionSettings.redact_level"
+             ng-model="settingsClusterCtl.logRedactionSettings.logRedactionLevel"
              ng-disabled="!rbac.cluster.settings.write">
           <label for="redaction_partial" class="checkbox margin-right-zero">
             Partial Redaction

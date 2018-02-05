@@ -21,15 +21,12 @@
       vm.collect.uploadHost = 's3.amazonaws.com/cb-customers';
     }
 
-    if (mnPoolDefault.export.compat.atLeast55 && mnPoolDefault.export.isEnterprise) {
-      vm.collect.logRedactionLevel = "none";
-    }
-
     function activate() {
       new mnPoller($scope, mnLogsCollectInfoService.getState)
         .subscribe(function (state) {
           vm.loadingResult = false;
           vm.state = state;
+          vm.collect.logRedactionLevel = state.logRedactionLevel;
         })
         .reloadOnScopeEvent("reloadCollectInfoPoller", vm, "loadingResult")
         .reloadOnScopeEvent("mnTasksDetailsChanged")

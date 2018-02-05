@@ -4,10 +4,12 @@
   angular.module('mnLogsCollectInfoService', [
     'mnServersService',
     'mnTasksDetails',
-    'mnFilters'
+    'mnFilters',
+    'mnSettingsClusterService',
+    'mnPoolDefault'
   ]).service('mnLogsCollectInfoService', mnLogsCollectInfoServiceFactory);
 
-  function mnLogsCollectInfoServiceFactory($http, $q, mnServersService, mnTasksDetails, mnStripPortHTMLFilter) {
+  function mnLogsCollectInfoServiceFactory($http, $q, mnServersService, mnTasksDetails, mnStripPortHTMLFilter, mnSettingsClusterService, mnPoolDefault) {
     var mnLogsCollectInfoService = {
       startLogsCollection: startLogsCollection,
       cancelLogsCollection: cancelLogsCollection,
@@ -23,13 +25,17 @@
       return $http.post('/controller/cancelLogsCollection');
     }
     function getState() {
-      return $q.all([
+      var queries = [
         mnServersService.getNodes(),
         mnTasksDetails.get()
-      ]).then(function (resp) {
-
+      ];
+      if (mnPoolDefault.export.compat.atLeast55 && mnPoolDefault.export.isEnterprise) {
+        queries.push(mnSettingsClusterService.getLogRedaction());
+      }
+      return $q.all(queries).then(function (resp) {
         var nodes = resp[0].allNodes;
         var tasks = resp[1].tasks;
+        var logRedaction = resp[2];
         var task = _.detect(tasks, function (taskInfo) {
           return taskInfo.type === "clusterLogsCollection";
         });
@@ -39,7 +45,8 @@
             nodeErrors: [],
             status: 'idle',
             perNode: {},
-            nodes: nodes
+            nodes: nodes,
+            logRedactionLevel: logRedaction && logRedaction.logRedactionLevel
           };
         }
 
