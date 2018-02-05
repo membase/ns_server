@@ -111,8 +111,16 @@ init([]) ->
     write_audit_json(CompatMode, Merged),
     {ok, #state{global = Global, merged = Merged}}.
 
-handle_call(get_global, _From, #state{global = Global} = State) ->
-    {reply, Global, State}.
+handle_call(get_global, _From, #state{global = Global,
+                                      merged = Merged} = State) ->
+    Return =
+        case proplists:get_value(uuid, Merged) of
+            undefined ->
+                Global;
+            UID ->
+                [{uid, UID} | Global]
+        end,
+    {reply, Return, State}.
 
 handle_cast(_Msg, State) ->
     {noreply, State}.

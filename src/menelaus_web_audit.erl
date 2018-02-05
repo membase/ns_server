@@ -90,6 +90,8 @@ jsonifier(disabled_users) ->
                  {N, D} = Identity <- UList,
                  menelaus_users:user_exists(Identity)]
     end;
+jsonifier(uid) ->
+    fun list_to_binary/1;
 jsonifier(Key) ->
     ns_audit_cfg:jsonifier(Key).
 
@@ -126,6 +128,8 @@ key_config_to_api_vulcan(actually_disabled) ->
     disabled;
 key_config_to_api_vulcan(disabled_users) ->
     disabledUsers;
+key_config_to_api_vulcan(uid) ->
+    uid;
 key_config_to_api_vulcan(_) ->
     undefined.
 
