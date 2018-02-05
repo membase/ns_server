@@ -80,11 +80,14 @@
         url: url
       });
     }
-    function postFailover(type, otpNode) {
+    function postFailover(type, otpNode, allowUnsafe) {
       return $http({
         method: 'POST',
         url: '/controller/' + type,
-        data: {otpNode: otpNode}
+        data: {otpNode: otpNode},
+        params: {
+          allowUnsafe: allowUnsafe ? true : false
+        }
       });
     }
     function ejectNode(data) {
