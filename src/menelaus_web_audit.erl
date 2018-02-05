@@ -21,7 +21,8 @@
 -include("ns_common.hrl").
 
 -export([handle_get/1,
-         handle_post/1]).
+         handle_post/1,
+         handle_get_descriptors/1]).
 
 -import(menelaus_util,
         [reply_json/2,
@@ -68,6 +69,20 @@ handle_post(Req) ->
                     {ApiK, V} <- pre_process_post(Values)]),
               reply(Req, 200)
       end, Req, Args, validators()).
+
+handle_get_descriptors(Req) ->
+    menelaus_util:assert_is_enterprise(),
+    menelaus_util:assert_is_vulcan(),
+
+    Descriptors = ns_audit_cfg:get_descriptors(ns_config:latest()),
+    Json =
+        lists:map(
+          fun ({Id, Props}) ->
+                  {[{id, Id},
+                    {name, proplists:get_value(name, Props)},
+                    {description, proplists:get_value(description, Props)}]}
+          end, Descriptors),
+    reply_json(Req, Json).
 
 jsonifier(disabled_users) ->
     fun (UList) ->
