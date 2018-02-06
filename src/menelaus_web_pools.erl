@@ -267,14 +267,23 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
                 PropList1
         end,
 
+    PropList3 =
+        case ns_audit_cfg:get_uid() of
+            undefined ->
+                PropList2;
+            AuditUID ->
+                [{audit_uid, list_to_binary(AuditUID)} | PropList2]
+        end,
+
     PropList =
         case Stability of
             stable ->
-                PropList2;
+                PropList3;
             unstable ->
                 StorageTotals = [{Key, {struct, StoragePList}}
-                                 || {Key, StoragePList} <- ns_storage_conf:cluster_storage_info()],
-                [{storageTotals, {struct, StorageTotals}} | PropList2]
+                                 || {Key, StoragePList} <-
+                                        ns_storage_conf:cluster_storage_info()],
+                [{storageTotals, {struct, StorageTotals}} | PropList3]
         end,
 
     {struct, PropList}.

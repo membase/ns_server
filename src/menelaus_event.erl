@@ -51,6 +51,9 @@ start_link() ->
                                                                  simple_events_handler),
                                   ok = gen_event:add_sup_handler(index_events,
                                                                  {?MODULE, index_events},
+                                                                 simple_events_handler),
+                                  ok = gen_event:add_sup_handler(audit_events,
+                                                                 {?MODULE, audit_events},
                                                                  simple_events_handler)
                           end).
 
@@ -66,6 +69,9 @@ register_watcher(Pid) ->
                         {register_watcher, Pid}),
     ok = gen_event:call(index_events,
                         {?MODULE, index_events},
+                        {register_watcher, Pid}),
+    ok = gen_event:call(audit_events,
+                        {?MODULE, audit_events},
                         {register_watcher, Pid}).
 
 unregister_watcher(Pid) ->
@@ -80,6 +86,9 @@ unregister_watcher(Pid) ->
                         {unregister_watcher, Pid}),
     ok = gen_event:call(index_events,
                         {?MODULE, index_events},
+                        {unregister_watcher, Pid}),
+    ok = gen_event:call(audit_events,
+                        {?MODULE, audit_events},
                         {unregister_watcher, Pid}).
 
 %% Implementation
@@ -116,6 +125,7 @@ is_interesting_to_watchers({{node, _, services}, _}) -> true;
 is_interesting_to_watchers({{service_map, _}, _}) -> true;
 is_interesting_to_watchers({user_roles, _}) -> true;
 is_interesting_to_watchers({client_cert_auth, _}) -> true;
+is_interesting_to_watchers({audit_uid_change, _}) -> true;
 is_interesting_to_watchers(_) -> false.
 
 handle_event({{node, Node, rest}, _}, State) when Node =:= node() ->

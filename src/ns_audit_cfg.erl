@@ -26,7 +26,7 @@
          handle_info/2, terminate/2, code_change/3]).
 
 -export([start_link/0, get_global/0, set_global/1, default_audit_json_path/0,
-         get_log_path/0]).
+         get_log_path/0, get_uid/0]).
 
 -export([upgrade_descriptors/0, upgrade_to_vulcan/1, get_descriptors/1,
          jsonifier/1]).
@@ -87,6 +87,9 @@ start_link() ->
 get_global() ->
     gen_server:call(?MODULE, get_global).
 
+get_uid() ->
+    gen_server:call(?MODULE, get_uid).
+
 set_global(KVList) ->
     ns_config:set_sub(audit, KVList).
 
@@ -111,6 +114,8 @@ init([]) ->
     write_audit_json(CompatMode, Merged),
     {ok, #state{global = Global, merged = Merged}}.
 
+handle_call(get_uid, _From, #state{merged = Merged} = State) ->
+    {reply, proplists:get_value(uuid, Merged), State};
 handle_call(get_global, _From, #state{global = Global,
                                       merged = Merged} = State) ->
     Return =
@@ -125,13 +130,20 @@ handle_call(get_global, _From, #state{global = Global,
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(notify_memcached, State) ->
+handle_info(notify_memcached, #state{merged = Merged} = State) ->
     misc:flush(notify_memcached),
     ?log_debug("Instruct memcached to reload audit config"),
     ok = ns_memcached_sockets_pool:executing_on_socket(
            fun (Sock) ->
                    mc_client_binary:audit_config_reload(Sock)
            end),
+
+    case proplists:get_value(uuid, Merged) of
+        undefined ->
+            ok;
+        UID ->
+            gen_event:notify(audit_events, {audit_uid_change, UID})
+    end,
     {noreply, State};
 
 handle_info(update_audit_json, #state{merged = OldMerged}) ->

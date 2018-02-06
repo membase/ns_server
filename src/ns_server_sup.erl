@@ -146,6 +146,10 @@ child_specs() ->
      {eventing_settings_manager, {eventing_settings_manager, start_link, []},
       permanent, 1000, worker, [work_queue]},
 
+     {audit_events,
+      {gen_event, start_link, [{local, audit_events}]},
+      permanent, brutal_kill, worker, dynamic},
+
      {menelaus, {menelaus_sup, start_link, []},
       permanent, infinity, supervisor,
       [menelaus_sup]},
