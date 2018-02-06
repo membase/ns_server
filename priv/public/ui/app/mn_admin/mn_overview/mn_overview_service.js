@@ -71,11 +71,11 @@
           index: getNodesByService("index", nodes),
           n1ql: getNodesByService("n1ql", nodes),
           fts: getNodesByService("fts", nodes),
-          eventing: getNodesByService("eventing", nodes),
           all: nodes
         };
         if (mnPoolDefault.export.isEnterprise) {
           rv.cbas = getNodesByService("cbas", nodes);
+          rv.eventing = getNodesByService("eventing", nodes);
         }
         return rv;
       });

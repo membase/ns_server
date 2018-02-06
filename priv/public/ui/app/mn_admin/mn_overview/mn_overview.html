@@ -67,6 +67,7 @@
       </div>
     </div>
     <div
+       ng-if="adminCtl.poolDefault.isEnterprise"
        class="service-widget"
        ui-sref="app.admin.eventing.summary"
        ng-class="['dynamic_' + overviewCtl.nodes.eventing.statusClass]">

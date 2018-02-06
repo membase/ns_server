@@ -5,7 +5,7 @@
     .module('mnServers')
     .controller('mnServersAddDialogController', mnServersAddDialogController)
 
-  function mnServersAddDialogController($scope, $rootScope, $q, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups) {
+  function mnServersAddDialogController($scope, $rootScope, $q, $uibModal, mnServersService, $uibModalInstance, mnHelper, mnPromiseHelper, groups, ) {
     var vm = this;
 
     vm.addNodeConfig = {
@@ -15,7 +15,6 @@
           index: $scope.poolDefault.compat.atLeast40,
           n1ql: $scope.poolDefault.compat.atLeast40,
           fts: $scope.poolDefault.compat.atLeast50,
-          eventing: $scope.poolDefault.compat.atLeast55,
           cbas: false
         }
       },
@@ -25,6 +24,9 @@
         password: ''
       }
     };
+    if ($scope.poolDefault.isEnterprise) {
+      vm.addNodeConfig.services.model.eventing = $scope.poolDefault.compat.atLeast55;
+    }
     vm.isGroupsAvailable = !!groups;
     vm.onSubmit = onSubmit;
     if (vm.isGroupsAvailable) {

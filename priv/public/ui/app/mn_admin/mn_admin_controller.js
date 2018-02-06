@@ -207,9 +207,9 @@
 
       $scope.$on("maybeShowMemoryQuotaDialog", function (event, services) {
         return mnPoolDefault.get().then(function (poolsDefault) {
-          var servicesToCheck = ["index", "fts", "eventing"];
+          var servicesToCheck = ["index", "fts"];
           if (poolsDefault.export.isEnterprise) {
-            servicesToCheck.push("cbas");
+            servicesToCheck = servicesToCheck.concat(["cbas", "eventing"]);
           }
           var firstTimeAddedServices =
               mnMemoryQuotaService

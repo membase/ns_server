@@ -115,12 +115,12 @@
         kv: true,
         index: mnPoolDefault.export.compat.atLeast40,
         fts: mnPoolDefault.export.compat.atLeast45,
-        n1ql: mnPoolDefault.export.compat.atLeast40,
-        eventing: mnPoolDefault.export.compat.atLeast55
+        n1ql: mnPoolDefault.export.compat.atLeast40
       };
 
       if (mnPoolDefault.export.isEnterprise) {
         services.cbas = mnPoolDefault.export.compat.atLeast55;
+        services.eventing = mnPoolDefault.export.compat.atLeast55;
       }
 
       mnPromiseHelper(vm, mnMemoryQuotaService.memoryQuotaConfig(services, false, false))

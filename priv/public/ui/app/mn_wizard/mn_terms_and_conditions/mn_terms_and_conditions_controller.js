@@ -39,9 +39,13 @@
 
       mnClusterConfigurationService
         .postStats(vm.register, true).then(function () {
+          var services = "kv,index,fts,n1ql";
+          if (vm.isEnterprise) {
+            services += "eventing";
+          }
           var setupServicesPromise =
               mnServersService.setupServices({
-                services: 'kv,index,fts,n1ql,eventing',
+                services: services,
                 setDefaultMemQuotas : true
               });
 

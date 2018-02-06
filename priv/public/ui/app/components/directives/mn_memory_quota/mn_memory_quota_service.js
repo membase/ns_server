@@ -38,8 +38,6 @@
       }
       if (currentPool.compat.atLeast55 && mnPoolDefault.export.isEnterprise) {
         rv.cbasMemoryQuota = currentPool.cbasMemoryQuota || 256;
-      }
-      if (currentPool.compat.atLeast55) {
         rv.eventingMemoryQuota = currentPool.eventingMemoryQuota || 256;
       }
       if (calculateMaxMemory) {

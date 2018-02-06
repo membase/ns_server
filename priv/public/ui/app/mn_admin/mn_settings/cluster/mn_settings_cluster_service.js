@@ -45,11 +45,11 @@
         maybeSetQuota(data, memoryQuotaConfig, "kv", "memoryQuota");
         maybeSetQuota(data, memoryQuotaConfig, "index", "indexMemoryQuota");
         maybeSetQuota(data, memoryQuotaConfig, "fts", "ftsMemoryQuota");
-        maybeSetQuota(data, memoryQuotaConfig, "eventing", "eventingMemoryQuota");
       }
 
       if (mnPoolDefault.export.isEnterprise) {
         maybeSetQuota(data, memoryQuotaConfig, "cbas", "cbasMemoryQuota");
+        maybeSetQuota(data, memoryQuotaConfig, "eventing", "eventingMemoryQuota");
       }
 
       var config = {

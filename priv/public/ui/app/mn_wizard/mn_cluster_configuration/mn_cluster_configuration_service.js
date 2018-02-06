@@ -33,8 +33,8 @@
         password: ''
       },
       services: {
-        disabled: {kv: false, index: false, n1ql: false, fts: false, eventing: false},
-        model: {kv: true, index: true, n1ql: true, fts: true, eventing: true}
+        disabled: {kv: false, index: false, n1ql: false, fts: false},
+        model: {kv: true, index: true, n1ql: true, fts: true}
       },
       firstTimeAddedServices: undefined
     };
@@ -42,15 +42,14 @@
       maxMemorySize: undefined,
       totalMemorySize: undefined,
       memoryQuota: undefined,
-      displayedServices: {kv: true, index: true, fts: true, n1ql: true, eventing: true},
+      displayedServices: {kv: true, index: true, fts: true, n1ql: true},
       services: {
-        disabled: {kv: true, index: false, n1ql: false, fts: false, eventing: false},
-        model: {kv: true, index: true, n1ql: true, fts: true, eventing: true}
+        disabled: {kv: true, index: false, n1ql: false, fts: false},
+        model: {kv: true, index: true, n1ql: true, fts: true}
       },
       showKVMemoryQuota: true,
       showIndexMemoryQuota: true,
       showFTSMemoryQuota: true,
-      showEventingMemoryQuota: true,
       indexMemoryQuota: undefined,
       ftsMemoryQuota: undefined,
       eventingMemoryQuota: undefined,
@@ -66,7 +65,14 @@
       newConfig.services.model.cbas = false;
       joinClusterConfig.services.disabled.cbas = false;
       joinClusterConfig.services.model.cbas = false;
-      newConfig.showCBASMemoryQuota = true
+      newConfig.showCBASMemoryQuota = true;
+
+      newConfig.displayedServices.eventing = true;
+      newConfig.services.disabled.eventing = false;
+      newConfig.services.model.eventing = true;
+      joinClusterConfig.services.disabled.eventing = false;
+      joinClusterConfig.services.model.eventing = true;
+      newConfig.showEventingMemoryQuota = true;
     }
 
     return mnClusterConfigurationService;
