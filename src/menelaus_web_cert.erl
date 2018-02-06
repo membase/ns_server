@@ -256,10 +256,13 @@ handle_client_cert_auth_settings_post(Req) ->
 
     case cluster_compat_mode:is_cluster_51() of
         true ->
-            try menelaus_util:parse_json(Req) of
-                JSON ->
-                    do_handle_client_cert_auth_settings_5_1_post(Req, JSON)
-            catch _:_ ->
+            try
+                JSON = menelaus_util:parse_json(Req),
+                do_handle_client_cert_auth_settings_5_1_post(Req, JSON)
+            catch
+                throw:{error, Msg} ->
+                    menelaus_util:reply_json(Req, Msg, 400);
+                _:_ ->
                     menelaus_util:reply_json(Req, <<"Invalid JSON">>, 400)
             end;
         false ->
@@ -286,9 +289,24 @@ handle_client_cert_auth_settings_post(Req) ->
 %% }
 do_handle_client_cert_auth_settings_5_1_post(Req, JSON) ->
     {struct, Data} = JSON,
-    State = binary_to_list(proplists:get_value(<<"state">>, Data, <<"disable">>)),
-    PrefixesRaw = proplists:get_value(<<"prefixes">>, Data, []),
+    StateRaw = proplists:get_value(<<"state">>, Data),
+    PrefixesRaw = proplists:get_value(<<"prefixes">>, Data),
 
+    case StateRaw =:= undefined orelse PrefixesRaw =:= undefined of
+        true ->
+            throw({error,
+                   <<"Unsupported format: Must contain 'state' and 'prefixes' "
+                     "fields">>});
+        false ->
+            case length(proplists:get_keys(Data)) > 2 of
+                true ->
+                    throw({error, <<"Unsupported fields: Must contain 'state' "
+                                    "and 'prefixes' fields only">>});
+                false -> ok
+            end
+    end,
+
+    State = binary_to_list(StateRaw),
     case length(PrefixesRaw) > ?MAX_CLIENT_CERT_PREFIXES of
         true ->
             Err = io_lib:format("Maximum number of prefixes supported is ~p",
