@@ -43,6 +43,11 @@
 
 -define(FAILOVER_SERVER_GROUP_CONFIG_KEY, failover_server_group).
 
+-define(MAX_EVENTS_CONFIG_KEY, max_count).
+-define(MAX_EVENTS_ALLOWED, 3).
+-define(MIN_EVENTS_ALLOWED, 1).
+-define(DEFAULT_EVENTS_ALLOWED, 1).
+
 handle_settings_get(Req) ->
     {value, Config} = ns_config:search(ns_config:get(), auto_failover_cfg),
     Enabled = proplists:get_value(enabled, Config),
@@ -65,11 +70,14 @@ handle_settings_post(Req) ->
             reply_text(Req, Errors1, 400);
         {false, Params} ->
             Timeout = proplists:get_value(timeout, Params),
-            MaxNodes = proplists:get_value(maxNodes, Params),
+            %% maxCount will not be set for CE and pre-upgrade so use the
+            %% default.
+            MaxCount = proplists:get_value(maxCount, Params,
+                                           ?DEFAULT_EVENTS_ALLOWED),
             Extras = proplists:get_value(extras, Params),
-            auto_failover:enable(Timeout, MaxNodes, Extras),
+            auto_failover:enable(Timeout, MaxCount, Extras),
             %% TODO: Audit the extras?
-            ns_audit:enable_auto_failover(Req, Timeout, MaxNodes),
+            ns_audit:enable_auto_failover(Req, Timeout, MaxCount),
             reply(Req, 200);
         {true, {error, Errors}} ->
             reply_json(Req, {struct, [{errors, {struct, Errors}}]}, 200);
@@ -114,7 +122,8 @@ config_upgrade_to_vulcan(Config) ->
     %% Infact, 5.0 and earlier, the auto_failover:make_persistent()
     %% code inadvertently removed max_nodes from the config when auto-failover
     %% was enabled.
-    New2 = lists:keystore(max_count, 1, New1, {max_count, 1}),
+    New2 = lists:keystore(?MAX_EVENTS_CONFIG_KEY, 1, New1,
+                          {?MAX_EVENTS_CONFIG_KEY, ?DEFAULT_EVENTS_ALLOWED}),
     New3 = lists:keydelete(max_nodes, 1, New2),
     New = lists:keystore(failed_over_server_groups, 1, New3,
                          {failed_over_server_groups, []}),
@@ -144,9 +153,7 @@ parse_validate_other_params(Args) ->
     Timeout = proplists:get_value("timeout", Args),
     case parse_validate_number(Timeout, Min, Max) of
         {ok, Val} ->
-            %% MaxNodes is hard-coded to 1 for now.
-            parse_validate_extras(Args, [{timeout, Val}, {maxNodes, 1},
-                                         {extras, []}]);
+            parse_validate_extras(Args, [{timeout, Val}, {extras, []}]);
         _ ->
             {error, range_err_msg(timeout, Min, Max)}
     end.
@@ -155,16 +162,38 @@ parse_validate_extras(Args, CurrRV) ->
     case cluster_compat_mode:is_cluster_vulcan() andalso
         cluster_compat_mode:is_enterprise() of
         true ->
-            NewRV = parse_validate_failover_disk_issues(Args, CurrRV),
+            parse_validate_extras_inner(Args, CurrRV);
+        false ->
+            %% TODO - Check for unsupported params
+            CurrRV
+    end.
+
+parse_validate_extras_inner(Args, CurrRV) ->
+    NewRV0 = parse_validate_max_count(Args, CurrRV),
+    case NewRV0 of
+        {error, _}  ->
+            NewRV0;
+        _ ->
+            NewRV = parse_validate_failover_disk_issues(Args, NewRV0),
             case NewRV of
                 {error, _} ->
                     NewRV;
                 _ ->
                     parse_validate_server_group_failover(Args, NewRV)
-            end;
-        false ->
-            %% TODO - Check for unsupported params
-            CurrRV
+            end
+    end.
+
+parse_validate_max_count(Args, CurrRV) ->
+    {value, Config} = ns_config:search(ns_config:get(), auto_failover_cfg),
+    CurrMax = proplists:get_value(?MAX_EVENTS_CONFIG_KEY, Config),
+    Min = ?MIN_EVENTS_ALLOWED,
+    Max = ?MAX_EVENTS_ALLOWED,
+    MaxCount = proplists:get_value("maxCount", Args, integer_to_list(CurrMax)),
+    case parse_validate_number(MaxCount, Min, Max) of
+        {ok, Val} ->
+            [{maxCount, Val} | CurrRV];
+        _->
+            {error, range_err_msg(maxCount, Min, Max)}
     end.
 
 parse_validate_failover_disk_issues(Args, CurrRV) ->
@@ -236,10 +265,12 @@ get_extra_settings(Config) ->
         true ->
             SGFO = proplists:get_value(?FAILOVER_SERVER_GROUP_CONFIG_KEY,
                                        Config),
+            Max = proplists:get_value(?MAX_EVENTS_CONFIG_KEY, Config),
             {Enabled, TimePeriod} = get_failover_on_disk_issues(Config),
             [{?DATA_DISK_ISSUES_CONFIG_KEY,
               {struct, [{enabled, Enabled}, {timePeriod, TimePeriod}]}},
-             {failoverServerGroup, SGFO}];
+             {failoverServerGroup, SGFO},
+             {maxCount, Max}];
         false ->
             []
     end.
