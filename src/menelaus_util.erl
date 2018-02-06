@@ -485,29 +485,38 @@ validate_by_fun(Fun, Name, {_, InList, _} = State) ->
             end
     end.
 
+simple_term_to_list(X) when is_atom(X) ->
+    atom_to_list(X);
+simple_term_to_list(X) when is_integer(X) ->
+    integer_to_list(X);
+simple_term_to_list(X) ->
+    X.
+
 validate_one_of(Name, List, State) ->
     validate_one_of(Name, List, State, fun list_to_atom/1).
 
 validate_one_of(Name, List, {OutList, _, _} = State, Convert) ->
+    StringList = [simple_term_to_list(X) || X <- List],
     Value = proplists:get_value(atom_to_list(Name), OutList),
     case Value of
         undefined ->
             State;
         _ ->
-            case lists:member(Value, List) of
+            StringValue = simple_term_to_list(Value),
+            case lists:member(StringValue, StringList) of
                 true ->
-                    return_value(Name, Convert(Value), State);
+                    return_value(Name, Convert(StringValue), State);
                 false ->
                     return_error(
                       Name,
                       io_lib:format(
                         "The value must be one of the following: [~s]",
-                        [string:join(List, ",")]), State)
+                        [string:join(StringList, ",")]), State)
             end
     end.
 
 validate_boolean(Name, State) ->
-    validate_one_of(Name, ["true", "false"], State).
+    validate_one_of(Name, [true, false], State).
 
 validate_dir(Name, {_, InList, _} = State) ->
     Value = proplists:get_value(Name, InList),
