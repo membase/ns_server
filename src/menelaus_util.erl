@@ -71,6 +71,7 @@
          validate_one_of/4,
          validate_required/2,
          validate_prohibited/2,
+         validate_json_object/2,
          execute_if_validated/3,
          execute_if_validated/4,
          get_values/1,
@@ -615,6 +616,19 @@ execute_if_validated(Fun, Req, {_, Values, Errors}) ->
 execute_if_validated(Fun, Req, Args, Validators) ->
     execute_if_validated(Fun, Req,
                          functools:chain({Args, [], []}, Validators)).
+
+validate_json_object(Body, Validators) ->
+    try ejson:decode(Body) of
+        {KVList} ->
+            Params = lists:map(fun ({Name, Value}) ->
+                                       {binary_to_list(Name), Value}
+                               end, KVList),
+            functools:chain({Params, [], []}, Validators);
+        _ ->
+            {[], [], [{<<"Data">>, <<"Unexpected Json">>}]}
+    catch _:_ ->
+            {[], [], [{<<"Data">>, <<"Invalid Json">>}]}
+    end.
 
 get_values({_, Values, _}) ->
     Values.
