@@ -744,18 +744,18 @@ comm_test() ->
 start_singleton(Module, Name, Args, Opts) ->
     case Module:start_link({via, leader_registry, Name}, Name, Args, Opts) of
         {error, {already_started, Pid}} ->
-            ?log_debug("start_singleton(~p, ~p, ~p, ~p):"
-                       " monitoring ~p from ~p",
-                       [Module, Name, Args, Opts, Pid, node()]),
+            ?log_warning("start_singleton(~p, ~p, ~p, ~p) -> already started:"
+                         " monitoring ~p from ~p",
+                         [Module, Name, Args, Opts, Pid, node()]),
             {ok, spawn_link(fun () ->
                                     misc:wait_for_process(Pid, infinity),
                                     ?log_info("~p saw ~p exit (was pid ~p).",
                                               [self(), Name, Pid])
                             end)};
         {ok, Pid} = X ->
-            ?log_debug("start_singleton(~p, ~p, ~p, ~p):"
-                       " started as ~p on ~p~n",
-                       [Module, Name, Args, Opts, Pid, node()]),
+            ?log_info("start_singleton(~p, ~p, ~p, ~p):"
+                      " started as ~p on ~p~n",
+                      [Module, Name, Args, Opts, Pid, node()]),
             X;
         X -> X
     end.
