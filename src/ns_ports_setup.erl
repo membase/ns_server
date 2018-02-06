@@ -19,7 +19,7 @@
 -export([start/0, setup_body_tramp/0,
          restart_port_by_name/1, restart_moxi/0, restart_memcached/0,
          restart_xdcr_proxy/0, sync/0, create_erl_node_spec/4,
-         create_goxdcr_upgrade_spec/1, shutdown_ports/0]).
+         shutdown_ports/0]).
 
 -export([run_cbsasladm/1]).
 
@@ -339,46 +339,31 @@ goxdcr_spec(Config) ->
         false ->
             [];
         true ->
-            create_goxdcr_spec(Config, Cmd, false)
+            create_goxdcr_spec(Config, Cmd)
     end.
 
-create_goxdcr_spec(Config, Cmd, Upgrade) ->
+create_goxdcr_spec(Config, Cmd) ->
     AdminPort = "-sourceKVAdminPort=" ++
         integer_to_list(misc:node_rest_port(Config, node())),
     XdcrRestPort = "-xdcrRestPort=" ++
         integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
     IsEnterprise = "-isEnterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
     IsIpv6 = "-ipv6=" ++ atom_to_list(misc:is_ipv6()),
-
-    Args0 = [AdminPort, XdcrRestPort, IsEnterprise, IsIpv6],
-
-    Args1 = case Upgrade of
-                true ->
-                    ["-isConvert=true" | Args0];
-                false ->
-                    Args0
-            end,
-
     UpstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
+    Args0 = [AdminPort, XdcrRestPort, IsEnterprise, IsIpv6],
     Args =
         case UpstreamPort of
             undefined ->
-                Args1;
+                Args0;
             _ ->
                 LocalProxyPort = "-localProxyPort=" ++ integer_to_list(UpstreamPort),
-                [LocalProxyPort | Args1]
+                [LocalProxyPort | Args0]
         end,
 
     [{'goxdcr', Cmd, Args,
       [via_goport, exit_status, stderr_to_stdout,
        {log, ?GOXDCR_LOG_FILENAME},
        {env, build_go_env_vars(Config, goxdcr)}]}].
-
-create_goxdcr_upgrade_spec(Config) ->
-    Cmd = find_executable("goxdcr"),
-    true = Cmd =/= false,
-    [Spec] = create_goxdcr_spec(Config, Cmd, true),
-    Spec.
 
 index_node_spec(Config) ->
     case ns_cluster_membership:should_run_service(Config, index, node()) of

@@ -56,10 +56,8 @@ maybe_final_upgrade(?LATEST_VERSION_NUM) ->
 maybe_final_upgrade(_) ->
     [].
 
-upgrade(?VERSION_30, Config) ->
-    {?VERSION_40,
-     goxdcr_upgrade:config_upgrade(Config) ++
-         index_settings_manager:config_upgrade_to_40()};
+upgrade(?VERSION_30, _Config) ->
+    {?VERSION_40, index_settings_manager:config_upgrade_to_40()};
 
 upgrade(?VERSION_40, Config) ->
     {?VERSION_41,

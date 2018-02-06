@@ -214,8 +214,7 @@ consider_switching_compat_mode() ->
     end.
 
 upgrades() ->
-    [{?VERSION_40, goxdcr, goxdcr_upgrade, upgrade},
-     {?VERSION_50, users, menelaus_users, upgrade_to_50}].
+    [{?VERSION_50, users, menelaus_users, upgrade_to_50}].
 
 do_upgrades(undefined, _, _, _) ->
     %% this happens during the cluster initialization. no upgrade needed
