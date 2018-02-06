@@ -70,13 +70,17 @@ handle_start_collect_logs(Req) ->
                                                              Options) of
                         ok ->
                             ns_audit:start_log_collection(Req, Nodes, BaseURL,
-                                                          RedactLevel),
+                                                          Options),
                             menelaus_util:reply_json(Req, [], 200);
                         already_started ->
-                            menelaus_util:reply_json(Req, {struct, [{'_', <<"Logs collection task is already started">>}]}, 400)
+                            menelaus_util:reply_json(
+                              Req, {struct,
+                                    [{'_', <<"Logs collection task is already "
+                                             "started">>}]}, 400)
                     end;
                 {error, Message} ->
-                    menelaus_util:reply_json(Req, {struct, [{'_', Message}]}, 400)
+                    menelaus_util:reply_json(Req, {struct, [{'_', Message}]},
+                                             400)
             end;
         {errors, RawErrors} ->
             Errors = [begin

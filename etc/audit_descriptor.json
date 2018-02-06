@@ -813,7 +813,8 @@
               "redact_level" : ""
           },
           "optional_fields" : {
-              "sessionid" : ""
+              "sessionid" : "",
+              "tmp_dir" : ""
           }
       },
       {

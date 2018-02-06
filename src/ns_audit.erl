@@ -685,10 +685,10 @@ client_cert_auth(Req, ClientCertAuth) ->
 security_settings(Req, Settings) ->
     put(security_settings, Req, [{settings, {prepare_list(Settings)}}]).
 
-start_log_collection(Req, Nodes, BaseURL, RedactLevel) ->
-    put(start_log_collection, Req, [{nodes, {list, Nodes}},
-                                    {base_url, BaseURL},
-                                    {redact_level, RedactLevel}]).
+start_log_collection(Req, Nodes, BaseURL, Options) ->
+    put(start_log_collection, Req,
+        [{nodes, {list, Nodes}}, {base_url, BaseURL}] ++
+            Options).
 
 modify_log_redaction_settings(Req, Settings) ->
     put(modify_log_redaction_settings, Req,
