@@ -172,12 +172,13 @@ encode_doc({Key, Value}) ->
           end,
     {struct, [{id, Key}, {doc, {struct, [Doc]}}]}.
 
-do_get(BucketId, DocId) ->
+do_get(BucketId, DocId, Options) ->
     BinaryBucketId = list_to_binary(BucketId),
     BinaryDocId = list_to_binary(DocId),
     attempt(BinaryBucketId,
             BinaryDocId,
-            capi_crud, get, [BinaryBucketId, BinaryDocId, [ejson_body]]).
+            capi_crud, get,
+            [BinaryBucketId, BinaryDocId, [ejson_body|Options]]).
 
 couch_errorjson_to_context(ErrData) ->
     ErrStruct = mochijson2:decode(ErrData),
@@ -200,7 +201,8 @@ construct_error_reply(Msg) ->
     {struct, [{error, <<"bad_request">>}, {reason, Reason}]}.
 
 handle_get(BucketId, DocId, Req) ->
-    case do_get(BucketId, DocId) of
+    XAttrPermissions = get_xattrs_permissions(BucketId, Req),
+    case do_get(BucketId, DocId, [{xattrs_perm, XAttrPermissions}]) of
         {not_found, missing} ->
             menelaus_util:reply(Req, 404);
         {error, Msg} ->
@@ -213,6 +215,13 @@ handle_get(BucketId, DocId, Req) ->
             Res = capi_utils:couch_doc_to_mochi_json(EJSON),
             menelaus_util:reply_json(Req, Res)
     end.
+
+get_xattrs_permissions(BucketId, Req) ->
+    ServerPrivilege = {[{bucket, BucketId}, data, sxattr], read},
+    UserPrivilage = {[{bucket, BucketId}, data, xattr], read},
+    ServerPerm = menelaus_auth:has_permission(ServerPrivilege, Req),
+    UserPerm = menelaus_auth:has_permission(UserPrivilage, Req),
+    [server_read||ServerPerm] ++ [user_read||UserPerm].
 
 do_mutate(BucketId, DocId, BodyOrUndefined, Flags) ->
     BinaryBucketId = list_to_binary(BucketId),
