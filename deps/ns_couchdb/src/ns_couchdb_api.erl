@@ -203,13 +203,9 @@ handle_rpc({get_design_doc_signatures, Bucket}) ->
     {capi_utils:get_design_doc_signatures(mapreduce_view, Bucket),
      capi_utils:get_design_doc_signatures(spatial_view, Bucket)};
 
-handle_rpc({foreach_doc, xdcr, Fun, Timeout}) ->
-    xdc_rdoc_manager:foreach_doc(Fun, Timeout);
 handle_rpc({foreach_doc, Bucket, Fun, Timeout}) ->
     capi_ddoc_manager:foreach_doc(Bucket, Fun, Timeout);
 
-handle_rpc({update_doc, xdcr, Doc}) ->
-    xdc_rdoc_manager:update_doc(Doc);
 handle_rpc({update_doc, Bucket, #doc{id = <<"_local/", _/binary>>} = Doc}) ->
     capi_frontend:with_master_vbucket(
       Bucket,
@@ -219,8 +215,6 @@ handle_rpc({update_doc, Bucket, #doc{id = <<"_local/", _/binary>>} = Doc}) ->
 handle_rpc({update_doc, Bucket, Doc}) ->
     capi_ddoc_manager:update_doc(Bucket, Doc);
 
-handle_rpc({get_doc, xdcr, Id}) ->
-    xdc_rdoc_manager:get_doc(Id);
 handle_rpc({get_doc, Bucket, <<"_local/", _/binary>> = Id}) ->
     capi_frontend:with_master_vbucket(
       Bucket,

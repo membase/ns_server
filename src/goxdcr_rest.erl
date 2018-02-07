@@ -212,6 +212,15 @@ stats(Bucket) ->
             []
     end.
 
+parse_remote_bucket_reference(Reference) ->
+    case binary:split(Reference, <<"/">>, [global]) of
+        [<<>>, <<"remoteClusters">>, ClusterUUID, <<"buckets">>, BucketName] ->
+            ClusterUUID1 = list_to_binary(mochiweb_util:unquote(ClusterUUID)),
+            {ok, {ClusterUUID1, mochiweb_util:unquote(BucketName)}};
+        _ ->
+            {error, bad_reference}
+    end.
+
 get_replications_with_remote_info() ->
     RemoteClusters =
         get_from_goxdcr(
@@ -227,7 +236,7 @@ get_replications_with_remote_info() ->
               Id = misc:expect_prop_value(id, Props),
               Target = misc:expect_prop_value(target, Props),
               {ok, {RemoteClusterUUID, RemoteBucket}} =
-                  remote_clusters_info:parse_remote_bucket_reference(Target),
+                  parse_remote_bucket_reference(Target),
               ClusterName = proplists:get_value(RemoteClusterUUID, RemoteClusters, <<"unknown">>),
               [{Id, BucketName, binary_to_list(ClusterName), RemoteBucket} | Acc]
       end, [], find_all_replication_docs(30000)).

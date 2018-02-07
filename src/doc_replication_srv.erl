@@ -24,11 +24,7 @@
 
 
 -export([start_link/1,
-         start_link_xdcr/0,
          proxy_server_name/1]).
-
-start_link_xdcr() ->
-    proc_lib:start_link(erlang, apply, [fun start_proxy_loop/1, [xdcr]]).
 
 start_link(Bucket) ->
     ns_bucket_sup:ignore_if_not_couchbase_bucket(
@@ -54,7 +50,5 @@ proxy_loop(DocMgr) ->
             proxy_loop(DocMgr)
     end.
 
-proxy_server_name(xdcr) ->
-    xdc_rdoc_replication_srv;
 proxy_server_name(Bucket) ->
     list_to_atom("capi_ddoc_replication_srv-" ++ Bucket).

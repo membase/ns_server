@@ -23,7 +23,8 @@
          handle_commit_for_checkpoint/1,
          handle_mass_vbopaque_check/1]).
 
--include("xdc_replicator.hrl").
+-include("ns_common.hrl").
+-include("couch_db.hrl").
 -include("mc_entry.hrl").
 -include("mc_constants.hrl").
 
