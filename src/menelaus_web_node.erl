@@ -251,6 +251,9 @@ construct_ext_mochijson(Hostname, Ports) ->
     [{external, {struct, [{hostname, list_to_binary(Hostname)},
                           {ports, {struct, Ports}}]}}].
 
+is_xdcr_over_ssl_allowed() ->
+    cluster_compat_mode:is_enterprise().
+
 build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 
     DirectPort = ns_config:search_node_prop(WantENode, Config, memcached, port),
@@ -266,7 +269,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     %% this is used by xdcr over ssl since 2.5.0
     PortKeys = [{ssl_capi_port, httpsCAPI},
                 {ssl_rest_port, httpsMgmt}]
-        ++ case menelaus_web_remote_clusters:is_xdcr_over_ssl_allowed() of
+        ++ case is_xdcr_over_ssl_allowed() of
                true ->
                    [{ssl_proxy_downstream_port, sslProxy}];
                _ -> []
@@ -452,7 +455,7 @@ handle_node_rename(Req) ->
     end.
 
 handle_node_self_xdcr_ssl_ports(Req) ->
-    case menelaus_web_remote_clusters:is_xdcr_over_ssl_allowed() of
+    case is_xdcr_over_ssl_allowed() of
         false ->
             reply_json(Req, [], 403);
         true ->
