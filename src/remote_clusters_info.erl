@@ -1651,20 +1651,10 @@ gc_cluster(Cluster) ->
     true = ets:delete(?CACHE, Cluster).
 
 gc_buckets(CachedClusters) ->
-    PresentReplications = build_present_replications_dict(),
-
     lists:foreach(
       fun (Cluster) ->
-              Buckets = case dict:find(Cluster, PresentReplications) of
-                            {ok, V} ->
-                                V;
-                            error ->
-                                []
-                        end,
-
               CachedBuckets = get_cached_remote_buckets(Cluster),
-
-              Removed = ordsets:subtract(CachedBuckets, Buckets),
+              Removed = ordsets:subtract(CachedBuckets, []),
               Left = ordsets:subtract(CachedBuckets, Removed),
 
               lists:foreach(
@@ -1675,43 +1665,6 @@ gc_buckets(CachedClusters) ->
 
               true = ets:insert(?CACHE, {{buckets, Cluster}, Left})
       end, CachedClusters).
-
-build_present_replications_dict() ->
-    Docs = xdc_rdoc_api:find_all_replication_docs_old(),
-    do_build_present_replications_dict(Docs).
-
-do_build_present_replications_dict(DocPLists) ->
-    Pairs = [begin
-                 {ok, Pair} = parse_remote_bucket_reference(Target),
-                 Pair
-             end
-             || PList <- DocPLists,
-                {TargetLabel, Target} <- PList,
-                TargetLabel =:= <<"target">> orelse TargetLabel =:= target],
-    lists:foldl(
-      fun ({UUID, BucketName}, D) ->
-              dict:update(UUID,
-                          fun (S) ->
-                                  ordsets:add_element(BucketName, S)
-                          end, [BucketName], D)
-      end, dict:new(), Pairs).
-
--ifdef(EUNIT).
-
-do_build_present_replications_dict_test() ->
-    Docs = [[{<<"assd">>, 1},
-             {<<"target">>, <<"/remoteClusters/uuu/buckets/asd">>}],
-            [],
-            [{<<"target">>, <<"/remoteClusters/uuu/buckets/asd">>}],
-            [{<<"target">>, <<"/remoteClusters/uuu2/buckets/asd">>}],
-            [{<<"target">>, <<"/remoteClusters/uuu/buckets/default">>}]],
-    D = do_build_present_replications_dict(Docs),
-    DL = lists:sort(dict:to_list(D)),
-    ?assertEqual([{<<"uuu">>, ["asd", "default"]},
-                  {<<"uuu2">>, ["asd"]}],
-                 DL).
-
--endif.
 
 reply_async(From, Timeout, Computation) ->
     proc_lib:spawn_link(

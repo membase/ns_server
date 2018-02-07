@@ -332,13 +332,10 @@ kv_node_projector_spec(Config) ->
     end.
 
 goxdcr_spec(Config) ->
-    Cmd = find_executable("goxdcr"),
-
-    case cluster_compat_mode:is_goxdcr_enabled(Config) andalso
-        Cmd =/= false of
+    case find_executable("goxdcr") of
         false ->
             [];
-        true ->
+        Cmd ->
             create_goxdcr_spec(Config, Cmd)
     end.
 

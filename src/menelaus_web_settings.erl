@@ -98,20 +98,7 @@ conf(internal) ->
       get_number(0, 99999, undefined)},
      {gotraceback, gotraceback, <<"crash">>, fun get_string/1},
      {{auto_failover_disabled, index}, indexAutoFailoverDisabled, true, fun get_bool/1},
-     {{cert, use_sha1}, certUseSha1, false, fun get_bool/1}] ++
-        case cluster_compat_mode:is_goxdcr_enabled() of
-            false ->
-                [{{xdcr, max_concurrent_reps}, xdcrMaxConcurrentReps, 32, get_number(1, 256)},
-                 {{xdcr, checkpoint_interval}, xdcrCheckpointInterval, 1800, get_number(60, 14400)},
-                 {{xdcr, worker_batch_size}, xdcrWorkerBatchSize, 500, get_number(500, 10000)},
-                 {{xdcr, doc_batch_size_kb}, xdcrDocBatchSizeKb, 2048, get_number(10, 100000)},
-                 {{xdcr, failure_restart_interval}, xdcrFailureRestartInterval, 30, get_number(1, 300)},
-                 {{xdcr, optimistic_replication_threshold}, xdcrOptimisticReplicationThreshold, 256,
-                  get_number(0, 20*1024*1024, undefined)},
-                 {xdcr_anticipatory_delay, xdcrAnticipatoryDelay, 0, get_number(0, 99999)}];
-            true ->
-                []
-        end.
+     {{cert, use_sha1}, certUseSha1, false, fun get_bool/1}].
 
 build_kvs(Type) ->
     Conf = conf(Type),

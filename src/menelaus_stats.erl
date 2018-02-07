@@ -785,12 +785,7 @@ computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
                  {Combiner, [StatNameA, StatNameB]}
          end,
     %% compute a list of per replication XDC stats
-    Reps = case cluster_compat_mode:is_goxdcr_enabled() of
-               true ->
-                   goxdcr_status_keeper:get_replications(BucketName);
-               false ->
-                   []
-           end,
+    Reps = goxdcr_status_keeper:get_replications(BucketName),
     lists:flatmap(fun (Id) ->
                           Prefix = <<"replications/", Id/binary,"/">>,
 
@@ -805,7 +800,7 @@ computed_stats_lazy_proplist("@xdcr-"++BucketName) ->
                           [{<<Prefix/binary, "percent_completeness">>, PercentCompleteness}]
                   end,
                   Reps);
-computed_stats_lazy_proplist(BucketName) ->
+computed_stats_lazy_proplist(_) ->
     Z2 = fun (StatNameA, StatNameB, Combiner) ->
                  {Combiner, [StatNameA, StatNameB]}
          end,
@@ -918,57 +913,6 @@ computed_stats_lazy_proplist(BucketName) ->
                                           end
                                   end),
 
-    XDCAllRepStats =
-        case cluster_compat_mode:is_goxdcr_enabled() of
-            true ->
-                [];
-            false ->
-                %% compute a list of per replication XDC stats
-                Reps = xdc_replication_sup:get_replications(list_to_binary(BucketName)),
-                lists:flatmap(
-                  fun ({Id, _Pid}) ->
-                          Prefix = <<"replications/", Id/binary,"/">>,
-
-                          WtAvgMetaLatency = Z2(<<Prefix/binary, "meta_latency_aggr">>,
-                                                <<Prefix/binary, "meta_latency_wt">>,
-                                                fun (Total, Count) ->
-                                                        try Total / Count
-                                                        catch error:badarith -> 0
-                                                        end
-                                                end),
-
-                          WtAvgDocsLatency = Z2(<<Prefix/binary, "docs_latency_aggr">>,
-                                                <<Prefix/binary, "docs_latency_wt">>,
-                                                fun (Total, Count) ->
-                                                        try Total / Count
-                                                        catch error:badarith -> 0
-                                                        end
-                                                end),
-
-                          PercentCompleteness = Z2(<<Prefix/binary, "docs_checked">>,
-                                                   <<Prefix/binary, "changes_left">>,
-                                                   fun (Checked, Left) ->
-                                                           try (100 * Checked) / (Checked + Left)
-                                                           catch error:badarith -> 0
-                                                           end
-                                                   end),
-
-                          Utilization = Z2(<<Prefix/binary, "time_working_rate">>,
-                                           <<Prefix/binary, "max_vbreps">>,
-                                           fun (Rate, Max) ->
-                                                   try 100 * Rate / Max
-                                                   catch error:badarith -> 0
-                                                   end
-                                           end),
-
-                          [{<<Prefix/binary, "wtavg_meta_latency">>, WtAvgMetaLatency},
-                           {<<Prefix/binary, "wtavg_docs_latency">>, WtAvgDocsLatency},
-                           {<<Prefix/binary, "percent_completeness">>, PercentCompleteness},
-                           {<<Prefix/binary, "utilization">>, Utilization}]
-                  end,
-                  Reps)
-        end,
-
     ViewsIndexesStats =
         [{Key, Z3(ViewKey, IndexKey, FtsKey, fun (A, B, C) -> A + B + C end)} ||
             {Key, ViewKey, IndexKey, FtsKey} <-
@@ -1005,7 +949,7 @@ computed_stats_lazy_proplist(BucketName) ->
      {<<"avg_bg_wait_time">>, AverageBgWait},
      {<<"avg_active_timestamp_drift">>, AvgActiveTimestampDrift},
      {<<"avg_replica_timestamp_drift">>, AvgReplicaTimestampDrift}]
-        ++ ViewsIndexesStats ++ XDCAllRepStats
+        ++ ViewsIndexesStats
         ++ computed_stats_lazy_proplist("@query").
 
 combine_samples(Combiner, Dict, StatNames) ->
@@ -1326,15 +1270,10 @@ proceed_if_has_nodes(Service, ServiceNodes, MemoizeKey, Fun) ->
     end.
 
 couchbase_goxdcr_stats_descriptions(BucketId) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            simple_memoize({stats_directory_goxdcr, BucketId},
-                           fun () ->
-                                   do_couchbase_goxdcr_stats_descriptions(BucketId)
-                           end, 5000);
-        false ->
-            []
-    end.
+    simple_memoize({stats_directory_goxdcr, BucketId},
+                   fun () ->
+                           do_couchbase_goxdcr_stats_descriptions(BucketId)
+                   end, 5000).
 
 do_couchbase_goxdcr_stats_descriptions(BucketId) ->
     Reps = goxdcr_status_keeper:get_replications_with_remote_info(BucketId),
@@ -1398,107 +1337,6 @@ do_couchbase_goxdcr_stats_descriptions(BucketId) ->
                             {name, <<Prefix/binary, "rate_received_from_dcp">>},
                             {desc, <<"Rate of mutations received from dcp in terms of number of mutations per second ">>}]}]}]}
       end, Reps).
-
-
-couchbase_replication_stats_descriptions(BucketId) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            [];
-        false ->
-            simple_memoize({stats_directory_xdcr, BucketId},
-                           fun () ->
-                                   do_couchbase_replication_stats_descriptions(BucketId)
-                           end, 5000)
-    end.
-
-do_couchbase_replication_stats_descriptions(BucketId) ->
-    Reps = xdc_replication_sup:get_replications(list_to_binary(BucketId)),
-    lists:map(fun ({Id, Pid}) ->
-                      {ok, Targ} = xdc_replication:target(Pid),
-                      Prefix = <<"replications/", Id/binary,"/">>,
-
-                      {ok, {RemoteClusterUUID, RemoteBucket}} =
-                          remote_clusters_info:parse_remote_bucket_reference(Targ),
-                      RemoteCluster = remote_clusters_info:find_cluster_by_uuid(RemoteClusterUUID),
-                      RemoteClusterName = proplists:get_value(name, RemoteCluster),
-                      BlockName = io_lib:format("Outbound XDCR Operations to bucket ~p "
-                                                "on remote cluster ~p",
-                                                [RemoteBucket, RemoteClusterName]),
-
-                      {struct,
-                       [{blockName, iolist_to_binary(BlockName)},
-                        {extraCSSClasses, <<"dynamic_closed">>},
-                        {stats,
-                         [%% first row
-                          {struct, [{title, <<"mutations">>},
-                                    {name, <<Prefix/binary, "changes_left">>},
-                                    {desc, <<"Number of mutations to be replicated to other clusters "
-                                             "(measured from per-replication stat changes_left)">>}]},
-                          {struct, [{title, <<"percent completed">>},
-                                    {maxY, 100},
-                                    {name, <<Prefix/binary, "percent_completeness">>},
-                                    {desc, <<"Percentage of checked items out of all checked and to-be-replicated items "
-                                             "(measured from per-replication stat percent_completeness)">>}]},
-                          {struct, [{title, <<"active vb reps">>},
-                                    {name, <<Prefix/binary, "active_vbreps">>},
-                                    {desc, <<"Number of active vbucket replications "
-                                             "(measured from per-replication stat active_vbreps)">>}]},
-                          {struct, [{title, <<"waiting vb reps">>},
-                                    {name, <<Prefix/binary, "waiting_vbreps">>},
-                                    {desc, <<"Number of waiting vbucket replications "
-                                             "(measured from per-replication stat waiting_vbreps)">>}]},
-                          %% second row
-                          {struct, [{title, <<"mutation replication rate">>},
-                                    {name, <<Prefix/binary,"rate_replication">>},
-                                    {desc, <<"Rate of replication in terms of number of replicated mutations per second "
-                                             "(measured from per-replication stat rate_replication)">>}]},
-                          {struct, [{isBytes, true},
-                                    {title, <<"data replication rate">>},
-                                    {name, <<Prefix/binary, "bandwidth_usage">>},
-                                    {desc, <<"Rate of replication in terms of bytes replicated per second "
-                                             "(measured from per-replication stat bandwidth_usage)">>}]},
-                          {struct, [{title, <<"opt. replication rate">>},
-                                    {name, <<Prefix/binary, "rate_doc_opt_repd">>},
-                                    {desc, <<"Rate of optimistic replications in terms of number of "
-                                             "replicated mutations per second ">>}]},
-                          {struct, [{title, <<"doc checks rate">>},
-                                    {name, <<Prefix/binary,"rate_doc_checks">>},
-                                    {desc, <<"Rate of doc checks per second ">>}]},
-
-                          %% third row
-                          {struct, [{title, <<"meta batches per sec.">>},
-                                    {name, <<Prefix/binary, "meta_latency_wt">>},
-                                    {desc, <<"Weighted average latency in ms of sending getMeta and "
-                                             "waiting for conflict solution result from remote cluster "
-                                             "(measured from per-replication stat wtavg_meta_latency)">>}]},
-                          {struct, [{title, <<"ms meta batch latency">>},
-                                    {name, <<Prefix/binary, "wtavg_meta_latency">>},
-                                    {desc, <<"Weighted average latency in ms of sending getMeta and "
-                                             "waiting for conflict solution result from remote cluster "
-                                             "(measured from per-replication stat wtavg_meta_latency)">>}]},
-                          {struct, [{title, <<"docs batches per sec.">>},
-                                    {name, <<Prefix/binary, "docs_latency_wt">>},
-                                    {desc, <<"Weighted average latency in ms of sending replicated "
-                                             "mutations to remote cluster "
-                                             "(measured from per-replication stat wtavg_docs_latency)">>}]},
-                          {struct, [{title, <<"ms doc batch latency">>},
-                                    {name, <<Prefix/binary, "wtavg_docs_latency">>},
-                                    {desc, <<"Weighted average latency in ms of sending replicated "
-                                             "mutations to remote cluster "
-                                             "(measured from per-replication stat wtavg_docs_latency)">>}]},
-                          %% fourth row
-                          {struct, [{title, <<"wakeups per sec.">>},
-                                    {name, <<Prefix/binary, "wakeups_rate">>},
-                                    {desc, <<"Rate of XDCR vbucket replicator wakeups">>}]},
-                          {struct, [{title, <<"XDCR vb reps per sec.">>},
-                                    {name, <<Prefix/binary, "worker_batches_rate">>},
-                                    {desc, <<"Rate at which XDCR vbucket replicators replicates batches per second">>}]},
-                          {struct, [{title, <<"% time spent vb reps">>},
-                                    {maxY, 100},
-                                    {name, <<Prefix/binary, "utilization">>},
-                                    {desc, <<"Percentage of time spent with vbucket replicators * 100 "
-                                             "/ (max_workers_count * <time passed since last sample>)">>}]}]}]}
-              end, Reps).
 
 couchbase_view_stats_descriptions(BucketId) ->
     simple_memoize({stats_directory_views, BucketId},
@@ -2304,12 +2142,7 @@ membase_incoming_xdcr_operations_stats_description() ->
                             "(measured from ep_num_ops_del_meta + ep_num_ops_get_meta + ep_num_ops_set_meta)">>}]}]}]}].
 
 display_outbound_xdcr_mutations(BucketID) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            goxdcr_status_keeper:get_replications(BucketID) =/= [];
-        false ->
-            true
-    end.
+    goxdcr_status_keeper:get_replications(BucketID) =/= [].
 
 ephemeral_stats_description(BucketId, ServiceNodes) ->
     membase_summary_stats_description(BucketId, ServiceNodes, true)
@@ -2317,7 +2150,6 @@ ephemeral_stats_description(BucketId, ServiceNodes) ->
         ++ membase_dcp_queues_stats_description()
         ++ couchbase_index_stats_descriptions(BucketId, ServiceNodes)
         ++ couchbase_fts_stats_descriptions(BucketId, ServiceNodes)
-        ++ couchbase_replication_stats_descriptions(BucketId)
         ++ couchbase_goxdcr_stats_descriptions(BucketId)
         ++ case has_nodes(n1ql, ServiceNodes) of
                true -> couchbase_query_stats_descriptions();
@@ -2336,7 +2168,6 @@ membase_stats_description(BucketId, ServiceNodes) ->
         ++ couchbase_index_stats_descriptions(BucketId, ServiceNodes)
         ++ couchbase_cbas_stats_descriptions(ServiceNodes)
         ++ couchbase_fts_stats_descriptions(BucketId, ServiceNodes)
-        ++ couchbase_replication_stats_descriptions(BucketId)
         ++ couchbase_goxdcr_stats_descriptions(BucketId)
         ++ case has_nodes(n1ql, ServiceNodes) of
                true -> couchbase_query_stats_descriptions();

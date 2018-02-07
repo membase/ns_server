@@ -45,8 +45,6 @@
          is_cluster_vulcan/1,
          is_version_vulcan/1,
          is_enterprise/0,
-         is_goxdcr_enabled/0,
-         is_goxdcr_enabled/1,
          is_ldap_enabled/0,
          min_supported_compat_version/0,
          effective_cluster_compat_version/0,
@@ -151,14 +149,6 @@ is_index_pausing_on() ->
 
 is_enterprise() ->
     ns_config:read_key_fast({node, node(), is_enterprise}, false).
-
-is_goxdcr_enabled() ->
-    is_goxdcr_enabled(ns_config:latest()).
-
-is_goxdcr_enabled(Config) ->
-    is_cluster_40() andalso
-        ns_config:search(Config, goxdcr_enabled, true) andalso
-        (not ns_config:search(Config, {node, node(), stop_xdcr}, false)).
 
 is_ldap_enabled() ->
     is_cluster_40() andalso is_enterprise() andalso

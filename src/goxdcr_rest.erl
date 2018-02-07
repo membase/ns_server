@@ -22,6 +22,7 @@
 -export([proxy/1, proxy/2,
          send/2,
          find_all_replication_docs/1,
+         find_all_replication_docs/0,
          all_local_replication_infos/0,
          stats/1,
          get_replications_with_remote_info/0,
@@ -152,6 +153,12 @@ process_doc({Props}) ->
         {Key, Value} <- Props,
         interesting_doc_key(Key)].
 
+-spec find_all_replication_docs() -> [Doc :: [{Key :: atom(), Value :: _}]].
+find_all_replication_docs() ->
+    find_all_replication_docs(infinity).
+
+-spec find_all_replication_docs(non_neg_integer() | infinity) ->
+                                       [Doc :: [{Key :: atom(), Value :: _}]].
 find_all_replication_docs(Timeout) ->
     get_from_goxdcr(fun (Json) ->
                             [process_doc(Doc) || Doc <- Json]
@@ -183,6 +190,8 @@ process_repl_info({Info}, Acc) ->
             [{Id, Stats, Errors} | Acc]
     end.
 
+-spec all_local_replication_infos() -> [{Id :: binary(), [{atom(), _}],
+                                         [{erlang:timestamp(), ErrorMsg :: binary()}]}].
 all_local_replication_infos() ->
     get_from_goxdcr(fun (Json) ->
                             lists:foldl(fun process_repl_info/2, [], Json)

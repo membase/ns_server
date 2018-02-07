@@ -103,31 +103,6 @@ init(_) ->
               ok
       end),
 
-    DocMgr = replicated_storage:wait_for_startup(),
-
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        false ->
-            case ns_config:read_key_fast({node, node(), stop_xdcr}, false) of
-                true ->
-                    ?xdcr_info("Stop was requested by goxdcr upgrade"),
-                    ns_config:delete({node, node(), stop_xdcr}),
-                    ok;
-                false ->
-                    IdDocList = xdc_rdoc_manager:foreach_doc(
-                                  DocMgr,
-                                  fun (#doc{deleted = true}) ->
-                                          undefined;
-                                      (Doc) ->
-                                          Doc
-                                  end, infinity),
-
-                    [process_update(couch_doc:with_ejson_body(D)) || {_Id, D} <- IdDocList,
-                                                                     D =/= undefined]
-            end;
-        true ->
-            ok
-    end,
-
     gen_server:enter_loop(?MODULE, [], []).
 
 handle_call(Msg, From, State) ->
@@ -140,13 +115,7 @@ handle_cast(Msg, State) ->
     {stop, {error, {unexpected_cast, Msg}}, State}.
 
 handle_info({rep_db_update, Doc}, State) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        false ->
-            process_update(couch_doc:with_ejson_body(Doc));
-        true ->
-            ?xdcr_debug("Ignoring updated doc ~p since old xdcr is disabled", [Doc]),
-            ok
-    end,
+    ?xdcr_debug("Ignoring updated doc ~p since old xdcr is disabled", [Doc]),
     {noreply, State};
 
 handle_info(stop_xdcr, State) ->
@@ -166,40 +135,3 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-convert_key(K) when is_atom(K) ->
-    atom_to_binary(K, latin1);
-convert_key(K) ->
-    K.
-
-process_update(#doc{id = <<?DESIGN_DOC_PREFIX, _Rest/binary>>}) ->
-    ok;
-process_update(#doc{id = DocId, deleted = true}) ->
-    ?xdcr_debug("replication doc deleted (docId: ~p), stop all replications",
-                [DocId]),
-    xdc_replication_sup:stop_replication(DocId);
-process_update(#doc{id = DocId, body = {OrigProps}, deleted = false}) ->
-    Props = [{convert_key(Key), Val} || {Key, Val} <- OrigProps],
-    case couch_util:get_value(<<"type">>, Props) of
-        <<"xdc">> ->
-            update_replication(DocId, Props);
-        <<"xdc-xmem">> ->
-            update_replication(DocId, Props);
-        _ ->
-            ok
-    end.
-
-update_replication(DocId, Props) ->
-    XRep = parse_xdc_rep_doc(DocId, {Props}),
-    xdc_replication_sup:update_replication(DocId, XRep).
-
-%% validate and parse XDC rep doc
-parse_xdc_rep_doc(RepDocId, RepDoc) ->
-    try
-        xdc_rep_utils:parse_rep_doc(RepDocId, RepDoc)
-    catch
-        throw:{error, Reason} ->
-            throw({bad_rep_doc, Reason});
-        Tag:Err ->
-            throw({bad_rep_doc, couch_util:to_binary({Tag, Err})})
-    end.

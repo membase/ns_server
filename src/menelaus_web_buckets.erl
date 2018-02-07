@@ -789,7 +789,7 @@ display_type(Type, _) ->
     Type.
 
 handle_bucket_flush(_PoolId, Id, Req) ->
-    XDCRDocs = xdc_rdoc_api:find_all_replication_docs(),
+    XDCRDocs = goxdcr_rest:find_all_replication_docs(),
     case lists:any(
            fun (PList) ->
                    erlang:binary_to_list(proplists:get_value(source, PList)) =:= Id

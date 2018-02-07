@@ -81,21 +81,7 @@ grab_stats(#state{bucket=Bucket}) ->
                       prefilter_timings(ValuesK);
                   {memcached_error, key_enoent, _} -> []
               end,
-    XDCStats =
-        case cluster_compat_mode:is_goxdcr_enabled() of
-            true ->
-                disabled;
-            false ->
-                case xdc_rep_manager:stats(Bucket) of
-                    Reps when is_list(Reps) ->
-                        Reps;
-                    Err ->
-                        ?log_info("Failed fetching XDCR stats:~n~p", [Err]),
-                        []
-                end
-        end,
-
-    {PlainStats, DcpStats, Timings, CouchStats, XDCStats}.
+    {PlainStats, DcpStats, Timings, CouchStats}.
 
 handle_info(config_changed, State) ->
     {noreply, State#state{min_files_size = undefined}};
@@ -139,7 +125,7 @@ get_min_files_size(Bucket) ->
 process_stats(TS, Stats, undefined, LastTS, State) ->
     process_stats(TS, Stats, {undefined, undefined, undefined}, LastTS, State);
 process_stats(TS,
-              {PlainStats, DcpStats, Timings, CouchStats, XDCStats},
+              {PlainStats, DcpStats, Timings, CouchStats},
               {LastPlainCounters, LastDcpCounters, LastTimingsCounters},
               LastTS,
               #state{bucket = Bucket,
@@ -150,7 +136,6 @@ process_stats(TS,
                        _ ->
                            MinFilesSize0
                    end,
-    XDCValues = transform_xdc_stats(XDCStats),
     {PlainValues, PlainCounters} = parse_plain_stats(TS, PlainStats, LastTS,
                                                      LastPlainCounters, MinFilesSize),
     {DcpValues, DcpCounters} = parse_dcpagg_stats(TS, DcpStats, LastTS, LastDcpCounters),
@@ -161,7 +146,7 @@ process_stats(TS,
                           [LastPlainCounters, LastDcpCounters, LastTimingsCounters]) of
             false ->
                 Values = lists:merge(
-                           [PlainValues, DcpValues, TimingValues, CouchStats, XDCValues]),
+                           [PlainValues, DcpValues, TimingValues, CouchStats]),
                 [{Bucket, Values}];
             true ->
                 []
@@ -175,24 +160,6 @@ process_stats(TS,
      NewState#state{min_files_size = MinFilesSize}}.
 
 %% Internal functions
-transform_xdc_stats_loop([], Acc, TotalChangesLeft) -> {Acc, TotalChangesLeft};
-transform_xdc_stats_loop([In | T], Reps, TotalChangesLeft) ->
-    {RepID, RepStats} = In,
-    PerRepStats = [{iolist_to_binary(["replications/", RepID, $/, atom_to_binary(StatK, latin1)]),
-                    StatV} || {StatK, StatV} <- RepStats, is_number(StatV)],
-    NewTotalChangesLeft = TotalChangesLeft + proplists:get_value(changes_left, RepStats, 0),
-    transform_xdc_stats_loop(T, [PerRepStats | Reps], NewTotalChangesLeft).
-
-transform_xdc_stats(disabled) ->
-    [];
-transform_xdc_stats(XDCStats) ->
-    {RepStats, TotalChangesLeft} = transform_xdc_stats_loop(XDCStats, [], 0),
-
-    GlobalList = [{<<"replication_changes_left">>, TotalChangesLeft},
-                  {<<"replication_docs_rep_queue">>, 0}],
-
-    lists:sort(lists:append([GlobalList | RepStats])).
-
 format_stats(Stats) ->
     erlang:list_to_binary(
       [case couch_util:to_binary(K0) of

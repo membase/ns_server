@@ -23,13 +23,7 @@
 
 -export([update_doc/1,
          delete_replicator_doc/1,
-         delete_all_replications/1,
-         get_full_replicator_doc/1,
-         find_all_replication_docs/0,
-         find_all_replication_docs/1,
-         find_all_replication_docs_old/0,
-         find_all_replication_docs_old/1,
-         all_local_replication_infos/0]).
+         get_full_replicator_doc/1]).
 
 update_doc(Doc) ->
     ns_couchdb_api:update_doc(xdcr, Doc).
@@ -66,7 +60,7 @@ delete_replicator_doc(XID) ->
 -spec do_delete_replicator_doc(string()) -> {ok, list()} | not_found.
 do_delete_replicator_doc(IdList) ->
     Id = erlang:list_to_binary(IdList),
-    Docs = find_all_replication_docs(),
+    Docs = goxdcr_rest:find_all_replication_docs(),
     MaybeDoc = [Doc || [{id, CandId} | _] = Doc <- Docs,
                        CandId =:= Id],
     case MaybeDoc of
@@ -80,84 +74,6 @@ do_delete_replicator_doc(IdList) ->
             {ok, Doc}
     end.
 
--spec find_all_replication_docs() -> [Doc :: [{Key :: atom(), Value :: _}]].
-find_all_replication_docs() ->
-    find_all_replication_docs(infinity).
-
--spec find_all_replication_docs(non_neg_integer() | infinity) ->
-                                       [Doc :: [{Key :: atom(), Value :: _}]].
-find_all_replication_docs(Timeout) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            goxdcr_rest:find_all_replication_docs(Timeout);
-        false ->
-            do_find_all_replication_docs_old(Timeout)
-    end.
-
-find_all_replication_docs_old() ->
-    find_all_replication_docs_old(infinity).
-
-find_all_replication_docs_old(Timeout) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            [];
-        false ->
-            do_find_all_replication_docs_old(Timeout)
-    end.
-
-do_find_all_replication_docs_old(Timeout) ->
-    RVs = ns_couchdb_api:foreach_doc(
-            xdcr, fun do_find_all_replication_docs_body/1, Timeout),
-    [Doc || {_, Doc} <- RVs,
-            Doc =/= undefined].
-
-do_find_all_replication_docs_body(Doc0) ->
-    Doc = couch_doc:with_ejson_body(Doc0),
-    case Doc of
-        #doc{deleted = true} ->
-            undefined;
-        #doc{id = <<"_design", _/binary>>} ->
-            undefined;
-        #doc{body = {Props0}, id = Id} ->
-            Props = [{K2, V}
-                     || {K, V} <- Props0,
-                        K2 <- case K of
-                                  <<"type">> -> [type];
-                                  <<"source">> -> [source];
-                                  <<"target">> -> [target];
-                                  <<"continuous">> -> [continuous];
-                                  <<"pause_requested">> -> [pauseRequested];
-                                  _ when is_atom(K) -> [K];
-                                  _ -> []
-                              end],
-            case proplists:get_value(type, Props) of
-                V when V =:= <<"xdc">>; V =:= <<"xdc-xmem">> ->
-                    [{id, Id} | Props];
-                _ ->
-                    undefined
-            end;
-        _ ->
-            undefined
-    end.
-
-delete_all_replications(Bucket) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            ok;
-        false ->
-            XDCRDocs = find_all_replication_docs(),
-            lists:foreach(
-              fun (PList) ->
-                      case ?b2l(misc:expect_prop_value(source, PList)) of
-                          Bucket ->
-                              Id = misc:expect_prop_value(id, PList),
-                              delete_replicator_doc(?b2l(Id));
-                          _ ->
-                              ok
-                      end
-              end, XDCRDocs)
-    end.
-
 -spec get_full_replicator_doc(string() | binary()) -> {ok, #doc{}} | not_found.
 get_full_replicator_doc(Id) when is_list(Id) ->
     get_full_replicator_doc(list_to_binary(Id));
@@ -168,14 +84,4 @@ get_full_replicator_doc(Id) when is_binary(Id) ->
         {ok, #doc{body={Props0}} = Doc} ->
             Props = [{couch_util:to_binary(K), V} || {K, V} <- Props0],
             {ok, Doc#doc{body={Props}}}
-    end.
-
--spec all_local_replication_infos() -> [{Id :: binary(), [{atom(), _}],
-                                         [{erlang:timestamp(), ErrorMsg :: binary()}]}].
-all_local_replication_infos() ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            goxdcr_rest:all_local_replication_infos();
-        false ->
-            xdc_replication_sup:all_local_replication_infos()
     end.

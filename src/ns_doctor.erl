@@ -232,7 +232,7 @@ get_tasks_version() ->
 
 build_tasks_list(PoolId, RebStatusTimeout) ->
     NodesDict = gen_server:call(?MODULE, get_nodes),
-    AllRepDocs = xdc_rdoc_api:find_all_replication_docs(),
+    AllRepDocs = goxdcr_rest:find_all_replication_docs(),
     Buckets = ns_bucket:get_bucket_names(),
     do_build_tasks_list(NodesDict, PoolId, AllRepDocs, Buckets, RebStatusTimeout).
 

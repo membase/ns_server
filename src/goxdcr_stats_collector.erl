@@ -32,17 +32,12 @@ init(Bucket) ->
     {ok, Bucket}.
 
 grab_stats(Bucket) ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            Stats = goxdcr_rest:stats(Bucket),
-            case Stats of
-                [] ->
-                    empty_stats;
-                _ ->
-                    Stats
-            end;
-        false ->
-            []
+    Stats = goxdcr_rest:stats(Bucket),
+    case Stats of
+        [] ->
+            empty_stats;
+        _ ->
+            Stats
     end.
 
 is_counter(<<"docs_filtered">>) ->

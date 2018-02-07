@@ -72,14 +72,6 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 refresh() ->
-    case cluster_compat_mode:is_goxdcr_enabled() of
-        true ->
-            do_refresh();
-        false ->
-            ok
-    end.
-
-do_refresh() ->
     try goxdcr_rest:get_replications_with_remote_info() of
         Reps ->
             update_ets_table(Reps)

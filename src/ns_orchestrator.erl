@@ -572,7 +572,6 @@ idle({flush_bucket, BucketName}, _From, State) ->
     end,
     {reply, RV, idle, State};
 idle({delete_bucket, BucketName}, _From, State) ->
-    xdc_rdoc_api:delete_all_replications(BucketName),
     menelaus_users:cleanup_bucket_roles(BucketName),
     DeleteRV = ns_bucket:delete_bucket_returning_config(BucketName),
 

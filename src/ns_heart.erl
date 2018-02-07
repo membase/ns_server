@@ -442,7 +442,7 @@ do_convert_non_ascii_chars(<<C, Rest/binary>>, Acc) ->
 
 grab_local_xdcr_replications() ->
     NowGregorian = calendar:datetime_to_gregorian_seconds(erlang:localtime()),
-    try xdc_rdoc_api:all_local_replication_infos() of
+    try goxdcr_rest:all_local_replication_infos() of
         Infos ->
             [begin
                  RecentErrors = filter_out_stale_xdcr_errors(LastErrors, NowGregorian),
