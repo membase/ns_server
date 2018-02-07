@@ -206,11 +206,6 @@ child_specs() ->
      {ns_null_connection_pool, {ns_null_connection_pool, start_link, [ns_null_connection_pool]},
       permanent, 1000, worker, []},
 
-     %% xdcr subsystem supervisor
-     {xdcr_sup,
-      {xdcr_sup, start_link, []},
-      permanent, infinity, supervisor, []},
-
      {xdcr_dcp_sockets_pool, {xdcr_dcp_sockets_pool, start_link, []},
       permanent, 1000, worker, []},
 
