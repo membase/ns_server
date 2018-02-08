@@ -73,7 +73,6 @@
 -define(SSL_PROXY_LOG_FILENAME, "ssl_proxy.log").
 -define(NS_COUCHDB_LOG_FILENAME, "ns_couchdb.log").
 -define(REPORTS_LOG_FILENAME, "reports.log").
--define(XDCR_TRACE_LOG_FILENAME, "xdcr_trace.log").
 -define(ACCESS_LOG_FILENAME, "http_access.log").
 -define(INT_ACCESS_LOG_FILENAME, "http_access_internal.log").
 -define(GOXDCR_LOG_FILENAME, "goxdcr.log").
@@ -99,7 +98,6 @@
 %% if you can't find any calls to it in ns_server
 -define(MAPREDUCE_ERRORS_LOGGER, mapreduce_errors).
 -define(XDCR_LOGGER, xdcr).
--define(XDCR_TRACE_LOGGER, xdcr_trace).
 -define(ACCESS_LOGGER, access).
 -define(METAKV_LOGGER, metakv).
 -define(JSON_RPC_LOGGER, json_rpc).
@@ -108,8 +106,8 @@
                   ?USER_LOGGER, ?MENELAUS_LOGGER,
                   ?NS_DOCTOR_LOGGER, ?STATS_LOGGER,
                   ?REBALANCE_LOGGER, ?CLUSTER_LOGGER,
-                  ?XDCR_LOGGER, ?XDCR_TRACE_LOGGER,
-                  ?METAKV_LOGGER, ?JSON_RPC_LOGGER]).
+                  ?XDCR_LOGGER, ?METAKV_LOGGER,
+                  ?JSON_RPC_LOGGER]).
 
 -define(NS_COUCHDB_LOGGERS, [?NS_SERVER_LOGGER,
                              ?COUCHDB_LOGGER,

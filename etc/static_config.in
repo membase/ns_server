@@ -21,7 +21,6 @@
 {loglevel_views, debug}.
 {loglevel_mapreduce_errors, debug}.
 {loglevel_xdcr, debug}.
-{loglevel_xdcr_trace, error}.
 {loglevel_access, info}.
 
 {disk_sink_opts,
@@ -35,11 +34,6 @@
               {size, 41943040},
               {num_files, 2},
               {buffer_size_max, 52428800}]}]}.
-
-{disk_sink_opts_xdcr_trace,
- [{rotation, [{compress, false},
-              {size, 83886080},
-              {num_files, 5}]}]}.
 
 {net_kernel_verbosity, 10}.
 {ipv6, false}.

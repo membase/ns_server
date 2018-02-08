@@ -163,7 +163,6 @@ do_init_logging() ->
     ok = start_disk_sink(disk_xdcr_errors, ?XDCR_ERRORS_LOG_FILENAME),
     ok = start_disk_sink(disk_stats, ?STATS_LOG_FILENAME),
     ok = start_disk_sink(disk_reports, ?REPORTS_LOG_FILENAME),
-    ok = start_disk_sink(xdcr_trace, ?XDCR_TRACE_LOG_FILENAME),
     ok = start_disk_sink(disk_access, ?ACCESS_LOG_FILENAME),
     ok = start_disk_sink(disk_access_int, ?INT_ACCESS_LOG_FILENAME),
     ok = start_disk_sink(disk_metakv, ?METAKV_LOG_FILENAME),
@@ -174,7 +173,7 @@ do_init_logging() ->
     lists:foreach(
       fun (Logger) ->
               ok = ale:start_logger(Logger, debug)
-      end, ?LOGGERS -- [?XDCR_TRACE_LOGGER]),
+      end, ?LOGGERS),
 
     lists:foreach(
       fun (Logger) ->
@@ -182,16 +181,13 @@ do_init_logging() ->
       end,
       StdLoggers),
 
-    ok = ale:start_logger(?XDCR_TRACE_LOGGER, get_loglevel(?XDCR_TRACE_LOGGER),
-                          xdcr_trace_log_formatter),
-
     ok = ale:start_logger(?ACCESS_LOGGER, debug, menelaus_access_log_formatter),
 
     OverrideLoglevels = [{?STATS_LOGGER, warn},
                          {?NS_DOCTOR_LOGGER, warn}],
 
     MainFilesLoggers = AllLoggers --
-        [?XDCR_LOGGER, ?ERROR_LOGGER, ?XDCR_TRACE_LOGGER,
+        [?XDCR_LOGGER, ?ERROR_LOGGER,
          ?METAKV_LOGGER, ?JSON_RPC_LOGGER],
 
     lists:foreach(
@@ -225,8 +221,6 @@ do_init_logging() ->
     ok = ale:add_sink(?STATS_LOGGER, disk_stats, get_loglevel(?STATS_LOGGER)),
     ok = ale:add_sink(?NS_DOCTOR_LOGGER, disk_stats, get_loglevel(?NS_DOCTOR_LOGGER)),
 
-    ok = ale:add_sink(?XDCR_TRACE_LOGGER, xdcr_trace, debug),
-
     ok = ale:add_sink(?ACCESS_LOGGER, disk_access, info),
     ok = ale:add_sink(?ACCESS_LOGGER, disk_access_int, debug),
 
@@ -244,7 +238,7 @@ do_init_logging() ->
                       LogLevel = get_loglevel(Logger),
                       ok = ale:add_sink(Logger, stderr,
                                         adjust_loglevel(LogLevel, StderrLogLevel))
-              end, AllLoggers ++ [?ACCESS_LOGGER] -- [?XDCR_TRACE_LOGGER]);
+              end, AllLoggers ++ [?ACCESS_LOGGER]);
         false ->
             ok
     end.

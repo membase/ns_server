@@ -161,7 +161,6 @@ convert_disk_log_files(Dir) ->
        ?BABYSITTER_LOG_FILENAME,
        ?SSL_PROXY_LOG_FILENAME,
        ?REPORTS_LOG_FILENAME,
-       ?XDCR_TRACE_LOG_FILENAME,
        ?ACCESS_LOG_FILENAME]).
 
 convert_disk_log_file(Dir, Name) ->
