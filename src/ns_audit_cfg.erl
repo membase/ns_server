@@ -42,7 +42,7 @@ jsonifier(uuid) ->
     fun list_to_binary/1;
 jsonifier(disabled_userids) ->
     fun (UList) ->
-            [{[{name, list_to_binary(N)}, {source, D}]} || {N, D} <- UList]
+            [{[{user, list_to_binary(N)}, {source, D}]} || {N, D} <- UList]
     end;
 jsonifier(_) ->
     fun functools:id/1.
