@@ -89,12 +89,14 @@ Usage:
 	${_name} [-b|--branch <branch>] [-u|--upstream <upstream>] [-p|--port <int>]
 	${_spacing} [-v|--verified <-1|0|+1>] [-r|--review <-2|-1|0|+1|+2>]
 	${_spacing} [-s|--submit] [-d|--dry-run] [-R|--raw <gerrit command>]
+	${_spacing} [-I|--ignore-errors]
 EOF
     exit 1
 }
 
-SHORT_OPTS="b:u:v:r:p:sdR:"
-LONG_OPTS="branch:,upstream:,verified:,review:,port:,submit,dry-run,raw:"
+SHORT_OPTS="b:u:v:r:p:sdR:I"
+LONG_OPTS="branch:,upstream:,verified:,review:,
+           port:,submit,dry-run,raw:,ignore-errors"
 
 function have_enhanced_getopt() {
     getopt -T > /dev/null 2>&1
@@ -122,6 +124,7 @@ PORT=29418
 BRANCH=
 UPSTREAM=
 RAW=
+IGNORE_ERRORS=
 
 eval set -- "$ARGS"
 while true; do
@@ -134,6 +137,7 @@ while true; do
         -p|--port) PORT=$2 ; shift 2 ;;
         -u|--upstream) UPSTREAM=$2 ; shift 2 ;;
         -R|--raw) RAW="$2" ; shift 2 ;;
+        -I|--ignore-errors) IGNORE_ERRORS=yes ; shift ;;
         --) shift ; break ;;
     esac
 done
@@ -209,7 +213,12 @@ for commit in $(get_diff_commits "${BRANCH}" "${UPSTREAM}"); do
         else
             echo " -> FAILED"
             echo -e "${_output}"
-            exit 1
+
+            if [ -z "$IGNORE_ERRORS" ]; then
+                exit 1
+            fi
+
+            echo "Warning: error ignored" >&2
         fi
     fi
 done
