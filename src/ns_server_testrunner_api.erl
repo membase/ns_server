@@ -89,3 +89,6 @@ grab_all_goxdcr_checkpoints() ->
 
 shutdown_nicely() ->
     ns_babysitter_bootstrap:remote_stop(ns_server:get_babysitter_node()).
+
+master_node() ->
+    mb_master:master_node().
