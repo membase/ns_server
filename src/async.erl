@@ -174,7 +174,7 @@ register_with_parent_async(Pid) ->
 
 async_loop_wait_result(Type, Child, Reply, ChildAsyncs) ->
     receive
-        {'DOWN', _MRef, process, _Pid, Reason} = Down ->
+        {'DOWN', _MRef, process, _Pid, Reason} ->
             terminate_now(Reason, [Child | ChildAsyncs]);
         {'EXIT', Child, Reason} ->
             terminate_on_query(Type, {child_died, Reason}, ChildAsyncs);
@@ -228,7 +228,7 @@ async_loop_handle_result(Type, Child, ChildAsyncs, Result) ->
 
 async_loop_with_result(Result) ->
     receive
-        {'DOWN', _MRef, process, _Pid, Reason} = Down ->
+        {'DOWN', _MRef, process, _Pid, Reason} ->
             exit(Reason);
         {'EXIT', _, Reason} ->
             exit(Reason);
