@@ -36,9 +36,6 @@
          ciphers_strength/1,
          upgrade_client_cert_auth_to_51/1]).
 
-%% used by ssl proxy
--export([dh_params_der/0, supported_versions/1, supported_ciphers/0]).
-
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
