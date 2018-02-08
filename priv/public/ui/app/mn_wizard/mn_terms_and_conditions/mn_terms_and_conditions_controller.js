@@ -41,7 +41,7 @@
         .postStats(vm.register, true).then(function () {
           var services = "kv,index,fts,n1ql";
           if (vm.isEnterprise) {
-            services += "eventing";
+            services += ",eventing";
           }
           var setupServicesPromise =
               mnServersService.setupServices({
