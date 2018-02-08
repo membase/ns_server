@@ -1988,3 +1988,6 @@ time_to_epoch_float(_) ->
 %% is in native units.
 convert_time_unit(Time, TargetUnit) ->
     time_compat:convert_time_unit(Time, native, TargetUnit).
+
+update_field(Field, Record, Fun) ->
+    setelement(Field, Record, Fun(element(Field, Record))).
