@@ -200,7 +200,7 @@ for commit in $(get_diff_commits "${BRANCH}" "${UPSTREAM}"); do
 
     if [ "${DRY_RUN}" = yes ]; then
         echo
-        echo -e "\t${_command} -> OK"
+        echo -e "\t" ${_command} "-> OK"
     else
         _output=$(${_command} 2>&1)
         _result=$?
