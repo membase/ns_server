@@ -19,6 +19,9 @@
     return mnLogsCollectInfoService;
 
     function startLogsCollection(collect) {
+      if (!collect.logDir) {
+        delete collect.logDir;
+      }
       return $http.post('/controller/startLogsCollection', collect);
     }
     function cancelLogsCollection() {
