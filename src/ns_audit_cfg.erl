@@ -273,11 +273,6 @@ read_config() ->
 get_descriptors(Config) ->
     ns_config:search(Config, audit_decriptors, []).
 
-editable(n1ql) ->
-    true;
-editable(_) ->
-    false.
-
 read_descriptors() ->
     Path = filename:join(path_config:component_path(sec), "audit_events.json"),
     {ok, Bin} = file:read_file(Path),
@@ -288,24 +283,26 @@ read_descriptors() ->
       fun ({Module}) ->
               ModuleIdBin = proplists:get_value(<<"module">>, Module),
               ModuleId = list_to_atom(binary_to_list(ModuleIdBin)),
-              case editable(ModuleId) of
-                  true ->
-                      Events = proplists:get_value(<<"events">>, Module),
-                      lists:map(
-                        fun ({Event}) ->
-                                {proplists:get_value(<<"id">>, Event),
-                                 [{name,
-                                   proplists:get_value(<<"name">>, Event)},
-                                  {description,
-                                   proplists:get_value(<<"description">>,
-                                                       Event)},
-                                  {enabled,
-                                   proplists:get_value(<<"enabled">>, Event)},
-                                  {module, ModuleId}]}
-                        end, Events);
-                  false ->
-                      []
-              end
+              Events = proplists:get_value(<<"events">>, Module),
+              lists:filtermap(
+                fun ({Event}) ->
+                        case proplists:get_value(<<"filtering_permitted">>,
+                                                 Event, false) of
+                            false ->
+                                false;
+                            true ->
+                                {true,
+                                 {proplists:get_value(<<"id">>, Event),
+                                  [{name,
+                                    proplists:get_value(<<"name">>, Event)},
+                                   {description,
+                                    proplists:get_value(<<"description">>,
+                                                        Event)},
+                                   {enabled,
+                                    proplists:get_value(<<"enabled">>, Event)},
+                                   {module, ModuleId}]}}
+                        end
+                end, Events)
       end, Modules).
 
 upgrade_descriptors() ->
