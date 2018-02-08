@@ -83,6 +83,7 @@
 
         task.nodesByStatus = nodesByStatus;
         task.nodeErrors = nodeErrors;
+        task.logRedactionLevel = logRedaction && logRedaction.logRedactionLevel;
         task.nodes = nodes;
 
         return task
