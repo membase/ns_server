@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2017, Couchbase, Inc.
+# Copyright (c) 2017-2018, Couchbase, Inc.
 # All rights reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,13 +88,13 @@ function usage() {
 Usage:
 	${_name} [-b|--branch <branch>] [-u|--upstream <upstream>] [-p|--port <int>]
 	${_spacing} [-v|--verified <-1|0|+1>] [-r|--review <-2|-1|0|+1|+2>]
-	${_spacing} [-s|--submit] [-d|--dry-run]
+	${_spacing} [-s|--submit] [-d|--dry-run] [-R|--raw <gerrit command>]
 EOF
     exit 1
 }
 
-SHORT_OPTS="b:u:v:r:p:sd"
-LONG_OPTS="branch:,upstream:,verified:,review:,port:,submit,dry-run"
+SHORT_OPTS="b:u:v:r:p:sdR:"
+LONG_OPTS="branch:,upstream:,verified:,review:,port:,submit,dry-run,raw:"
 
 function have_enhanced_getopt() {
     getopt -T > /dev/null 2>&1
@@ -121,6 +121,7 @@ DRY_RUN=no
 PORT=29418
 BRANCH=
 UPSTREAM=
+RAW=
 
 eval set -- "$ARGS"
 while true; do
@@ -132,6 +133,7 @@ while true; do
         -b|--branch) BRANCH="$2" ; shift 2 ;;
         -p|--port) PORT=$2 ; shift 2 ;;
         -u|--upstream) UPSTREAM=$2 ; shift 2 ;;
+        -R|--raw) RAW="$2" ; shift 2 ;;
         --) shift ; break ;;
     esac
 done
@@ -157,8 +159,8 @@ if [ "${SUBMIT}" = yes ]; then
     FLAGS="${FLAGS} --submit"
 fi
 
-if [ -z "${FLAGS}" ]; then
-    usage "Need at least on of --verified, --review or --submit"
+if [ -z "${FLAGS}" -a -z "$RAW" ]; then
+    usage "Need at least on of --verified, --review, --submit or --raw"
 fi
 
 if [ -z "${BRANCH}" ]; then
@@ -173,13 +175,26 @@ fi
 
 REVIEW_URL=$(get_review_url) || fail "Failed to get the review URL"
 USERNAME=$(get_review_username "${REVIEW_URL}") || fail "Failed to the username"
-PROJECT=$(get_project) || fail "Failed to get project name"
 
-FLAGS="${FLAGS} --project ${PROJECT}"
+if [ -n "${RAW}" ]; then
+    if [ -n "${FLAGS}" ]; then
+        echo "Warning: raw command takes " \
+             "precedence over the other specified options" >&2
+    fi
+
+    GERRIT_CMD="${RAW}"
+else
+    PROJECT=$(get_project) || fail "Failed to get project name"
+    FLAGS="${FLAGS} --project ${PROJECT}"
+
+    GERRIT_CMD="gerrit review ${FLAGS}"
+fi
 
 for commit in $(get_diff_commits "${BRANCH}" "${UPSTREAM}"); do
-    _oneline=$(get_commit_oneline ${commit}) || fail "Failed to get the commit description"
-    _command="ssh -p ${PORT} ${USERNAME}@${REVIEW_URL} -- gerrit review ${FLAGS} ${commit}"
+    _oneline=$(get_commit_oneline ${commit}) ||
+        fail "Failed to get the commit description"
+    _command="ssh -p ${PORT} \
+                  ${USERNAME}@${REVIEW_URL} -- ${GERRIT_CMD} ${commit}"
 
     echo -n "${_oneline}"
 
