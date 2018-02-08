@@ -71,7 +71,7 @@
           settings.type !== "capi" &&
           mnPoolDefault.export.compat.atLeast55
          ) {
-        neededProperties.push("enableCompression");
+        neededProperties.push("compressionType");
       }
       if (mnPools.export.isEnterprise &&
           mnPoolDefault.export.compat.atLeast50 &&
