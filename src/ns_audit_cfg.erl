@@ -40,10 +40,9 @@ jsonifier(descriptors_path) ->
     fun list_to_binary/1;
 jsonifier(uuid) ->
     fun list_to_binary/1;
-jsonifier(disabled_users) ->
-    %% TODO: dropping domains on the floor until memcached fixes MB-27839
+jsonifier(disabled_userids) ->
     fun (UList) ->
-            [list_to_binary(U) || {U, _} <- UList]
+            [{[{name, list_to_binary(N)}, {source, D}]} || {N, D} <- UList]
     end;
 jsonifier(_) ->
     fun functools:id/1.
@@ -68,7 +67,7 @@ fields(1) ->
 fields(2) ->
     fields(1) ++
         %% TODO: add enabled here after MB-27844 is resolved
-        [disabled_users,
+        [disabled_userids,
          uuid,
          filtering_enabled].
 
@@ -219,15 +218,16 @@ massage_params(1, _CompatMode, Params) ->
     Params;
 massage_params(2, CompatMode, Params) ->
     {Enabled, Disabled} = calculate_events(Params),
+    DisabledUsers = proplists:get_value(disabled_users, Params, []),
 
     FilteringEnabled = Enabled =/= [] orelse
-        Disabled =/= [] orelse
-        proplists:get_value(disabled_users, Params, []) =/= [],
+        Disabled =/= [] orelse DisabledUsers =/= [],
 
     NewParams =
         misc:update_proplist(Params, [{enabled, Enabled},
                                       {disabled, Disabled},
-                                      {filtering_enabled, FilteringEnabled}]),
+                                      {filtering_enabled, FilteringEnabled},
+                                      {disabled_userids, DisabledUsers}]),
 
     UID = integer_to_list(erlang:phash2({NewParams, CompatMode})),
 
