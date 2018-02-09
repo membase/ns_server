@@ -192,7 +192,7 @@ grab_stats(#state{service = Service}) ->
 
 do_grab_stats(Service) ->
     case Service:grab_stats() of
-        {ok, {[_|_] = Stats}} ->
+        {ok, {Stats}} when is_list(Stats) ->
             Stats;
         {ok, Other} ->
             ?log_error("Got invalid stats response for ~p:~n~p",
