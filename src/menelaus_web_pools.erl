@@ -399,10 +399,10 @@ do_handle_pool_settings_post(Req) ->
 
     execute_if_validated(
       fun (Values) ->
-              do_handle_pool_settings_post_body(Req, Config, CompatVersion, Values)
+              do_handle_pool_settings_post_body(Req, Config, Values)
       end, Req, validate_pool_settings_post(Config, CompatVersion, Req:parse_post())).
 
-do_handle_pool_settings_post_body(Req, Config, CompatVersion, Values) ->
+do_handle_pool_settings_post_body(Req, Config, Values) ->
     case lists:keyfind(quotas, 1, Values) of
         {_, Quotas} ->
             case memory_quota:set_quotas(Config, Quotas) of
@@ -422,13 +422,7 @@ do_handle_pool_settings_post_body(Req, Config, CompatVersion, Values) ->
             ok
     end,
 
-    case cluster_compat_mode:is_version_40(CompatVersion) of
-        true ->
-            do_audit_cluster_settings(Req);
-        false ->
-            ok
-    end,
-
+    do_audit_cluster_settings(Req),
     reply(Req, 200).
 
 do_audit_cluster_settings(Req) ->

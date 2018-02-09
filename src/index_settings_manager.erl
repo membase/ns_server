@@ -52,7 +52,7 @@ cfg_key() ->
     ?INDEX_CONFIG_KEY.
 
 is_enabled() ->
-    cluster_compat_mode:is_cluster_40().
+    true.
 
 on_update(Key, Value) ->
     gen_event:notify(index_events, {index_settings_change, Key, Value}).

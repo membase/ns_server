@@ -238,8 +238,8 @@ build_nodes_ext([Node | RestNodes], Config, NodesExtAcc) ->
 
 do_compute_bucket_info(Bucket, Config) ->
     case ns_bucket:get_bucket_with_vclock(Bucket, Config) of
-        {ok, BucketConfig, BucketVC} ->
-            compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC);
+        {ok, BucketConfig, _BucketVC} ->
+            compute_bucket_info_with_config(Bucket, Config, BucketConfig);
         not_present ->
             not_present
     end.
@@ -277,7 +277,7 @@ node_bucket_info(Node, Config, Bucket, BucketUUID, BucketConfig) ->
            end,
     {Info}.
 
-compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
+compute_bucket_info_with_config(Bucket, Config, BucketConfig) ->
     {_, Servers0} = lists:keyfind(servers, 1, BucketConfig),
 
     %% we do sorting to make nodes list match order of servers inside vBucketServerMap
@@ -314,21 +314,9 @@ compute_bucket_info_with_config(Bucket, Config, BucketConfig, BucketVC) ->
                 end
         end,
 
-    %% NOTE: that we're reading compat mode not from config snapshot
-    %% we're given. So we can serve older config with newer compat
-    %% mode. That should be ok under our assumption that compat mode
-    %% never decreases.
-    %%
     %% We're computing rev using config's global rev which allows us
-    %% to track changes to node services and set of active nodes. But
-    %% for mixed version clusters we want to be serving same revs as
-    %% 3.0 nodes.
-    Rev = case cluster_compat_mode:is_cluster_40() of
-              true ->
-                  ns_config:compute_global_rev(Config);
-              false ->
-                  vclock:count_changes(BucketVC)
-          end,
+    %% to track changes to node services and set of active nodes.
+    Rev = ns_config:compute_global_rev(Config),
 
     J = {[{rev, Rev},
           {name, BucketBin},

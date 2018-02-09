@@ -26,8 +26,6 @@
          is_index_aware_rebalance_on/0,
          is_index_pausing_on/0,
          rebalance_ignore_view_compactions/0,
-         is_cluster_40/0,
-         is_version_40/1,
          compat_mode_string_40/0,
          is_cluster_41/0,
          is_cluster_41/1,
@@ -73,7 +71,7 @@ supported_compat_version() ->
     end.
 
 min_supported_compat_version() ->
-    ?VERSION_30.
+    ?VERSION_40.
 
 %% NOTE: this is rpc:call-ed by mb_master
 %%
@@ -97,12 +95,6 @@ is_enabled(FeatureVersion) ->
 
 is_enabled(Config, FeatureVersion) ->
     is_enabled_at(get_compat_version(Config), FeatureVersion).
-
-is_cluster_40() ->
-    is_enabled(?VERSION_40).
-
-is_version_40(ClusterVersion) ->
-    is_enabled_at(ClusterVersion, ?VERSION_40).
 
 is_cluster_41() ->
     is_cluster_41(ns_config:latest()).
@@ -160,7 +152,7 @@ is_enterprise() ->
     ns_config:read_key_fast({node, node(), is_enterprise}, false).
 
 is_ldap_enabled() ->
-    is_cluster_40() andalso is_enterprise() andalso
+    is_enterprise() andalso
         ns_config:search(ns_config:latest(),
                          {node, node(), ldap_enabled}, false).
 

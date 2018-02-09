@@ -414,18 +414,13 @@ build_bucket_capabilities(BucketConfig) ->
     Caps =
         case ns_bucket:bucket_type(BucketConfig) of
             membase ->
-                MaybeDCP = case cluster_compat_mode:is_cluster_40() of
-                               true ->
-                                   [dcp];
-                               false ->
-                                   []
-                           end,
                 case ns_bucket:storage_mode(BucketConfig) of
                     couchstore ->
-                        MaybeXattr ++ MaybeDCP ++ [cbhello, touch, couchapi, cccp, xdcrCheckpointing,
-                                                   nodesExt];
+                        MaybeXattr ++ [dcp, cbhello, touch, couchapi, cccp,
+                                       xdcrCheckpointing, nodesExt];
                     ephemeral ->
-                        MaybeXattr ++ MaybeDCP ++ [cbhello, touch, cccp, xdcrCheckpointing, nodesExt]
+                        MaybeXattr ++ [dcp, cbhello, touch, cccp,
+                                       xdcrCheckpointing, nodesExt]
                 end;
             memcached ->
                 MaybeXattr ++ [cbhello, nodesExt]
