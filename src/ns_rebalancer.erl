@@ -1338,51 +1338,46 @@ check_failover_possible(Nodes) ->
     end.
 
 drop_old_2i_indexes(KeepNodes) ->
-    case cluster_compat_mode:is_cluster_40() of
-        false ->
+    Config = ns_config:get(),
+    NewNodes = KeepNodes -- ns_cluster_membership:active_nodes(Config),
+    %% Only delta recovery is supported for index service.
+    %% Note that if a node is running both KV and index service,
+    %% and if user selects the full recovery option for such
+    %% a node, then recovery_type will be set to full.
+    %% But, we will treat delta and full recovery the same for
+    %% the index data.
+    %% Also, delta recovery for index service is different
+    %% from that for the KV service. In case of index, it just
+    %% means that we will not drop the indexes and their meta data.
+    CleanupNodes = [N || N <- NewNodes,
+                         ns_cluster_membership:get_recovery_type(Config, N) =:= none],
+    ?rebalance_info("Going to drop possible old 2i indexes on nodes ~p",
+                    [CleanupNodes]),
+    {Oks, RPCErrors, Downs} = misc:rpc_multicall_with_plist_result(
+                                CleanupNodes,
+                                ns_storage_conf, delete_old_2i_indexes, []),
+    RecoveryNodes = NewNodes -- CleanupNodes,
+    ?rebalance_info("Going to keep possible 2i indexes on nodes ~p",
+                    [RecoveryNodes]),
+    %% Clear recovery type for non-KV nodes here.
+    %% recovery_type for nodes running KV services gets cleared later.
+    NonKV = [N || N <- RecoveryNodes,
+                  not lists:member(kv, ns_cluster_membership:node_services(Config, N))],
+    NodeChanges = [[{{node, N, recovery_type}, none},
+                    {{node, N, membership}, active}] || N <- NonKV],
+    ok = ns_config:set(lists:flatten(NodeChanges)),
+    Errors = [{N, RV}
+              || {N, RV} <- Oks,
+                 RV =/= ok]
+        ++ RPCErrors
+        ++ [{N, node_down} || N <- Downs],
+    case Errors of
+        [] ->
+            ?rebalance_debug("Cleanup succeeded: ~p", [Oks]),
             ok;
-        true ->
-            Config = ns_config:get(),
-            NewNodes = KeepNodes -- ns_cluster_membership:active_nodes(Config),
-            %% Only delta recovery is supported for index service.
-            %% Note that if a node is running both KV and index service,
-            %% and if user selects the full recovery option for such
-            %% a node, then recovery_type will be set to full.
-            %% But, we will treat delta and full recovery the same for
-            %% the index data.
-            %% Also, delta recovery for index service is different
-            %% from that for the KV service. In case of index, it just
-            %% means that we will not drop the indexes and their meta data.
-            CleanupNodes = [N || N <- NewNodes,
-                                 ns_cluster_membership:get_recovery_type(Config, N) =:= none],
-            ?rebalance_info("Going to drop possible old 2i indexes on nodes ~p",
-                            [CleanupNodes]),
-            {Oks, RPCErrors, Downs} = misc:rpc_multicall_with_plist_result(
-                                        CleanupNodes,
-                                        ns_storage_conf, delete_old_2i_indexes, []),
-            RecoveryNodes = NewNodes -- CleanupNodes,
-            ?rebalance_info("Going to keep possible 2i indexes on nodes ~p",
-                            [RecoveryNodes]),
-            %% Clear recovery type for non-KV nodes here.
-            %% recovery_type for nodes running KV services gets cleared later.
-            NonKV = [N || N <- RecoveryNodes,
-                          not lists:member(kv, ns_cluster_membership:node_services(Config, N))],
-            NodeChanges = [[{{node, N, recovery_type}, none},
-                            {{node, N, membership}, active}] || N <- NonKV],
-            ok = ns_config:set(lists:flatten(NodeChanges)),
-            Errors = [{N, RV}
-                      || {N, RV} <- Oks,
-                         RV =/= ok]
-                ++ RPCErrors
-                ++ [{N, node_down} || N <- Downs],
-            case Errors of
-                [] ->
-                    ?rebalance_debug("Cleanup succeeded: ~p", [Oks]),
-                    ok;
-                _ ->
-                    ?rebalance_error("Failed to cleanup indexes: ~p", [Errors]),
-                    {old_indexes_cleanup_failed, Errors}
-            end
+        _ ->
+            ?rebalance_error("Failed to cleanup indexes: ~p", [Errors]),
+            {old_indexes_cleanup_failed, Errors}
     end.
 
 check_no_tap_buckets() ->

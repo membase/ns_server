@@ -40,7 +40,6 @@
 
 handle_get(Req) ->
     menelaus_util:assert_is_enterprise(),
-    menelaus_util:assert_is_40(),
 
     Props = pre_process_get(ns_audit_cfg:get_global()),
 
@@ -59,7 +58,6 @@ handle_get(Req) ->
 
 handle_post(Req) ->
     menelaus_util:assert_is_enterprise(),
-    menelaus_util:assert_is_40(),
 
     Args = Req:parse_post(),
     Config = ns_config:get(),

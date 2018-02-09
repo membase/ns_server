@@ -38,9 +38,9 @@ do_upgrade_config(Config, FinalVersion) ->
         %% default config, but that uncovered issues that I'm too scared to
         %% touch at the moment.
         false ->
-            upgrade_compat_version(?VERSION_30);
+            upgrade_compat_version(?VERSION_40);
         {value, undefined} ->
-            upgrade_compat_version(?VERSION_30);
+            upgrade_compat_version(?VERSION_40);
         {value, Ver} ->
             {NewVersion, Upgrade} = upgrade(Ver, Config),
             ?log_info("Performing online config upgrade to ~p", [NewVersion]),
@@ -55,9 +55,6 @@ maybe_final_upgrade(?LATEST_VERSION_NUM) ->
     ns_audit_cfg:upgrade_descriptors();
 maybe_final_upgrade(_) ->
     [].
-
-upgrade(?VERSION_30, _Config) ->
-    {?VERSION_40, index_settings_manager:config_upgrade_to_40()};
 
 upgrade(?VERSION_40, Config) ->
     {?VERSION_41,

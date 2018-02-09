@@ -273,6 +273,10 @@ default() ->
           _ -> undefined
       end},
 
+     %% Default config for metakv index settings in minimum supported version,
+     %% VERSION_40.
+     index_settings_manager:config_default_40(),
+
      %% {rest_creds, {User, {password, {Salt, Mac}}}}
      %% {rest_creds, null} means no login/password auth check.
      %% read_only_user_creds has the same format

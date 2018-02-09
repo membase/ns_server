@@ -40,16 +40,11 @@ handle_get_global_settings(Req) ->
     reply_json(Req, {struct, JSON}, 200).
 
 build_global_settings(Config) ->
-    Extra = case cluster_compat_mode:is_cluster_40() of
-                true ->
-                    IndexCompaction = index_settings_manager:get(compaction),
-                    true = (IndexCompaction =/= undefined),
-                    {_, Fragmentation} = lists:keyfind(fragmentation, 1, IndexCompaction),
-                    [{indexFragmentationThreshold,
-                      {struct, [{percentage, Fragmentation}]}}];
-                false ->
-                    []
-            end,
+    IndexCompaction = index_settings_manager:get(compaction),
+    true = (IndexCompaction =/= undefined),
+    {_, Fragmentation} = lists:keyfind(fragmentation, 1, IndexCompaction),
+    Extra = [{indexFragmentationThreshold,
+              {struct, [{percentage, Fragmentation}]}}],
     IndexExtra = (case cluster_compat_mode:is_cluster_45() of
                       true ->
                           CompMode = index_settings_manager:get(compactionMode),
@@ -109,8 +104,7 @@ build_allowed_time_period(AllowedTimePeriod) ->
 
 handle_set_global_settings(Req) ->
     Params = Req:parse_post(),
-    Is40 = cluster_compat_mode:is_cluster_40(),
-    SettingsRV = parse_validate_settings(Params, Is40),
+    SettingsRV = parse_validate_settings(Params, true),
     PurgeIntervalRV = parse_validate_purge_interval(Params),
     ValidateOnly = (proplists:get_value("just_validate", Req:parse_qs()) =:= "1"),
     case {ValidateOnly, SettingsRV, PurgeIntervalRV} of
@@ -137,16 +131,11 @@ handle_set_global_settings(Req) ->
                         []
                 end,
 
-            case Is40 of
+            case cluster_compat_mode:is_cluster_45() of
                 true ->
-                    case cluster_compat_mode:is_cluster_45() of
-                        true ->
-                            new_index_compaction_settings(MaybeIndex);
-                        false ->
-                            old_index_compaction_settings(ACSettings, MaybeIndex)
-                    end;
+                    new_index_compaction_settings(MaybeIndex);
                 false ->
-                    ok
+                    old_index_compaction_settings(ACSettings, MaybeIndex)
             end,
 
             ns_audit:modify_compaction_settings(Req, ACSettings ++ MaybePurgeInterval

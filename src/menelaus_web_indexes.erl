@@ -31,8 +31,6 @@
          execute_if_validated/3]).
 
 handle_settings_get(Req) ->
-    menelaus_util:assert_is_40(),
-
     Settings = get_settings(),
     true = (Settings =/= undefined),
     reply_json(Req, {Settings}).
@@ -186,8 +184,6 @@ update_settings(Key, Value) ->
     end.
 
 handle_settings_post(Req) ->
-    menelaus_util:assert_is_40(),
-
     execute_if_validated(
       fun (Values) ->
               Values1 = case cluster_compat_mode:is_cluster_45() of
@@ -213,7 +209,6 @@ integer_settings() ->
      {maxRollbackPoints, 1, NearInfinity}].
 
 handle_index_status(Req) ->
-    menelaus_util:assert_is_40(),
     {ok, Indexes0, Stale, Version} = service_index:get_indexes(),
     Indexes = [{Props} || Props <- Indexes0],
 
