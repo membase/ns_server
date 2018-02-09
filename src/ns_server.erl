@@ -70,6 +70,16 @@ start(_Type, _Args) ->
     self() ! done,
     log_pending(),
 
+    case misc:is_ipv6() of
+        true ->
+            case ns_config_default:init_is_enterprise() of
+               true -> ok;
+               false -> erlang:error("IPv6 not supported in community edition")
+            end;
+        false ->
+            ok
+    end,
+
     ns_server_cluster_sup:start_link().
 
 get_config_path() ->
