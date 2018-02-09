@@ -748,8 +748,8 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
 
     Deleting = NoBucket orelse NodeDying,
 
-    if
-        Reason == normal; Reason == shutdown; Reason =:= {shutdown, reconfig} ->
+    case misc:is_normal_termination(Reason) of
+        true ->
             Reconfig = (Reason =:= {shutdown, reconfig}),
 
             ale:info(?USER_LOGGER, "Shutting down bucket ~p on ~p for ~s",
@@ -783,7 +783,7 @@ terminate(Reason, #state{bucket=Bucket, sock=Sock}) ->
                     _ -> ok
                 end
             end;
-        true ->
+        false ->
             ale:info(?USER_LOGGER,
                      "Control connection to memcached on ~p disconnected: ~p",
                      [node(), Reason])
