@@ -357,6 +357,7 @@ kv_node_projector_spec(Config) ->
             Args = ["-kvaddrs=" ++ misc:local_url(LocalMemcachedPort, [no_scheme]),
                     "-adminport=:" ++ integer_to_list(ProjectorPort),
                     "-diagDir=" ++ MinidumpDir,
+                    "-ipv6=" ++ atom_to_list(misc:is_ipv6()),
                     misc:local_url(RestPort, [no_scheme])],
 
             Spec = {'projector', ProjectorCmd, Args,
