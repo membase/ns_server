@@ -509,15 +509,6 @@ upgrade_config(Config) ->
     case ns_config:search_node(node(), Config, config_version) of
         {value, CurrentVersion} ->
             [];
-        {value, {3,0}} ->
-            [{set, {node, node(), config_version}, {3,0,2}} |
-             upgrade_config_from_3_0_to_3_0_2(Config)];
-        {value, {3,0,2}} ->
-            [{set, {node, node(), config_version}, {3,1,5}} |
-             upgrade_config_from_3_0_2_to_3_1_5(Config)];
-        {value, {3,1,5}} ->
-            [{set, {node, node(), config_version}, {4,0}} |
-             upgrade_config_from_3_1_5_to_4_0(Config)];
         {value, {4,0}} ->
             [{set, {node, node(), config_version}, {4,1,1}} |
              upgrade_config_from_4_0_to_4_1_1(Config)];
@@ -576,46 +567,6 @@ do_upgrade_sub_keys(SubKeys, Props, DefaultProps) ->
               Val = {SubKey, _} = lists:keyfind(SubKey, 1, DefaultProps),
               lists:keystore(SubKey, 1, Acc, Val)
       end, Props, SubKeys).
-
-upgrade_config_from_3_0_to_3_0_2(Config) ->
-    ?log_info("Upgrading config from 3.0 to 3.0.2"),
-    DefaultConfig = default(),
-    do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig).
-
-do_upgrade_config_from_3_0_to_3_0_2(Config, DefaultConfig) ->
-    %% MB-12655: we 'upgrade' all per node keys of this node to include vclock.
-    %%
-    %% NOTE: that on brand new installations of 3.0+ we already force
-    %% all per-node keys to have vclocks as part of work on
-    %% MB-10254. At the time of this writing it is done as part of
-    %% ns_config initialization
-    PerNodeKeyTouchings = [{set, K, V}
-                           || {{node, N, KN} = K, V} <- ns_config:get_kv_list_with_config(Config),
-                              N =:= node(),
-                              KN =/= config_version,
-                              KN =/= memcached],
-
-    [upgrade_sub_keys(memcached, [engines], Config, DefaultConfig) | PerNodeKeyTouchings].
-
-upgrade_config_from_3_0_2_to_3_1_5(Config) ->
-    ?log_info("Upgrading config from 3.0.2 to 3.1.5"),
-    DefaultConfig = default(),
-    do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig).
-
-do_upgrade_config_from_3_0_2_to_3_1_5(Config, DefaultConfig) ->
-    [upgrade_key(memcached_defaults, DefaultConfig),
-     upgrade_sub_keys(memcached_config, [dedupe_nmvb_maps], Config, DefaultConfig)].
-
-upgrade_config_from_3_1_5_to_4_0(Config) ->
-    ?log_info("Upgrading config from 3.1.5 to 4.0"),
-    do_upgrade_config_from_3_1_5_to_4_0(Config, default()).
-
-do_upgrade_config_from_3_1_5_to_4_0(Config, DefaultConfig) ->
-    [upgrade_key(memcached_defaults, DefaultConfig),
-     upgrade_key(port_servers, DefaultConfig),
-     upgrade_sub_keys(memcached, [audit_file, engines, config_path, {delete, verbosity}],
-                      Config, DefaultConfig),
-     upgrade_key(memcached_config, DefaultConfig)].
 
 upgrade_config_from_4_0_to_4_1_1(Config) ->
     ?log_info("Upgrading config from 4.0 to 4.1.1"),
@@ -690,75 +641,6 @@ decrypt(Config) ->
                             (_) ->
                                 continue
                         end, Config).
-
-upgrade_3_0_to_3_0_2_test() ->
-    Cfg = [[{some_key, some_value},
-            {{node, node(), memcached},
-             [{engines, old_value},
-              {ssl_port, 1},
-              {verbosity, 2},
-              {port, 3}]},
-            {{node, node(), memcached_config}, memcached_config}]],
-    Default = [{{node, node(), port_servers}, port_servers_cfg},
-               {{node, node(), memcached}, [{ssl_port, 1}, {verbosity, 3},
-                                            {engines, [something]}]},
-               {{node, node(), memcached_config}, memcached_config}],
-
-    ?assertMatch([{set, {node, _, memcached}, [{engines, [something]},
-                                               {ssl_port, 1}, {verbosity, 2},
-                                               {port, 3}]},
-                  {set, {node, _, memcached_config}, memcached_config}],
-                 do_upgrade_config_from_3_0_to_3_0_2(Cfg, Default)).
-
-upgrade_3_0_2_to_3_1_5_test() ->
-    Cfg = [[{some_key, some_value},
-            {{node, node(), memcached},
-             [{some_key, some_value}]},
-            {{node, node(), port_servers}, old_port_servers},
-            {{node, node(), memcached_config},
-             {[{some_key, some_value}]}}
-           ]],
-    Default = [{{node, node(), memcached_defaults},
-                [{some, stuff}]},
-               {{node, node(), port_servers}, new_port_servers},
-               {{node, node(), memcached},
-                [{audit_file, audit_file_path}]},
-               {{node, node(), memcached_config},
-                {[{some_other_key, some_value},
-                  {dedupe_nmvb_maps, dedupe_nmvb_maps}]}}],
-    ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]},
-                  {set, {node, _, memcached_config},
-                   {[{some_key, some_value},
-                     {dedupe_nmvb_maps, dedupe_nmvb_maps}]}}],
-                 do_upgrade_config_from_3_0_2_to_3_1_5(Cfg, Default)).
-
-upgrade_3_1_5_to_4_0_test() ->
-    Cfg = [[{some_key, some_value},
-            {{node, node(), memcached},
-             [{engines, old_value},
-              {ssl_port, 1},
-              {verbosity, 2},
-              {port, 3}]},
-            {{node, node(), memcached_config}, old_memcached_config},
-            {{node, node(), port_servers}, old_port_servers}]],
-    Default = [{{node, node(), memcached_defaults},
-                [{some, stuff}]},
-               {{node, node(), port_servers}, new_port_servers},
-               {{node, node(), memcached}, [{ssl_port, 1},
-                                            {config_path, cfg_path},
-                                            {engines, [something]},
-                                            {audit_file, audit_file_path}]},
-               {{node, node(), memcached_config}, new_memcached_config}],
-
-    ?assertMatch([{set, {node, _, memcached_defaults}, [{some, stuff}]},
-                  {set, {node, _, port_servers}, new_port_servers},
-                  {set, {node, _, memcached}, [{engines, [something]},
-                                               {ssl_port, 1},
-                                               {port, 3},
-                                               {audit_file, audit_file_path},
-                                               {config_path, cfg_path}]},
-                  {set, {node, _, memcached_config}, new_memcached_config}],
-                 do_upgrade_config_from_3_1_5_to_4_0(Cfg, Default)).
 
 upgrade_4_0_to_4_1_1_test() ->
     Cfg = [[{some_key, some_value},
