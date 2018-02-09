@@ -27,19 +27,19 @@ restart() ->
     [].
 
 get_gauges() ->
-    ['incoming-records-count-total', 'failed-at-parser-records-count-total'].
+    ['incoming_records_count_total', 'failed_at_parser_records_count_total'].
 
 get_counters() ->
-    ['incoming-records-count', 'failed-at-parser-records-count'].
+    ['incoming_records_count', 'failed_at_parser_records_count'].
 
 get_computed() ->
     [].
 
 get_service_gauges() ->
-    ['heap-used', 'system-load-average', 'thread-count'].
+    ['heap_used', 'system_load_average', 'thread_count'].
 
 get_service_counters() ->
-    ['gc-count', 'gc-time', 'io-reads', 'io-writes'].
+    ['gc_count', 'gc_time', 'io_reads', 'io_writes'].
 
 grab_stats() ->
     Port = ns_config:read_key_fast({node, node(), cbas_admin_port}, 9110),
