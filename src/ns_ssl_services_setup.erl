@@ -689,7 +689,7 @@ san_field_to_type("uri") -> uniformResourceIdentifier;
 san_field_to_type("email") -> rfc822Name.
 
 all_services() ->
-    [ssl_service, capi_ssl_service, xdcr_proxy, query_svc, memcached, event].
+    [ssl_service, capi_ssl_service, xdcr_proxy, memcached, event].
 
 notify_service(Service) ->
     RV = (catch do_notify_service(Service)),
@@ -725,12 +725,11 @@ do_notify_service(capi_ssl_service) ->
     end;
 do_notify_service(xdcr_proxy) ->
     ns_ports_setup:restart_xdcr_proxy();
-do_notify_service(query_svc) ->
-    query_rest:maybe_refresh_cert();
 do_notify_service(memcached) ->
     memcached_refresh:refresh(ssl_certs);
 do_notify_service(event) ->
     gen_event:notify(ssl_service_events, cert_changed).
+
 
 -ifdef(EUNIT).
 

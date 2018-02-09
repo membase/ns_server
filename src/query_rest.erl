@@ -22,8 +22,7 @@
 
 -export([get_query_port/2,
          get_ssl_query_port/2,
-         get_stats/0,
-         maybe_refresh_cert/0]).
+         get_stats/0]).
 
 get_query_port(Config, Node) ->
     ns_config:search(Config, {node, Node, query_port}, undefined).
@@ -47,32 +46,4 @@ do_get_stats() ->
             Stats;
         _Error ->
             []
-    end.
-
-refresh_cert() ->
-    Port = get_query_port(ns_config:latest(), node()),
-    Timeout = ns_config:get_timeout({n1ql, refresh_cert}, 30000),
-
-    ?log_debug("Tell cbq-engine to refresh ssl certificate"),
-    try rest_utils:request_local(n1ql, "/admin/ssl_cert", Port, "POST", [], [],
-                                 Timeout) of
-        {ok, {{200, _}, _Headers, _Body}} ->
-            ok
-    catch
-        error:{badmatch, {error, {econnrefused, _}}} ->
-            ?log_debug("Failed to notify cbq-engine because it is not started "
-                       "yet. This is usually normal")
-    end.
-
-maybe_refresh_cert() ->
-    case ns_cluster_membership:should_run_service(ns_config:latest(), n1ql, node()) of
-        true ->
-            case get_ssl_query_port(ns_config:latest(), node()) of
-                undefined ->
-                    ok;
-                _ ->
-                    refresh_cert()
-            end;
-        false->
-            ok
     end.
