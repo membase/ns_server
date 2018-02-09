@@ -221,7 +221,7 @@ validate_users(Name, State) ->
     validate_by_fun(
       fun (Value) ->
               Users = string:tokens(Value, ","),
-              UsersParsed = [{U, string:tokens(Value, "/")} || U <- Users],
+              UsersParsed = [{U, string:tokens(U, "/")} || U <- Users],
               UsersFound =
                   lists:map(
                     fun ({U, [N, S]}) ->
