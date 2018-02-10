@@ -26,7 +26,6 @@
          is_index_aware_rebalance_on/0,
          is_index_pausing_on/0,
          rebalance_ignore_view_compactions/0,
-         is_node_compatible/2,
          is_cluster_40/0,
          is_version_40/1,
          compat_mode_string_40/0,
@@ -154,29 +153,6 @@ is_ldap_enabled() ->
     is_cluster_40() andalso is_enterprise() andalso
         ns_config:search(ns_config:latest(),
                          {node, node(), ldap_enabled}, false).
-
-get_compat_version_three_elements() ->
-    case get_compat_version() of
-        undefined ->
-            undefined;
-        Ver ->
-            Ver ++ [0]
-    end.
-
-is_node_compatible(Node, Version) ->
-    case is_enabled_at(get_compat_version_three_elements(), Version) of
-        true ->
-            true;
-        _ ->
-            NodeVer = case Node =:= node() of
-                          true ->
-                              mb_master_advertised_version();
-                          false ->
-                              Status = ns_doctor:get_node(Node),
-                              proplists:get_value(advertised_version, Status, [])
-                      end,
-            NodeVer >= Version
-    end.
 
 rebalance_ignore_view_compactions() ->
     ns_config:read_key_fast(rebalance_ignore_view_compactions, false).
