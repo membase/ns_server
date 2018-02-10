@@ -77,8 +77,8 @@ nodes_actual_proper() ->
     only_live_nodes(nodes_actual(), nodes_wanted()).
 
 only_live_nodes(Current, Wanted) ->
-    Diff = lists:subtract(Current, Wanted),
-    lists:usort(lists:subtract(Current, Diff)).
+    ordsets:intersection(ordsets:from_list(Current),
+                         ordsets:from_list(Wanted)).
 
 couchdb_node() ->
     case application:get_env(ns_server, ns_couchdb_node) of
