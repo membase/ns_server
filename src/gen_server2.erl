@@ -154,12 +154,15 @@ multi_call(Nodes, Name, Req, Timeout) ->
     gen_server:multi_call(Nodes, Name, Req, Timeout).
 
 enter_loop(Mod, Options, State) ->
+    init_state(Mod),
     gen_server:enter_loop(Mod, Options, State).
 
 enter_loop(Mod, Options, State, TimeoutOrServerName) ->
+    init_state(Mod),
     gen_server:enter_loop(Mod, Options, State, TimeoutOrServerName).
 
 enter_loop(Mod, Options, State, ServerName, Timeout) ->
+    init_state(Mod),
     gen_server:enter_loop(Mod, Options, State, ServerName, Timeout).
 
 %% gen_server2-specific APIs
@@ -200,9 +203,7 @@ conditional(Pred, OnSuccess, Timeout, OnTimeout) ->
 
 %% gen_server callbacks
 init([Module, Args]) ->
-    set_state(module, Module),
-    init_callbacks(Module),
-
+    init_state(Module),
     call_callback(init, [Args], {ok, undefined}).
 
 handle_call(Request, From, State) ->
@@ -552,3 +553,7 @@ init_callbacks(Module) ->
                           set_state({have_callback, F},
                                     erlang:function_exported(Module, F, A))
                   end, Callbacks).
+
+init_state(Module) ->
+    set_state(module, Module),
+    init_callbacks(Module).
