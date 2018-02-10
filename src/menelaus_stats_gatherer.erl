@@ -36,13 +36,9 @@ gather_stats(_Bucket, [], _ClientTStamp, _Window) ->
     {none, [], []};
 gather_stats(Bucket, Nodes, ClientTStamp, Window) ->
     FirstNode = get_first_node(Nodes),
-    case cluster_compat_mode:is_node_compatible(FirstNode, [2, 3, 0]) of
-        true ->
-            gen_server:call({?MODULE, FirstNode},
-                            {gather_stats, Bucket, Nodes, ClientTStamp, Window}, infinity);
-        false ->
-            gather_op_stats(FirstNode, Bucket, Nodes, ClientTStamp, Window)
-    end.
+    gen_server:call({?MODULE, FirstNode},
+                    {gather_stats, Bucket, Nodes, ClientTStamp, Window},
+                    infinity).
 
 gather_stats(_Bucket, [], _ClientTStamp, _Window, _StatList) ->
     {none, [], []};
