@@ -328,7 +328,7 @@ handle_get_users_with_domain(Req, DomainAtom, Path, Permission) ->
                       handle_get_users_page(Req, DomainAtom, Path,
                                             proplists:get_value(pageSize,
                                                                 Values),
-                                            Start, FilteredRoles)
+                                            Start, Permission, FilteredRoles)
               end, Req, validate_get_users(Query, DomainAtom, HasStartFrom))
     end.
 
@@ -502,22 +502,37 @@ create_skews(Start, PageSize) ->
 add_to_skews(El, Skews) ->
     [add_to_skew(El, Skew) || Skew <- Skews].
 
-build_link(Name, noparams, PageSize, _DomainAtom, Path) ->
-    {Name, iolist_to_binary(
-             io_lib:format("/~s?pageSize=~p", [Path, PageSize]))};
-build_link(Name, {User, Domain}, PageSize, '_', Path) ->
-    {Name, iolist_to_binary(
-             io_lib:format("/~s?startFrom=~s&startFromDomain=~p&pageSize=~p",
-                           [Path, User, Domain, PageSize]))};
-build_link(Name, {User, _Domain}, PageSize, _DomainAtom, Path) ->
-    {Name, iolist_to_binary(
-             io_lib:format("/~s?startFrom=~s&pageSize=~p", [Path, User, PageSize]))}.
+build_link(Name, Identity, PageSize, Domain, Path, Permission) ->
+    PermissionParams =
+        case Permission of
+            undefined ->
+                [];
+            _ ->
+                PermStr = http_uri:encode(permission_to_iolist(Permission)),
+                [io_lib:format("permission=~s", [PermStr])]
+        end,
+    PaginatorParams = format_paginator_params(Identity, PageSize, Domain),
+    Params = PermissionParams ++ PaginatorParams,
+    Link = io_lib:format("/~s?~s", [Path, string:join(Params, "&")]),
+    {Name, iolist_to_binary(Link)}.
+
+format_paginator_params(noparams, PageSize, _DomainAtom) ->
+    [io_lib:format("pageSize=~p", [PageSize])];
+format_paginator_params({User, Domain}, PageSize, '_') ->
+    [io_lib:format("startFrom=~s", [User]),
+     io_lib:format("startFromDomain=~p", [Domain]),
+     io_lib:format("pageSize=~p", [PageSize])];
+format_paginator_params({User, _Domain}, PageSize, _DomainAtom) ->
+    [io_lib:format("startFrom=~s", [User]),
+     io_lib:format("pageSize=~p", [PageSize])].
 
 seed_links(Pairs) ->
     [{Name, {http_uri:encode(User), Domain}} || {Name, {User, Domain}} <- Pairs].
 
-build_links(Links, PageSize, DomainAtom, Path) ->
-    {links, {[build_link(Name, Identity, PageSize, DomainAtom, Path) || {Name, Identity} <- Links]}}.
+build_links(Links, PageSize, DomainAtom, Path, Permission) ->
+    Json = [build_link(Name, Identity, PageSize, DomainAtom, Path, Permission)
+                || {Name, Identity} <- Links],
+    {links, {Json}}.
 
 json_from_skews([SkewPrev, SkewThis, SkewLast], PageSize, UserJson) ->
     {Users, Next} =
@@ -549,7 +564,8 @@ json_from_skews([SkewPrev, SkewThis, SkewLast], PageSize, UserJson) ->
     {[{skipped, skew_skipped(SkewThis)}, {users, [UserJson(El) || El <- Users]}],
      seed_links([{first, First}, {prev, Prev}, {next, CorrectedNext}, {last, Last}])}.
 
-handle_get_users_page(Req, DomainAtom, Path, PageSize, Start, Roles) ->
+handle_get_users_page(Req, DomainAtom, Path, PageSize,
+                      Start, Permission, Roles) ->
     Passwordless = menelaus_users:get_passwordless(),
     {PageSkews, Total} =
         pipes:run(menelaus_users:select_users({'_', DomainAtom}),
@@ -567,8 +583,8 @@ handle_get_users_page(Req, DomainAtom, Path, PageSize, Start, Roles) ->
         end,
 
     {JsonFromSkews, Links} = json_from_skews(PageSkews, PageSize, UserJson),
-
-    Json = {[{total, Total} | [build_links(Links, PageSize, DomainAtom, Path) | JsonFromSkews]]},
+    LinksJson = build_links(Links, PageSize, DomainAtom, Path, Permission),
+    Json = {[{total, Total}, LinksJson | JsonFromSkews]},
     menelaus_util:reply_ok(Req, "application/json", misc:ejson_encode_pretty(Json)).
 
 handle_whoami(Req) ->
