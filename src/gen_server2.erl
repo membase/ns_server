@@ -201,18 +201,7 @@ conditional(Pred, OnSuccess, Timeout, OnTimeout) ->
 %% gen_server callbacks
 init([Module, Args]) ->
     set_state(module, Module),
-
-    Callbacks = [{init, 1},
-                 {handle_call, 3},
-                 {handle_cast, 2},
-                 {handle_info, 2},
-                 {terminate, 2},
-                 {code_change, 3},
-                 {handle_job_death, 3}],
-    lists:foreach(fun ({F, A}) ->
-                          set_state({have_callback, F},
-                                    erlang:function_exported(Module, F, A))
-                  end, Callbacks),
+    init_callbacks(Module),
 
     call_callback(init, [Args], {ok, undefined}).
 
@@ -550,3 +539,16 @@ call_callback(Name, Args, OnNotExported) ->
         false ->
             OnNotExported
     end.
+
+init_callbacks(Module) ->
+    Callbacks = [{init, 1},
+                 {handle_call, 3},
+                 {handle_cast, 2},
+                 {handle_info, 2},
+                 {terminate, 2},
+                 {code_change, 3},
+                 {handle_job_death, 3}],
+    lists:foreach(fun ({F, A}) ->
+                          set_state({have_callback, F},
+                                    erlang:function_exported(Module, F, A))
+                  end, Callbacks).
