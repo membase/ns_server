@@ -27,7 +27,6 @@
          is_index_pausing_on/0,
          rebalance_ignore_view_compactions/0,
          is_node_compatible/2,
-         split_live_nodes_by_version/1,
          is_cluster_40/0,
          is_version_40/1,
          compat_mode_string_40/0,
@@ -188,12 +187,6 @@ is_node_compatible(Node, Version) ->
                       end,
             NodeVer >= Version
     end.
-
-split_live_nodes_by_version(Version) ->
-    Nodes = ns_node_disco:nodes_actual_proper(),
-    lists:partition(fun (Node) ->
-                            is_node_compatible(Node, Version)
-                    end, Nodes).
 
 rebalance_ignore_view_compactions() ->
     ns_config:read_key_fast(rebalance_ignore_view_compactions, false).
