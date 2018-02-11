@@ -156,6 +156,11 @@ start_activity(Domain, Name, Quorum, Body, Opts) ->
     start_activity(node(), Domain, Name, Quorum, Body, Opts).
 
 start_activity(Node, Domain, Name, Quorum, Body, Opts) ->
+    pick_implementation(fun start_activity_regular/6,
+                        fun start_activity_bypass/6,
+                        [Node, Domain, Name, Quorum, Body, Opts]).
+
+start_activity_regular(Node, Domain, Name, Quorum, Body, Opts) ->
     ActivityToken = case get_activity_token() of
                         {ok, Token} ->
                             true = (Token#activity_token.domain =:= Domain),
@@ -173,6 +178,25 @@ start_activity_with_token(Node, ActivityToken, Name, Quorum, Body, Opts) ->
     call_wait_for_quorum(Node, ActivityToken, Quorum, Opts,
                          start_activity, [Async, Name, Body]).
 
+start_activity_bypass(Node, _Domain, _Name, _Quorum, Body, _Opts) ->
+    AsyncBody = case Node =:= node() of
+                    true ->
+                        ?cut(run_body(Body));
+                    false ->
+                        {M, F, A} = Body,
+                        fun () ->
+                                case rpc:call(Node, M, F, A) of
+                                    {badrpc, _} = Error ->
+                                        throw(Error);
+                                    Other ->
+                                        Other
+                                end
+                        end
+                end,
+
+    Async = async:start(AsyncBody),
+    {ok, Async}.
+
 register_process(Name, Quorum) ->
     register_process(Name, Quorum, []).
 
@@ -183,22 +207,38 @@ register_process(DomainToken, Name, Quorum, Opts) ->
     register_process(default, DomainToken, Name, Quorum, Opts).
 
 register_process(Domain, DomainToken, Name, Quorum, Opts) ->
+    pick_implementation(fun register_process_regular/5,
+                        fun register_process_bypass/5,
+                        [Domain, DomainToken, Name, Quorum, Opts]).
+
+register_process_regular(Domain, DomainToken, Name, Quorum, Opts) ->
     {ok, ActivityToken} =
         call_wait_for_quorum(node(),
                              make_fresh_activity_token(Domain, DomainToken),
                              Quorum, Opts, register_process, [Name, self()]),
     set_activity_token(ActivityToken).
 
+register_process_bypass(_Domain, _DomainToken, _Name, _Quorum, _Opts) ->
+    ok.
+
 switch_quorum(NewQuorum) ->
     switch_quorum(NewQuorum, []).
 
 switch_quorum(NewQuorum, Opts) ->
+    pick_implementation(fun switch_quorum_regular/2,
+                        fun switch_quorum_bypass/2,
+                        [NewQuorum, Opts]).
+
+switch_quorum_regular(NewQuorum, Opts) ->
     Activity            = get_activity_pid(),
     {ok, ActivityToken} = get_activity_token(),
 
     call_wait_for_quorum(node(),
                          ActivityToken,
                          NewQuorum, Opts, switch_quorum, [Activity]).
+
+switch_quorum_bypass(_NewQuorum, _Opts) ->
+    ok.
 
 %% gen_server callbacks
 init([]) ->
@@ -741,3 +781,16 @@ is_verbose(Activity) ->
 
 get_options(#activity{options = Options}) ->
     Options.
+
+must_bypass_server() ->
+    leader_utils:is_new_orchestration_disabled().
+
+pick_implementation(Regular, Bypass, Args) ->
+    Impl = case must_bypass_server() of
+               true ->
+                   Bypass;
+               false ->
+                   Regular
+           end,
+
+    erlang:apply(Impl, Args).
