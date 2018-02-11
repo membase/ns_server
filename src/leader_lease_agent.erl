@@ -44,7 +44,10 @@
 -record(state, { lease :: undefined | #lease{} }).
 
 start_link() ->
-    gen_server2:start_link({local, ?SERVER}, ?MODULE, [], []).
+    leader_utils:ignore_if_new_orchestraction_disabled(
+      fun () ->
+              gen_server2:start_link({local, ?SERVER}, ?MODULE, [], [])
+      end).
 
 get_current_lease() ->
     get_current_lease(node()).

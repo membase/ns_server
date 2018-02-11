@@ -15,7 +15,16 @@
 %%
 -module(leader_utils).
 
--export([is_new_orchestration_disabled/0]).
+-export([is_new_orchestration_disabled/0,
+         ignore_if_new_orchestraction_disabled/1]).
 
 is_new_orchestration_disabled() ->
     ns_config:read_key_fast(force_disable_new_orchestration, false).
+
+ignore_if_new_orchestraction_disabled(Body) ->
+    case is_new_orchestration_disabled() of
+        true ->
+            ignore;
+        false ->
+            Body()
+    end.

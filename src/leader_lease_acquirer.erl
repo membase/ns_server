@@ -39,7 +39,10 @@
 
 %% API
 start_link() ->
-    proc_lib:start_link(?MODULE, init, [[]]).
+    leader_utils:ignore_if_new_orchestraction_disabled(
+      fun () ->
+          proc_lib:start_link(?MODULE, init, [[]])
+      end).
 
 %% gen_server callbacks
 init([]) ->

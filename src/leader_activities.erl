@@ -84,7 +84,10 @@
                }).
 
 start_link() ->
-    gen_server2:start_link({local, ?SERVER}, ?MODULE, [], []).
+    leader_utils:ignore_if_new_orchestraction_disabled(
+      fun () ->
+          gen_server2:start_link({local, ?SERVER}, ?MODULE, [], [])
+      end).
 
 register_acquirer(Pid) ->
     call_if_internal_process(acquirer, undefined,
