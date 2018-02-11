@@ -290,7 +290,8 @@ def main():
                                            "static-cookie", "dont-start",
                                            "host=", "loglevel=",
                                            "prepend-extras", "pluggable-config=",
-                                           "minified", "disable-autocomplete"])
+                                           "minified", "disable-autocomplete",
+                                           "pretend-version="])
     except getopt.GetoptError, err:
         # print help information and exit:
         print str(err) # will print something like "option -a not recognized"
@@ -311,6 +312,7 @@ def main():
     pluggable_config = []
     use_minified = False
     disable_autocomplete = "{disable_autocomplete,false}"
+    pretend_version = None
 
     for o, a in optlist:
         if o in ("--nodes", "-n"):
@@ -338,6 +340,8 @@ def main():
             use_minified = True
         elif o == "--disable-autocomplete":
             disable_autocomplete = "{disable_autocomplete,true}"
+        elif o == "--pretend-version":
+            pretend_version = a
         else:
             assert False, "unhandled options"
 
@@ -415,6 +419,10 @@ def main():
 
     extra_args += ["-ns_server", "use_minified", "true" if use_minified else "false"]
     extra_args += ["-ns_server", "ui_env", '[' + ','.join(ui_env) + ']']
+
+    if pretend_version is not None:
+        extra_args += ["-ns_server",
+                       "pretend_version", '"{}"'.format(pretend_version)]
 
     nodes = start_cluster(num_nodes, start_index, host, extra_args, prepend_args)
 

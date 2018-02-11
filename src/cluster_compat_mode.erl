@@ -65,7 +65,12 @@ get_compat_version(Config) ->
     ns_config:search(Config, cluster_compat_version, undefined).
 
 supported_compat_version() ->
-    ?LATEST_VERSION_NUM.
+    case get_pretend_version() of
+        undefined ->
+            ?LATEST_VERSION_NUM;
+        Version ->
+            Version
+    end.
 
 min_supported_compat_version() ->
     ?VERSION_30.
@@ -75,7 +80,12 @@ min_supported_compat_version() ->
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
 mb_master_advertised_version() ->
-    ?MASTER_ADVERTISED_VERSION.
+    case get_pretend_version() of
+        undefined ->
+            ?MASTER_ADVERTISED_VERSION;
+        Version ->
+            Version ++ [0]
+    end.
 
 is_enabled_at(undefined = _ClusterVersion, _FeatureVersion) ->
     false;
@@ -319,3 +329,12 @@ have_non_dcp_buckets(Config) ->
 
 mb_master_advertised_version_test() ->
     true = mb_master_advertised_version() >= ?LATEST_VERSION_NUM ++ [0].
+
+get_pretend_version() ->
+    case application:get_env(ns_server, pretend_version) of
+        undefined ->
+            undefined;
+        {ok, VersionString} ->
+            {[A, B | _], _, _} = misc:parse_version(VersionString),
+            [A, B]
+    end.
