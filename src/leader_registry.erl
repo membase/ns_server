@@ -47,7 +47,7 @@ send(Name, Msg) ->
 
 %% internal
 backends() ->
-    case force_use_global() of
+    case leader_utils:is_new_orchestration_disabled() of
         true ->
             [global];
         false ->
@@ -81,6 +81,3 @@ wrap_regisry_api(Name, Args) ->
 
               Result
       end, Empty, backends()).
-
-force_use_global() ->
-    ns_config:read_key_fast(force_use_global, false).
