@@ -45,6 +45,7 @@
          is_version_vulcan/1,
          is_enterprise/0,
          is_ldap_enabled/0,
+         supported_compat_version/0,
          min_supported_compat_version/0,
          effective_cluster_compat_version/0,
          effective_cluster_compat_version_for/1,
@@ -52,7 +53,7 @@
          have_non_dcp_buckets/1]).
 
 %% NOTE: this is rpc:call-ed by mb_master
--export([supported_compat_version/0, mb_master_advertised_version/0]).
+-export([mb_master_advertised_version/0]).
 
 -export([pre_force_compat_version/0, post_force_compat_version/0]).
 
@@ -63,14 +64,13 @@ get_compat_version() ->
 get_compat_version(Config) ->
     ns_config:search(Config, cluster_compat_version, undefined).
 
-%% NOTE: this is rpc:call-ed by mb_master of 2.0.0
 supported_compat_version() ->
     ?LATEST_VERSION_NUM.
 
 min_supported_compat_version() ->
     ?VERSION_30.
 
-%% NOTE: this is rpc:call-ed by mb_master of 2.0.1+
+%% NOTE: this is rpc:call-ed by mb_master
 %%
 %% I.e. we want later version to be able to take over mastership even
 %% without requiring compat mode upgrade
