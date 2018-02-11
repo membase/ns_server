@@ -783,7 +783,8 @@ get_options(#activity{options = Options}) ->
     Options.
 
 must_bypass_server() ->
-    leader_utils:is_new_orchestration_disabled().
+    not cluster_compat_mode:is_cluster_vulcan()
+        orelse leader_utils:is_new_orchestration_disabled().
 
 pick_implementation(Regular, Bypass, Args) ->
     Impl = case must_bypass_server() of
