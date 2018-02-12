@@ -975,8 +975,8 @@ form .error-form {
 }
 
 /* COLORS -> TEXT ----------------------------------------------------------- */
-.success { /* green-3 */
-  color: #80c677;
+.success { /* green-2 */
+  color: #56b349;
 }
 .warning { /* orange-1 */
   color: #f5a623;
