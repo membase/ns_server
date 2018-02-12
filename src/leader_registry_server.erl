@@ -148,10 +148,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% internal functions
 call(Request) ->
-    call(node(), Request).
-
-call(Node, Request) ->
-    case gen_server2:call({?SERVER, Node}, Request, infinity) of
+    case gen_server2:call(?SERVER, Request, infinity) of
         {ok, Reply} ->
             Reply;
         {error, Error} ->
@@ -206,9 +203,9 @@ handle_whereis_name(Name, From, #state{leader = Leader} = State) ->
 maybe_spawn_name_resolver(_Name, From, #state{leader = undefined} = State) ->
     reply(From, undefined),
     State;
-maybe_spawn_name_resolver(Name, From, #state{leader = Leader} = State) ->
+maybe_spawn_name_resolver(Name, From, State) ->
     gen_server2:async_job({resolver, Name}, Name,
-                          ?cut(call(Leader, {if_leader, {whereis_name, Name}})),
+                          ?cut(resolve_name_on_leader(Name, State)),
                           fun (MaybePid, NewState) ->
                                   reply(From, MaybePid),
                                   maybe_cache_name(Name, MaybePid),
@@ -216,6 +213,21 @@ maybe_spawn_name_resolver(Name, From, #state{leader = Leader} = State) ->
                           end),
 
     State.
+
+resolve_name_on_leader(Name, #state{leader = Leader}) ->
+    case gen_server2:call({?SERVER, Leader},
+                          {if_leader, {whereis_name, Name}}) of
+        {ok, Result} ->
+            Result;
+        {error, not_a_leader} ->
+            %% It's possible that we believe somebody is a leader when they
+            %% (yet or already) are not. Just say that we don't know where the
+            %% name is, similarly to how we behave when we're not aware of the
+            %% leader.
+            ?log_warning("Failed to resolve name '~p' on node ~p. "
+                         "The node is not a leader.", [Name, Leader]),
+            undefined
+    end.
 
 handle_new_leader(NewLeader, #state{leader = Leader} = State) ->
     case Leader =:= NewLeader of
