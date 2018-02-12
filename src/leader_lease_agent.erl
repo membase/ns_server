@@ -221,16 +221,24 @@ handle_expire_done(Holder, Reply, #state{lease = Lease} = State) ->
     true     = (Lease#lease.holder =:= Holder),
     expiring = Lease#lease.state,
 
-    misc:remove_marker(lease_path()),
+    remove_persisted_lease(),
 
     {noreply, State#state{lease = undefined}}.
 
 handle_terminate(Reason, #lease{state = active} = Lease) ->
     ?log_warning("Terminating with reason ~p when we have a lease granted:~n~p",
-                 [Reason, Lease]);
+                 [Reason, Lease]),
+    persist_lease(Lease);
 handle_terminate(Reason, #lease{state = expiring} = Lease) ->
     ?log_warning("Terminating with reason ~p while lease ~p is still expiring",
-                 [Reason, Lease]).
+                 [Reason, Lease]),
+
+    %% Even though we haven't finished expiring the lease, it's safe to remove
+    %% the persisted lease: the leader_activites process will cleanup after
+    %% us. If we get restarted, we'll first have to register with
+    %% leader_activities again, so we won't be able to grant a lease before
+    %% all old activities are terminated.
+    remove_persisted_lease().
 
 build_lease_props(Lease) ->
     build_lease_props(time_compat:monotonic_time(millisecond), Lease).
@@ -258,7 +266,12 @@ lease_path() ->
 
 persist_lease(#state{lease = Lease}) ->
     true = (Lease =/= undefined),
+    persist_lease(Lease);
+persist_lease(#lease{} = Lease) ->
     misc:create_marker(lease_path(), [dump_lease(Lease), $\n]).
+
+remove_persisted_lease() ->
+    misc:remove_marker(lease_path()).
 
 load_lease_props() ->
     try
