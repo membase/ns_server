@@ -61,6 +61,9 @@
 -define(SERVER, leader_registry).
 -define(TABLE,  leader_registry).
 
+-define(WHEREIS_NAME_REMOTE_TIMEOUT,
+        ns_config:get_timeout({leader_registry, whereis_name_remote}, 15000)).
+
 -record(state, { leader :: node() | undefined }).
 
 start_link() ->
@@ -216,7 +219,8 @@ maybe_spawn_name_resolver(Name, From, State) ->
 
 resolve_name_on_leader(Name, #state{leader = Leader}) ->
     case gen_server2:call({?SERVER, Leader},
-                          {if_leader, {whereis_name, Name}}) of
+                          {if_leader, {whereis_name, Name}},
+                          ?WHEREIS_NAME_REMOTE_TIMEOUT) of
         {ok, Result} ->
             Result;
         {error, not_a_leader} ->
