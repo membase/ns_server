@@ -80,6 +80,7 @@ handle_get_descriptors(Req) ->
           fun ({Id, Props}) ->
                   {[{id, Id},
                     {name, proplists:get_value(name, Props)},
+                    {module, proplists:get_value(module, Props)},
                     {description, proplists:get_value(description, Props)}]}
           end, Descriptors),
     reply_json(Req, Json).
