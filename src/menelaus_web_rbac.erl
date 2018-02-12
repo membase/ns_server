@@ -21,6 +21,7 @@
 -include("ns_common.hrl").
 -include("pipes.hrl").
 
+-include_lib("cut.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -export([handle_saslauthd_auth_settings/1,
@@ -254,35 +255,39 @@ handle_get_users(Path, Req) ->
             handle_get_users_45(Req)
     end.
 
-validate_get_users(Args, DomainAtom, HasStartFrom) ->
-    R1 = menelaus_util:validate_integer(pageSize, {Args, [], []}),
-    R2 = menelaus_util:validate_range(pageSize, ?MIN_USERS_PAGE_SIZE, ?MAX_USERS_PAGE_SIZE, R1),
-    R3 = menelaus_util:validate_any_value(startFrom, R2),
-    R4 =
+validate_domain(Name, State) ->
+    menelaus_util:validate_by_fun(
+      fun (Value) ->
+              case domain_to_atom(Value) of
+                  unknown ->
+                      {error, "Unknown user domain"};
+                  Atom ->
+                      {value, Atom}
+              end
+      end, Name, State).
+
+get_users_validators(DomainAtom, HasStartFrom) ->
+    [menelaus_util:validate_integer(pageSize, _),
+     menelaus_util:validate_range(pageSize, ?MIN_USERS_PAGE_SIZE,
+                                  ?MAX_USERS_PAGE_SIZE, _),
+     menelaus_util:validate_any_value(startFrom, _)] ++
         case HasStartFrom of
             false ->
-                R3;
+                [];
             true ->
                 case DomainAtom of
                     '_' ->
-                        R4_1 = menelaus_util:validate_required(startFromDomain, R3),
-                        R4_2 = menelaus_util:validate_any_value(startFromDomain, R4_1),
-                        menelaus_util:validate_by_fun(
-                          fun (Value) ->
-                                  case domain_to_atom(Value) of
-                                      unknown ->
-                                          {error, "Unknown user domain"};
-                                      Atom ->
-                                          {value, Atom}
-                                  end
-                          end, startFromDomain, R4_2);
+                        [menelaus_util:validate_required(startFromDomain, _),
+                         menelaus_util:validate_any_value(startFromDomain, _),
+                         validate_domain(startFromDomain, _)];
                     _ ->
-                        R4_1 = menelaus_util:validate_prohibited(startFromDomain, R3),
-                        menelaus_util:return_value(startFromDomain, DomainAtom, R4_1)
+                        [menelaus_util:validate_prohibited(startFromDomain, _),
+                         menelaus_util:return_value(startFromDomain, DomainAtom,
+                                                    _)]
                 end
-        end,
-    R5 = menelaus_util:validate_any_value(permission, R4),
-    menelaus_util:validate_unsupported_params(R5).
+        end ++
+        [menelaus_util:validate_any_value(permission, _),
+         menelaus_util:validate_unsupported_params(_)].
 
 handle_get_users(Path, Domain, Req) ->
     menelaus_util:assert_is_50(),
@@ -329,7 +334,7 @@ handle_get_users_with_domain(Req, DomainAtom, Path, Permission) ->
                                             proplists:get_value(pageSize,
                                                                 Values),
                                             Start, Permission, FilteredRoles)
-              end, Req, validate_get_users(Query, DomainAtom, HasStartFrom))
+              end, Req, Query, get_users_validators(DomainAtom, HasStartFrom))
     end.
 
 handle_get_users_45(Req) ->
@@ -779,18 +784,18 @@ validate_password(R1) ->
               end
       end, password, R2).
 
-validate_put_user(Domain, Args) ->
-    R0 = menelaus_util:validate_has_params({Args, [], []}),
-    R1 = menelaus_util:validate_any_value(name, R0),
-    R2 = menelaus_util:validate_required(roles, R1),
-    R3 = menelaus_util:validate_any_value(roles, R2),
-    R4 = case Domain of
-             local ->
-                 validate_password(R3);
-             external ->
-                 R3
-         end,
-    menelaus_util:validate_unsupported_params(R4).
+put_user_validators(Domain) ->
+    [menelaus_util:validate_has_params(_),
+     menelaus_util:validate_any_value(name, _),
+     menelaus_util:validate_required(roles, _),
+     menelaus_util:validate_any_value(roles, _)] ++
+        case Domain of
+            local ->
+                [validate_password(_)];
+            external ->
+                []
+        end ++
+        [menelaus_util:validate_unsupported_params(_)].
 
 handle_put_user_with_identity({_UserId, Domain} = Identity, Req) ->
     menelaus_util:execute_if_validated(
@@ -800,7 +805,7 @@ handle_put_user_with_identity({_UserId, Domain} = Identity, Req) ->
                                         proplists:get_value(password, Values),
                                         proplists:get_value(roles, Values),
                                         Req)
-      end, Req, validate_put_user(Domain, Req:parse_post())).
+      end, Req, Req:parse_post(), put_user_validators(Domain)).
 
 handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
     Roles = parse_roles(RawRoles),
@@ -861,20 +866,20 @@ reply_put_delete_users(Req) ->
             handle_get_users_45(Req)
     end.
 
-validate_change_password(Args) ->
-    R0 = menelaus_util:validate_has_params({Args, [], []}),
-    R1 = menelaus_util:validate_required(password, R0),
-    R2 = menelaus_util:validate_any_value(password, R1),
-    R3 = menelaus_util:validate_by_fun(
-           fun (P) ->
-                   case validate_cred(P, password) of
-                       true ->
-                           ok;
-                       Error ->
-                           {error, Error}
-                   end
-           end, password, R2),
-    menelaus_util:validate_unsupported_params(R3).
+change_password_validators() ->
+    [menelaus_util:validate_has_params(_),
+     menelaus_util:validate_required(password, _),
+     menelaus_util:validate_any_value(password, _),
+     menelaus_util:validate_by_fun(
+       fun (P) ->
+               case validate_cred(P, password) of
+                   true ->
+                       ok;
+                   Error ->
+                       {error, Error}
+               end
+       end, password, _),
+     menelaus_util:validate_unsupported_params(_)].
 
 handle_change_password(Req) ->
     menelaus_util:assert_is_enterprise(),
@@ -907,7 +912,7 @@ handle_change_password_with_identity(Req, Identity) ->
                   unchanged ->
                       menelaus_util:reply(Req, 200)
               end
-      end, Req, validate_change_password(Req:parse_post())).
+      end, Req, Req:parse_post(), change_password_validators()).
 
 do_change_password({_, local} = Identity, Password) ->
     menelaus_users:change_password(Identity, Password);
@@ -1187,16 +1192,16 @@ handle_get_password_policy(Req) ->
                                {enforceDigits, lists:member(digits, MustPresent)},
                                {enforceSpecialChars, lists:member(special, MustPresent)}]}).
 
-validate_post_password_policy(Args) ->
-    R0 = menelaus_util:validate_has_params({Args, [], []}),
-    R1 = menelaus_util:validate_required(minLength, R0),
-    R2 = menelaus_util:validate_integer(minLength, R1),
-    R3 = menelaus_util:validate_range(minLength, 0, 100, R2),
-    R4 = menelaus_util:validate_boolean(enforceUppercase, R3),
-    R5 = menelaus_util:validate_boolean(enforceLowercase, R4),
-    R6 = menelaus_util:validate_boolean(enforceDigits, R5),
-    R7 = menelaus_util:validate_boolean(enforceSpecialChars, R6),
-    menelaus_util:validate_unsupported_params(R7).
+post_password_policy_validators() ->
+    [menelaus_util:validate_has_params(_),
+     menelaus_util:validate_required(minLength, _),
+     menelaus_util:validate_integer(minLength, _),
+     menelaus_util:validate_range(minLength, 0, 100, _),
+     menelaus_util:validate_boolean(enforceUppercase, _),
+     menelaus_util:validate_boolean(enforceLowercase, _),
+     menelaus_util:validate_boolean(enforceDigits, _),
+     menelaus_util:validate_boolean(enforceSpecialChars, _),
+     menelaus_util:validate_unsupported_params(_)].
 
 must_present_value(JsonField, MustPresentAtom, Args) ->
     case proplists:get_value(JsonField, Args) of
@@ -1218,7 +1223,7 @@ handle_post_password_policy(Req) ->
               ns_config:set(password_policy, Policy),
               ns_audit:password_policy(Req, Policy),
               menelaus_util:reply(Req, 200)
-      end, Req, validate_post_password_policy(Req:parse_post())).
+      end, Req, Req:parse_post(), post_password_policy_validators()).
 
 assert_no_users_upgrade() ->
     case menelaus_users:upgrade_status() of
