@@ -685,9 +685,6 @@ is_port_free(BucketName, Port, Config) ->
                        _ ->
                            proplists:get_value(port, menelaus_web:webconfig(Config))
                    end,
-    UpstreamProxyPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
-    DownstreamProxyPort = ns_config:search(Config, {node, node(), ssl_proxy_downstream_port}, undefined),
-
     SSLCapiPort = ns_config:search(Config, {node, node(), ssl_capi_port}, undefined),
     SSLRestPort = ns_config:search(Config, {node, node(), ssl_rest_port}, undefined),
 
@@ -701,9 +698,7 @@ is_port_free(BucketName, Port, Config) ->
         andalso is_not_a_bucket_port(BucketName, Port)
         andalso is_not_a_kernel_port(Port)
         andalso Port =/= SSLCapiPort
-        andalso Port =/= SSLRestPort
-        andalso Port =/= UpstreamProxyPort
-        andalso Port =/= DownstreamProxyPort.
+        andalso Port =/= SSLRestPort.
 
 validate_bucket_config(BucketName, NewConfig) ->
     case is_valid_bucket_name(BucketName) of

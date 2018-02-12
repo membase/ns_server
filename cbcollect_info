@@ -921,7 +921,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
          for name in ["debug.log", "info.log", "error.log", "couchdb.log",
                       "xdcr.log", "xdcr_errors.log",
                       "views.log", "mapreduce_errors.log",
-                      "stats.log", "babysitter.log", "ssl_proxy.log",
+                      "stats.log", "babysitter.log",
                       "reports.log", "http_access.log",
                       "http_access_internal.log", "ns_couchdb.log",
                       "goxdcr.log", "query.log", "projector.log", "indexer.log",

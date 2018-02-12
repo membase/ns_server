@@ -346,16 +346,7 @@ create_goxdcr_spec(Config, Cmd) ->
         integer_to_list(ns_config:search(Config, {node, node(), xdcr_rest_port}, 9998)),
     IsEnterprise = "-isEnterprise=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
     IsIpv6 = "-ipv6=" ++ atom_to_list(misc:is_ipv6()),
-    UpstreamPort = ns_config:search(Config, {node, node(), ssl_proxy_upstream_port}, undefined),
-    Args0 = [AdminPort, XdcrRestPort, IsEnterprise, IsIpv6],
-    Args =
-        case UpstreamPort of
-            undefined ->
-                Args0;
-            _ ->
-                LocalProxyPort = "-localProxyPort=" ++ integer_to_list(UpstreamPort),
-                [LocalProxyPort | Args0]
-        end,
+    Args = [AdminPort, XdcrRestPort, IsEnterprise, IsIpv6],
 
     [{'goxdcr', Cmd, Args,
       [via_goport, exit_status, stderr_to_stdout,

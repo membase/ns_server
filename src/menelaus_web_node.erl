@@ -268,12 +268,7 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
 
     %% this is used by xdcr over ssl since 2.5.0
     PortKeys = [{ssl_capi_port, httpsCAPI},
-                {ssl_rest_port, httpsMgmt}]
-        ++ case is_xdcr_over_ssl_allowed() of
-               true ->
-                   [{ssl_proxy_downstream_port, sslProxy}];
-               _ -> []
-           end,
+                {ssl_rest_port, httpsMgmt}],
 
     PortsKV = lists:foldl(
                 fun ({ConfigKey, JKey}, Acc) ->
@@ -285,7 +280,6 @@ build_node_info(Config, WantENode, InfoNode, LocalAddr) ->
     {ExtHostname, ExtPorts} = alternate_addresses:get_external(WantENode, Config),
     WantedPorts = [moxi_port,
                    memcached_port,
-                   ssl_proxy_downstream_port,
                    ssl_capi_port,
                    capi_port,
                    ssl_rest_port,
@@ -459,12 +453,10 @@ handle_node_self_xdcr_ssl_ports(Req) ->
         false ->
             reply_json(Req, [], 403);
         true ->
-            {value, ProxyPort} = ns_config:search_node(ssl_proxy_downstream_port),
             {value, RESTSSL} = ns_config:search_node(ssl_rest_port),
             {value, CapiSSL} = ns_config:search_node(ssl_capi_port),
             {_, ExtPorts} = alternate_addresses:get_external(),
-            WantedPorts = [ssl_proxy_downstream_port,
-                           ssl_capi_port,
+            WantedPorts = [ssl_capi_port,
                            ssl_rest_port],
             External = construct_ext_mochijson(
                          undefined,
@@ -473,8 +465,7 @@ handle_node_self_xdcr_ssl_ports(Req) ->
                           [] -> [];
                           _ -> [{alternateAddresses, {struct, External}}]
                       end,
-            Ports = [{sslProxy, ProxyPort},
-                     {httpsMgmt, RESTSSL},
+            Ports = [{httpsMgmt, RESTSSL},
                      {httpsCAPI, CapiSSL}] ++ AltAddr,
             reply_json(Req, {struct, Ports})
     end.

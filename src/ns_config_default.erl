@@ -273,18 +273,6 @@ default() ->
           _ -> undefined
       end},
 
-     {{node, node(), ssl_proxy_downstream_port},
-      case IsEnterprise of
-          true -> misc:get_env_default(ssl_proxy_downstream_port, 11214);
-          _ -> undefined
-      end},
-
-     {{node, node(), ssl_proxy_upstream_port},
-      case IsEnterprise of
-          true -> misc:get_env_default(ssl_proxy_upstream_port, 11215);
-          _ -> undefined
-      end},
-
      %% {rest_creds, {User, {password, {Salt, Mac}}}}
      %% {rest_creds, null} means no login/password auth check.
      %% read_only_user_creds has the same format

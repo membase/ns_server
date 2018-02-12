@@ -159,7 +159,6 @@ convert_disk_log_files(Dir) ->
        ?XDCR_ERRORS_LOG_FILENAME,
        ?STATS_LOG_FILENAME,
        ?BABYSITTER_LOG_FILENAME,
-       ?SSL_PROXY_LOG_FILENAME,
        ?REPORTS_LOG_FILENAME,
        ?ACCESS_LOG_FILENAME]).
 

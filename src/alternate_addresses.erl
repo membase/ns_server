@@ -74,10 +74,7 @@ all_ports() ->
      ?define_port(cbas_messaging_port, cbasMessaging, misc),
      ?define_port(cbas_debug_port, cbasDebug, misc),
      ?define_port(cbas_auth_port, cbasAuth, misc),
-     ?define_port(cbas_replication_port, cbasReplication, misc),
-     %% miscellaneous ports
-     ?define_port(ssl_proxy_downstream_port, sslProxy, misc),
-     ?define_port(ssl_proxy_upstream_port, sslProxyUpstream, misc)].
+     ?define_port(cbas_replication_port, cbasReplication, misc)].
 
 service_ports(Service) ->
     [P#port.config || P <- all_ports(), P#port.service =:= Service].
