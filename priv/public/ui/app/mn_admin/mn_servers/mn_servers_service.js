@@ -84,10 +84,8 @@
       return $http({
         method: 'POST',
         url: '/controller/' + type,
-        data: {otpNode: otpNode},
-        params: {
-          allowUnsafe: allowUnsafe ? true : false
-        }
+        data: {otpNode: otpNode,
+               allowUnsafe: allowUnsafe ? "true" : "false"}
       });
     }
     function ejectNode(data) {
