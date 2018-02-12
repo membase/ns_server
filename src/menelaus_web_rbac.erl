@@ -648,14 +648,6 @@ role_to_string({Role, [{BucketName, _}]}) ->
 role_to_string({Role, [BucketName]}) ->
     lists:flatten(io_lib:format("~p[~s]", [Role, BucketName])).
 
-reply_bad_roles(Req, BadRoles) ->
-    Str = string:join(BadRoles, ","),
-    menelaus_util:reply_json(
-      Req,
-      iolist_to_binary(io_lib:format(
-                         "Cannot assign roles to user because the following roles are unknown, "
-                         "malformed or role parameters are undefined: [~s]", [Str])), 400).
-
 domain_to_atom("local") ->
     local;
 domain_to_atom("external") ->
@@ -788,7 +780,8 @@ put_user_validators(Domain) ->
     [menelaus_util:validate_has_params(_),
      menelaus_util:validate_any_value(name, _),
      menelaus_util:validate_required(roles, _),
-     menelaus_util:validate_any_value(roles, _)] ++
+     menelaus_util:validate_any_value(roles, _),
+     validate_roles(roles, _)] ++
         case Domain of
             local ->
                 [validate_password(_)];
@@ -796,6 +789,32 @@ put_user_validators(Domain) ->
                 []
         end ++
         [menelaus_util:validate_unsupported_params(_)].
+
+bad_roles_error(BadRoles) ->
+    Str = string:join(BadRoles, ","),
+    io_lib:format(
+      "Cannot assign roles to user because the following roles are unknown,"
+      " malformed or role parameters are undefined: [~s]", [Str]).
+
+validate_roles(Name, State) ->
+    menelaus_util:validate_by_fun(
+      fun (RawRoles) ->
+              Roles = parse_roles(RawRoles),
+
+              BadRoles = [BadRole || {error, BadRole} <- Roles],
+              case BadRoles of
+                  [] ->
+                      {value, Roles};
+                  _ ->
+                      GoodRoles = Roles -- BadRoles,
+                      {_, MoreBadRoles} =
+                          menelaus_roles:validate_roles(GoodRoles,
+                                                        ns_config:latest()),
+                      {error, bad_roles_error(
+                                BadRoles ++
+                                    [role_to_string(R) || R <- MoreBadRoles])}
+              end
+      end, Name, State).
 
 handle_put_user_with_identity({_UserId, Domain} = Identity, Req) ->
     menelaus_util:execute_if_validated(
@@ -807,35 +826,25 @@ handle_put_user_with_identity({_UserId, Domain} = Identity, Req) ->
                                         Req)
       end, Req, Req:parse_post(), put_user_validators(Domain)).
 
-handle_put_user_validated(Identity, Name, Password, RawRoles, Req) ->
-    Roles = parse_roles(RawRoles),
-
-    BadRoles = [BadRole || {error, BadRole} <- Roles],
-    case BadRoles of
-        [] ->
-            UniqueRoles = ordsets:to_list(ordsets:from_list(Roles)),
-            case menelaus_users:store_user(Identity, Name, Password, UniqueRoles) of
-                {commit, _} ->
-                    ns_audit:set_user(Req, Identity, UniqueRoles, Name),
-                    reply_put_delete_users(Req);
-                {abort, {error, roles_validation, UnknownRoles}} ->
-                    reply_bad_roles(Req, [role_to_string(UR) || UR <- UnknownRoles]);
-                {abort, password_required} ->
-                    menelaus_util:reply_error(Req, "password", "Password is required for new user.");
-                {abort, too_many} ->
-                    menelaus_util:reply_error(
-                      Req, "_", "You cannot create any more users on Community Edition.");
-                retry_needed ->
-                    erlang:error(exceeded_retries)
-            end;
-        _ ->
-            ParsedRoles = lists:filter(fun ({error, _}) ->
-                                               false;
-                                           (_) ->
-                                               true
-                                       end, Roles),
-            {_, MoreBadRoles} = menelaus_roles:validate_roles(ParsedRoles, ns_config:latest()),
-            reply_bad_roles(Req, BadRoles ++ [role_to_string(R) || R <- MoreBadRoles])
+handle_put_user_validated(Identity, Name, Password, Roles, Req) ->
+    UniqueRoles = ordsets:to_list(ordsets:from_list(Roles)),
+    case menelaus_users:store_user(Identity, Name, Password, UniqueRoles) of
+        {commit, _} ->
+            ns_audit:set_user(Req, Identity, UniqueRoles, Name),
+            reply_put_delete_users(Req);
+        {abort, {error, roles_validation, UnknownRoles}} ->
+            menelaus_util:reply_error(
+              Req, "roles",
+              bad_roles_error([role_to_string(UR) || UR <- UnknownRoles]));
+        {abort, password_required} ->
+            menelaus_util:reply_error(Req, "password",
+                                      "Password is required for new user.");
+        {abort, too_many} ->
+            menelaus_util:reply_error(
+              Req, "_",
+              "You cannot create any more users on Community Edition.");
+        retry_needed ->
+            erlang:error(exceeded_retries)
     end.
 
 handle_delete_user(Domain, UserId, Req) ->
