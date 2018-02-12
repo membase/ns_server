@@ -769,6 +769,7 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
     root = os.path.abspath(os.path.join(initargs_path, "..", "..", "..", ".."))
     dbdir = os.path.realpath(read_guts(guts, "db_dir"))
     viewdir = os.path.realpath(read_guts(guts, "idx_dir"))
+    nodes = correct_split(read_guts(guts, "nodes"), ",")
 
     diag_url = "http://127.0.0.1:%s/diag?noLogs=1" % read_guts(guts, "rest_port")
     if not options.multi_node_diag:
@@ -787,7 +788,11 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
     if lookup_cmd is not None:
         lookup_tasks = [UnixTask("DNS lookup information for %s" % node,
                                  "%(lookup_cmd)s '%(node)s'" % locals())
-                        for node in correct_split(read_guts(guts, "nodes"), ",")]
+                        for node in nodes]
+
+    getent_tasks = [LinuxTask("Name Service Switch "
+                              "hosts database info for %s" % node,
+                              ["getent", "ahosts", node])]
 
     query_tasks = []
     query_port = read_guts(guts, "query_port")
@@ -1012,7 +1017,8 @@ def make_product_task(guts, initargs_path, memcached_pass, options):
                   artifacts=["kv_trace.json"]),
         ]
 
-    _tasks = flatten([lookup_tasks, query_tasks, index_tasks, projector_tasks, fts_tasks, cbas_tasks, _tasks])
+    _tasks = flatten([getent_tasks, lookup_tasks, query_tasks, index_tasks,
+                      projector_tasks, fts_tasks, cbas_tasks, _tasks])
 
     return _tasks
 
