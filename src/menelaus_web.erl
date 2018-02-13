@@ -663,15 +663,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     XdcrPath = drop_prefix(Req:get(raw_path)),
                     {{[admin, internal], all},
                      fun goxdcr_rest:proxy/2, [XdcrPath]};
-                ["logClientError"] -> {no_check,
-                                       fun (R) ->
-                                               User = menelaus_auth:extract_auth_user(R),
-                                               ?MENELAUS_WEB_LOG(?UI_SIDE_ERROR_REPORT,
-                                                                 "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
-                                                                 [User, node(),
-                                                                  Req:get_header_value("user-agent"), binary_to_list(R:recv_body())]),
-                                               reply_ok(R, "text/plain", [])
-                                       end};
+                ["logClientError"] ->
+                    {no_check, fun log_client_error/1};
                 ["diag", "eval"] ->
                     {{[admin, diag], write}, fun diag_handler:handle_diag_eval/1};
                 ["couchBase" | _] ->
@@ -791,6 +784,15 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
             ?MENELAUS_WEB_LOG(0004, "Invalid request received: ~p", [Req]),
             {done, reply_text(Req, "Method Not Allowed", 405)}
     end.
+
+log_client_error(Req) ->
+    User = menelaus_auth:extract_auth_user(Req),
+    ?MENELAUS_WEB_LOG(
+       ?UI_SIDE_ERROR_REPORT,
+       "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
+       [User, node(), Req:get_header_value("user-agent"),
+        binary_to_list(Req:recv_body())]),
+    reply_ok(Req, "text/plain", []).
 
 serve_ui(Req, IsSSL, F, Args) ->
     IsDisabledKey = case IsSSL of
