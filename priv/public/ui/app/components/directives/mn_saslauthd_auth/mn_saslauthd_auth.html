@@ -1,5 +1,5 @@
 <div style="margin: 9px 0 15px 9px;">
-  <span style="display:inline-block;vertical-align: middle;width: 15px;height:15px;">
+  <span style="display:inline-block;vertical-align: middle;width: 15px;height:20px;">
     <span
        ng-show="saslauthdAuthCtl.saslauthdAuth.enabled">
       <img src="/images/correct.svg" width="15" height="15"></span>
@@ -9,17 +9,13 @@
   </span>
   <span
      style="vertical-align: middle; color:#333;">
-    Authentication <span ng-show="saslauthdAuthCtl.saslauthdAuth">
-      <span ng-show="!saslauthdAuthCtl.saslauthdAuth.enabled">Not</span> Enabled</span></span>
-  <a
-     style="vertical-align: middle; margin-left: 10px;"
-     ng-show="!saslauthdAuthCtl.saslauthdAuthLoading && rbac.cluster.admin.security.write"
-     ng-click="saslauthdAuthCtl.toggleSaslauthdAuth()">
-    <span
-       ng-show="!saslauthdAuthCtl.saslauthdAuth.enabled">
-      enable</span>
-    <span
-       ng-show="saslauthdAuthCtl.saslauthdAuth.enabled">
-      disable</span>
-  </a>
+    External Authentication is <span ng-show="saslauthdAuthCtl.saslauthdAuth">
+      <span ng-show="!saslauthdAuthCtl.saslauthdAuth.enabled">not</span> enabled</span></span>
+  <span
+     class="fa-stack icon-info"
+     uib-tooltip-html="'You should use CLI to change the state of External Auth (LDAP)'"
+     tooltip-placement="top">
+    <span class="icon fa-circle-thin fa-stack-2x"></span>
+    <span class="icon fa-info fa-stack-1x"></span>
+  </span>
 </div>

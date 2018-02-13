@@ -23,21 +23,11 @@
 
     function controller() {
       var vm = this;
-      vm.toggleSaslauthdAuth = toggleSaslauthdAuth;
 
       activate();
 
       function activate() {
         mnPromiseHelper(vm, mnLdapService.getSaslauthdAuth())
-          .applyToScope("saslauthdAuth")
-          .showSpinner("saslauthdAuthLoading");
-      }
-
-      function toggleSaslauthdAuth() {
-        var config = {
-          enabled: !vm.saslauthdAuth.enabled
-        };
-        mnPromiseHelper(vm, mnLdapService.postSaslauthdAuth(config))
           .applyToScope("saslauthdAuth")
           .showSpinner("saslauthdAuthLoading");
       }

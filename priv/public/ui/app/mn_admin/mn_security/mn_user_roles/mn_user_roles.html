@@ -13,7 +13,6 @@
 </mn-element-cargo>
 <div mn-spinner="!userRolesCtl.state || userRolesCtl.viewLoading" min-height="300px">
   <div
-     ng-if="!poolDefault.compat.atLeast50"
      mn-saslauthd-auth=""
      rbac="rbac"></div>
   <div class="cbui-table margin-top-half" mn-sortable-table>
@@ -48,7 +47,7 @@
         <span class="cbui-table-cell flex-grow-3 wrap">
           <span
               class="relative"
-              
+
               ng-repeat="role in user.roles track by $index"
               tooltip-trigger="'mouseenter'"
               tooltip-append-to-body="true"
