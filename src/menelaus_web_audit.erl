@@ -62,13 +62,14 @@ handle_post(Req) ->
     menelaus_util:assert_is_40(),
 
     Args = Req:parse_post(),
+    Config = ns_config:get(),
     execute_if_validated(
       fun (Values) ->
               ns_audit_cfg:set_global(
                 [{key_api_to_config(ApiK), V} ||
-                    {ApiK, V} <- pre_process_post(Values)]),
+                    {ApiK, V} <- pre_process_post(Config, Values)]),
               reply(Req, 200)
-      end, Req, Args, validators()).
+      end, Req, Args, validators(Config)).
 
 handle_get_descriptors(Req) ->
     menelaus_util:assert_is_enterprise(),
@@ -163,15 +164,15 @@ pre_process_get(Props) ->
             Props
     end.
 
-pre_process_post(Props) ->
-    case cluster_compat_mode:is_cluster_vulcan() of
+pre_process_post(Config, Props) ->
+    case cluster_compat_mode:is_cluster_vulcan(Config) of
         true ->
             case proplists:get_value(disabled, Props) of
                 undefined ->
                     Props;
                 Disabled ->
                     Descriptors =
-                        ns_audit_cfg:get_descriptors(ns_config:latest()),
+                        ns_audit_cfg:get_descriptors(Config),
 
                     %% all configurable events are stored either in enabled or
                     %% disabled list, to reduce an element of surprise in case
@@ -238,23 +239,22 @@ validate_users(Name, State) ->
               end
       end, Name, State).
 
-validator_vulcan(State) ->
-    case cluster_compat_mode:is_cluster_vulcan() of
+validator_vulcan(Config, State) ->
+    case cluster_compat_mode:is_cluster_vulcan(Config) of
         false ->
             State;
         true ->
-            functools:chain(State, validators_vulcan())
+            functools:chain(State, validators_vulcan(Config))
     end.
 
-validators_vulcan() ->
-    Descriptors = orddict:from_list((ns_audit_cfg:get_descriptors(
-                                       ns_config:latest()))),
+validators_vulcan(Config) ->
+    Descriptors = orddict:from_list(ns_audit_cfg:get_descriptors(Config)),
     [validate_any_value(disabled, _),
      validate_events(disabled, Descriptors, _),
      validate_any_value(disabledUsers, _),
      validate_users(disabledUsers, _)].
 
-validators() ->
+validators(Config) ->
     [validate_has_params(_),
      validate_boolean(auditdEnabled, _),
      validate_any_value(logPath, _),
@@ -277,5 +277,5 @@ validators() ->
        end, rotateInterval, _),
      validate_integer(rotateSize, _),
      validate_range(rotateSize, 0, 500*1024*1024, _),
-     validator_vulcan(_),
+     validator_vulcan(Config, _),
      validate_unsupported_params(_)].
