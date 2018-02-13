@@ -413,7 +413,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["_goxdcr", "controller", "bucketSettings", _Bucket] ->
                     XdcrPath = drop_prefix(Req:get(raw_path)),
                     {{[admin, internal], all},
-                     fun goxdcr_rest:get_controller_bucket_settings/2, [XdcrPath]};
+                     fun goxdcr_rest:proxy/2, [XdcrPath]};
                 ["_cbauth", "checkPermission"] ->
                     {{[admin, internal], all},
                      fun menelaus_web_rbac:handle_check_permission_for_cbauth/1};
@@ -662,7 +662,7 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                 ["_goxdcr", "controller", "bucketSettings", _Bucket] ->
                     XdcrPath = drop_prefix(Req:get(raw_path)),
                     {{[admin, internal], all},
-                     fun goxdcr_rest:post_controller_bucket_settings/2, [XdcrPath]};
+                     fun goxdcr_rest:proxy/2, [XdcrPath]};
                 ["logClientError"] -> {no_check,
                                        fun (R) ->
                                                User = menelaus_auth:extract_auth_user(R),
