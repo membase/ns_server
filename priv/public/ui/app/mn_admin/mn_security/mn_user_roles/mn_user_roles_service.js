@@ -68,12 +68,15 @@
         method: "GET",
         url: "/settings/rbac/users"
       };
+
+      config.params = {};
+      if (params && params.permission) {
+        config.params.permission = params.permission;
+      }
       if (params && params.pageSize) {
-        config.params = {
-          pageSize: params.pageSize,
-          startFromDomain: params.startFromDomain,
-          startFrom: params.startFrom
-        };
+        config.params.pageSize = params.pageSize;
+        config.params.startFromDomain = params.startFromDomain;
+        config.params.startFrom = params.startFrom;
       }
 
       return $http(config);

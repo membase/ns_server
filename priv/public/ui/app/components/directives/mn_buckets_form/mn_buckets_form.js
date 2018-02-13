@@ -13,7 +13,7 @@
     ])
     .directive('mnBucketsForm', mnBucketsFormDirective);
 
-  function mnBucketsFormDirective($http, mnBucketsDetailsDialogService, mnPromiseHelper, mnUserRolesService) {
+  function mnBucketsFormDirective($http, mnBucketsDetailsDialogService, mnPromiseHelper, mnUserRolesService, $q) {
 
     var mnBucketsForm = {
       restrict: 'A',
@@ -44,50 +44,44 @@
         }
       });
     }
-    function addBucketSpecificRoles(obj, name) {
-      obj["bucket_admin" + name] = " (read/write)";
-      obj["fts_searcher" + name] = " (read)";
-      obj["fts_admin" + name] = " (read)";
-      obj["query_manage_index" + name] = " (read)";
-      obj["query_delete" + name] = " (read)";
-      obj["query_insert"  + name] = " (read)";
-      obj["query_update" + name] = " (read)";
-      obj["query_select" + name] = " (read)";
-      obj["views_admin" + name] = " (read)";
+    function getBucketName($scope) {
+      return $scope.bucketConf.isNew ? "." : $scope.bucketConf.name;
     }
+
     function controller($scope) {
       $scope.replicaNumberEnabled = $scope.bucketConf.replicaNumber != 0;
       $scope.canChangeBucketsSettings = $scope.bucketConf.isNew;
 
       if ($scope.rbac && $scope.rbac.cluster.admin.security.read) {
-        mnUserRolesService.getUsers().then(function (users) {
-          if (users.data.length == 0) {
-            $scope.users = [];
-            return;
-          }
-          var interestingRoles = {
-            "admin": " (read/write)",
-            "cluster_admin": " (read/write)",
-            "ro_admin": " (read)",
-            "replication_admin": " (read)",
-            "query_external_access": " (read)",
-            "query_system_catalog": " (read)"
-          };
-          addBucketSpecificRoles(interestingRoles, "*");
-          if (!$scope.bucketConf.isNew) {
-            addBucketSpecificRoles(interestingRoles, $scope.bucketConf.name);
-          }
-          var users1 = _.reduce(users.data, function (acc, user) {
-            user.roles = _.sortBy(user.roles, "role");
-            var role1 = _.find(user.roles, function (role) {
-              return interestingRoles[role.role + (role.bucket_name || "")];
-            });
-            if (role1) {
-              acc.push(user.id + interestingRoles[role1.role + (role1.bucket_name || "")]);
+        $q.all([
+          mnUserRolesService.getUsers({
+            permission: "cluster.bucket[" + getBucketName($scope) + "].data!read"}),
+          mnUserRolesService.getUsers({
+            permission: "cluster.bucket[" + getBucketName($scope) + "].data!write"})
+        ]).then(function (resp) {
+          var usersMap = {};
+          var read = resp[0].data;
+          var readWrite = resp[1].data;
+          function addName(user, actions) {
+            var name = "";
+
+            if (user.id.length > 16) {
+              name += (user.id.substring(0, 16) + "...");
+            } else {
+              name += user.id;
             }
-            return acc;
-          }, []);
-          $scope.users = users1;
+            name += (" " + (user.domain === "local" ? "couchbase" : user.domain) + " " + actions);
+            usersMap[user.domain+user.id] = name;
+          }
+
+          read.forEach(function (user) {
+            addName(user, " (read)");
+          });
+          readWrite.forEach(function (user) {
+            addName(user, " (read/write)");
+          });
+
+          $scope.users = _.values(usersMap);
         });
       }
 
