@@ -145,7 +145,18 @@ pre_process_get(Props) ->
             %% or disabled, we anticipate that the list of configurable events
             %% might change
             ActuallyDisabled =
-                calculate_disabled(Enabled, Disabled, Descriptors),
+                lists:filtermap(
+                  fun ({Id, P}) ->
+                          IsEnabledByDefault = proplists:get_value(enabled, P),
+                          case lists:member(Id, Enabled) orelse
+                              (IsEnabledByDefault andalso
+                               not lists:member(Id, Disabled)) of
+                              true ->
+                                  false;
+                              false ->
+                                  {true, Id}
+                          end
+                  end, Descriptors),
 
             [{actually_disabled, ActuallyDisabled} | Props];
         false ->
@@ -165,32 +176,14 @@ pre_process_post(Props) ->
                     %% all configurable events are stored either in enabled or
                     %% disabled list, to reduce an element of surprise in case
                     %% if the defaults will change after the upgrade
-                    ActuallyDisabled =
-                        calculate_disabled([], Disabled, Descriptors),
-                    ActuallyEnabled =
-                        [Id || {Id, _} <- Descriptors] -- ActuallyDisabled,
-
+                    Enabled = [Id || {Id, _} <- Descriptors] -- Disabled,
                     misc:update_proplist(Props,
-                                         [{enabled, ActuallyEnabled},
-                                          {disabled, ActuallyDisabled}])
+                                         [{enabled, Enabled},
+                                          {disabled, lists:sort(Disabled)}])
             end;
         false ->
             Props
     end.
-
-calculate_disabled(Enabled, Disabled, Descriptors) ->
-    lists:filtermap(
-      fun ({Id, P}) ->
-              IsEnabledByDefault = proplists:get_value(enabled, P),
-              case lists:member(Id, Enabled) orelse
-                  (IsEnabledByDefault andalso
-                   not lists:member(Id, Disabled)) of
-                  true ->
-                      false;
-                  false ->
-                      {true, Id}
-              end
-      end, Descriptors).
 
 validate_events(Name, Descriptors, State) ->
     validate_by_fun(
