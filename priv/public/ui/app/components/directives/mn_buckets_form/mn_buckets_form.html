@@ -93,7 +93,7 @@
        class="formrow checkbox-list"
        ng-show="bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral'">
       <label>Replicas</label>
-      <div class="row flex-left margin-bottom-half">
+      <div class="row flex-left">
         <span class="column">
           <input
              type="checkbox"
@@ -112,7 +112,7 @@
         </div>
       </div>
       <div
-         class="error"
+         class="error margin-bottom-half"
          ng-show="validation.result.errors.replicaNumber">
         {{validation.result.errors.replicaNumber}}
       </div>
@@ -161,13 +161,21 @@
              ng-model="bucketConf.maxTTL"
              ng-disabled="!bucketConf.enableMaxTTL"
              class="margin-right-half width-5">
-          <small> seconds</small>
+          <small> second{{bucketConf.maxTTL == 1 ? "" : "s"}}</small>
         </span>
       </div>
       <div
          class="error"
          ng-show="validation.result.errors.maxTTL">
         {{validation.result.errors.maxTTL}}
+      </div>
+      <div
+         ng-if="bucketConf.enableMaxTTL && bucketConf.maxTTL > 0"
+         class="content-box row margin-top-1">
+        <p>
+          <strong>NOTE</strong> &nbsp;A non-zero value will result in eventual data loss. You should not, for example, enable Bucket TTL
+          on permanent storage buckets or the metadata buckets for mobile &amp; eventing.
+        </p>
       </div>
     </div>
 
