@@ -1198,7 +1198,12 @@ connect(Tries) ->
         S of
         Sock ->
             %% We want to be able to get xattrs for UI via this connection
-            {ok, true} = dcp_commands:negotiate_xattr(Sock, "regular"),
+            case dcp_commands:negotiate_xattr(Sock, "regular") of
+                {ok, true} ->
+                    ok;
+                {ok, false} ->
+                    ?log_error("Failed to negotiate XATTR on memcached connection")
+            end,
             {ok, Sock}
     catch
         E:R ->
