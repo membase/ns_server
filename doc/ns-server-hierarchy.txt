@@ -144,8 +144,6 @@
                                     "Also handles dynamic memcached config reloads.")
                         (event-handler 'ns_port_memcached_killer :to ns_config_events
                                        "implements memcached die! signalling after failover")
-                        (gen-server 'memcached_clients_pool
-                                    "instance of ns_connection_pool for memcached requests of xmem")
                         (gen-server 'xdc_lhttpc_pool
                                     "instance of lhttpc_manager used by xdcr lhttp requests")
                         (gen-server 'ns_memcached_log_rotator
