@@ -1795,7 +1795,7 @@ do_handle_ddocs_list(PoolId, Bucket, Req) ->
     DDocs = capi_utils:sort_by_doc_id(capi_utils:full_live_ddocs(Bucket)),
     RV = [begin
               Id = capi_utils:extract_doc_id(Doc),
-              {struct, [{doc, capi_utils:couch_doc_to_mochi_json(Doc)},
+              {struct, [{doc, capi_utils:couch_doc_to_json(Doc)},
                         {controllers, {struct, [{compact, bin_concat_path(["pools", PoolId, "buckets", Bucket, "ddocs", Id, "controller", "compactView"])},
                                                 {setUpdateMinChanges,
                                                  bin_concat_path(["pools", PoolId, "buckets", Bucket,

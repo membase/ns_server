@@ -107,12 +107,8 @@ must_open_master_vbucket(BucketName) ->
             exit({open_db_failed, Error})
     end.
 
-couch_doc_to_mochi_json(Doc) ->
-    couch_doc_to_mochi_json(Doc, {[]}).
-
-couch_doc_to_mochi_json(Doc, {ExtraValues}) ->
-    {Values} = couch_doc:to_json_obj(Doc, []),
-    {Values ++ ExtraValues}.
+couch_doc_to_json(Doc) ->
+    couch_doc:to_json_obj(Doc).
 
 extract_doc_id(Doc) ->
     Doc#doc.id.
