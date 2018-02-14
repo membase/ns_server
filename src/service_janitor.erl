@@ -18,7 +18,7 @@
 -include("cut.hrl").
 -include("ns_common.hrl").
 
--export([cleanup/0, cleanup/1, complete_service_failover/1]).
+-export([cleanup/0, cleanup/1, complete_service_failover/2]).
 
 -define(INITIAL_REBALANCE_TIMEOUT, ns_config:get_timeout(initial_rebalance, 120000)).
 
@@ -152,9 +152,6 @@ maybe_complete_pending_failover(Config, Service) ->
         false ->
             ok
     end.
-
-complete_service_failover(Service) ->
-    complete_service_failover(ns_config:get(), Service).
 
 complete_service_failover(Config, Service) ->
     true = ns_cluster_membership:service_has_pending_failover(Config, Service),

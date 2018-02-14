@@ -138,7 +138,10 @@ failover_services(Nodes) ->
 
 failover_service(Config, Service, Nodes) ->
     ns_cluster_membership:failover_service_nodes(Config, Service, Nodes),
-    case service_janitor:complete_service_failover(Service) of
+
+    %% We're refetching the config since failover_service_nodes updated the
+    %% one that we had.
+    case service_janitor:complete_service_failover(ns_config:get(), Service) of
         ok ->
             ?log_debug("Failed over service ~p on nodes ~p successfully",
                        [Service, Nodes]);
