@@ -1183,7 +1183,7 @@ handle_check_permissions_post(Req) ->
             case Malformed of
                 [] ->
                     Tested =
-                        [{RawPermission,
+                        [{list_to_binary(RawPermission),
                           menelaus_auth:has_permission(Permission, Req)} ||
                             {RawPermission, Permission} <- Permissions],
                     menelaus_util:reply_json(Req, {Tested});
