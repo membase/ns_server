@@ -23,7 +23,7 @@
 
 -export([start_link/1]).
 -export([get_status/2]).
--export([wait_for_agents/2]).
+-export([wait_for_agents/3]).
 -export([set_rebalancer/3, unset_rebalancer/3]).
 -export([get_node_infos/3, prepare_rebalance/7, start_rebalance/7]).
 -export([init/1, handle_call/3, handle_cast/2,
@@ -31,8 +31,6 @@
 
 -define(CONNECTION_TIMEOUT,
         ns_config:get_timeout({service_agent, wait_for_connection}, 60000)).
--define(WAIT_TIMEOUT,
-        ns_config:get_timeout({service_agent, wait_for_agent}, 60000)).
 -define(OUTER_TIMEOUT,
         ns_config:get_timeout({service_agent, outer_timeout}, 90000)).
 
@@ -73,10 +71,10 @@ start_link(Service) ->
 get_status(Service, Timeout) ->
     gen_server:call(server_name(Service), get_status, Timeout).
 
-wait_for_agents(Service, Nodes) ->
-    ?log_debug("Waiting for the service agents for service ~p to come up on nodes:~n~p",
-               [Service, Nodes]),
-    wait_for_agents_loop(Service, Nodes, [], ?WAIT_TIMEOUT).
+wait_for_agents(Service, Nodes, Timeout) ->
+    ?log_debug("Waiting for the service agents for "
+               "service ~p to come up on nodes:~n~p", [Service, Nodes]),
+    wait_for_agents_loop(Service, Nodes, [], Timeout).
 
 -define(WAIT_FOR_AGENTS_SLEEP, 1000).
 

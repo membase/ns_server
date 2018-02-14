@@ -48,7 +48,9 @@ run_rebalance(Parent, Service,
 
     erlang:monitor(process, Parent),
 
-    {ok, Agents} = service_agent:wait_for_agents(Service, AllNodes),
+    WaitTimeout  = wait_for_agents_timeout(Type),
+    {ok, Agents} = service_agent:wait_for_agents(Service,
+                                                 AllNodes, WaitTimeout),
     lists:foreach(
       fun ({_Node, Agent}) ->
               erlang:monitor(process, Agent)
@@ -90,6 +92,15 @@ run_rebalance(Parent, Service,
     end,
 
     exit(Reason).
+
+wait_for_agents_timeout(Type) ->
+    Default = wait_for_agents_default_timeout(Type),
+    ns_config:get_timeout({service_rebalancer, wait_for_agent, Type}, Default).
+
+wait_for_agents_default_timeout(rebalance) ->
+    60000;
+wait_for_agents_default_timeout(failover) ->
+    10000.
 
 rebalance(Rebalancer, Service, Type,
           AllNodes, KeepNodes, EjectNodes, DeltaNodes, ProgressCallback) ->
