@@ -46,7 +46,7 @@
       </div>
     </div>
 
-    <div class="formrow margin-bottom2"
+    <div class="formrow"
          ng-if="adminCtl.poolDefault.compat.atLeast55 && adminCtl.poolDefault.isEnterprise">
       <h4>Log Redaction Level</h4>
       <input
@@ -75,7 +75,7 @@
       </div>
     </div>
 
-    <div class="formrow margin-bottom2 width-300">
+    <div class="formrow width-300">
       <h4>Log Temporary Directory</h4>
       <input
          type="text"
@@ -83,6 +83,19 @@
          spellcheck="false"
          autocapitalize="off"
          ng-model="logsCollectInfoCtl.collect.logDir">
+    </div>
+
+     <div class="formrow margin-bottom2 width-300">
+      <h4>Upload Proxy</h4>
+      <input
+         type="text"
+         autocorrect="off"
+         spellcheck="false"
+         autocapitalize="off"
+         ng-model="logsCollectInfoCtl.collect.uploadProxy">
+      <div
+         class="error error-field"
+         ng-show="logsCollectInfoCtl.errors.uploadProxy">{{logsCollectInfoCtl.errors.uploadProxy}}</div>
     </div>
 
     <div class="formrow checkbox-list">

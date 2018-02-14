@@ -22,6 +22,9 @@
       if (!collect.logDir) {
         delete collect.logDir;
       }
+      if (!collect.uploadProxy) {
+        delete collect.uploadProxy;
+      }
       return $http.post('/controller/startLogsCollection', collect);
     }
     function cancelLogsCollection() {
