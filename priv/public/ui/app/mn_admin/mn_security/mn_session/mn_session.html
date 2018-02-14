@@ -2,11 +2,10 @@
   <form
      ng-submit="sessionCtl.submit()"
      name="sessionForm"
-     class="forms width-300">
+     class="forms">
 
     <div class="formrow">
-      <label for="session-filed">Session Timeout</label>
-      <p>Empty field or zero value mean no timeout.</p>
+      <label>Session Timeout</label>
       <div class="form-inline">
         <input
            id="session-filed"
@@ -26,6 +25,7 @@
          ng-show="sessionCtl.errors.error">
         {{sessionCtl.errors.error}}
       </div>
+      <p>Minutes until an inactive browser session is closed. <br>Leave empty (or zero) for no timeout.</p>
     </div>
 
     <button
