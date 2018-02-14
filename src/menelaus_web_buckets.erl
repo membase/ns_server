@@ -1788,20 +1788,25 @@ handle_ddocs_list(PoolId, BucketName, Req) ->
         true ->
             do_handle_ddocs_list(PoolId, BucketName, Req);
         _ ->
-            reply_json(Req, {struct, [{error, no_ddocs_service}]}, 400)
+            reply_json(Req, {[{error, no_ddocs_service}]}, 400)
     end.
 
 do_handle_ddocs_list(PoolId, Bucket, Req) ->
     DDocs = capi_utils:sort_by_doc_id(capi_utils:full_live_ddocs(Bucket)),
-    RV = [begin
-              Id = capi_utils:extract_doc_id(Doc),
-              {struct, [{doc, capi_utils:couch_doc_to_json(Doc)},
-                        {controllers, {struct, [{compact, bin_concat_path(["pools", PoolId, "buckets", Bucket, "ddocs", Id, "controller", "compactView"])},
-                                                {setUpdateMinChanges,
-                                                 bin_concat_path(["pools", PoolId, "buckets", Bucket,
-                                                                  "ddocs", Id, "controller", "setUpdateMinChanges"])}]}}]}
-          end || Doc <- DDocs],
-    reply_json(Req, {struct, [{rows, RV}]}).
+    RV =
+        [begin
+             Id = capi_utils:extract_doc_id(Doc),
+             {[{doc, capi_utils:couch_doc_to_json(Doc)},
+               {controllers,
+                {[{compact,
+                   bin_concat_path(["pools", PoolId, "buckets", Bucket, "ddocs",
+                                    Id, "controller", "compactView"])},
+                  {setUpdateMinChanges,
+                   bin_concat_path(["pools", PoolId, "buckets", Bucket,
+                                    "ddocs", Id, "controller",
+                                    "setUpdateMinChanges"])}]}}]}
+         end || Doc <- DDocs],
+    reply_json(Req, {[{rows, RV}]}).
 
 handle_set_ddoc_update_min_changes(_PoolId, Bucket, DDocIdStr, Req) ->
     DDocId = list_to_binary(DDocIdStr),
