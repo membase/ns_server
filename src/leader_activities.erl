@@ -601,15 +601,7 @@ handle_activity_subcall(Request, From, State) ->
 
 -spec convert_quorum(user_quorum()) -> quorum().
 convert_quorum(UserQuorum) ->
-    Config = ns_config:get(),
-    NonFailedNodes =
-        lists:filter(
-          fun (N) ->
-                  M = ns_cluster_membership:get_cluster_membership(N, Config),
-                  M =/= inactiveFailed
-          end, ns_node_disco:nodes_wanted(Config)),
-
-    convert_quorum(UserQuorum, NonFailedNodes).
+    convert_quorum(UserQuorum, ns_cluster_membership:active_nodes()).
 
 -spec convert_quorum(user_quorum(), [node()]) -> quorum().
 convert_quorum(follower, _NodesWanted) ->
