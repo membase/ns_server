@@ -1859,7 +1859,7 @@ complete_update_ddoc_options(Req, Bucket, #doc{body={Body0}}= DDoc, Options0) ->
     NewBody = {NewBody0},
     NewDDoc = DDoc#doc{body=NewBody},
     ok = ns_couchdb_api:update_doc(Bucket, NewDDoc),
-    reply_json(Req, capi_utils:couch_json_to_mochi_json(Options)).
+    reply_json(Req, Options).
 
 handle_local_random_key(_PoolId, Bucket, Req) ->
     case ns_memcached:get_random_key(Bucket) of

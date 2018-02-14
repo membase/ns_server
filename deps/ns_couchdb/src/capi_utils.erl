@@ -107,20 +107,12 @@ must_open_master_vbucket(BucketName) ->
             exit({open_db_failed, Error})
     end.
 
-couch_json_to_mochi_json({List}) ->
-    {struct, couch_json_to_mochi_json(List)};
-couch_json_to_mochi_json({K, V}) ->
-    {K, couch_json_to_mochi_json(V)};
-couch_json_to_mochi_json(List) when is_list(List) ->
-    lists:map(fun couch_json_to_mochi_json/1, List);
-couch_json_to_mochi_json(Else) -> Else.
-
 couch_doc_to_mochi_json(Doc) ->
     couch_doc_to_mochi_json(Doc, {[]}).
 
-couch_doc_to_mochi_json(Doc, _JSONObject = {ExtraValues}) ->
+couch_doc_to_mochi_json(Doc, {ExtraValues}) ->
     {Values} = couch_doc:to_json_obj(Doc, []),
-    couch_json_to_mochi_json({Values ++ ExtraValues}).
+    {Values ++ ExtraValues}.
 
 extract_doc_id(Doc) ->
     Doc#doc.id.
