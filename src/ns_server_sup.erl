@@ -175,9 +175,6 @@ child_specs() ->
      {ns_memcached_log_rotator, {ns_memcached_log_rotator, start_link, []},
       permanent, 1000, worker, [ns_memcached_log_rotator]},
 
-     {ns_null_connection_pool, {ns_null_connection_pool, start_link, [ns_null_connection_pool]},
-      permanent, 1000, worker, []},
-
      {testconditions_store, {simple_store, start_link, [testconditions]},
       permanent, 1000, worker, []},
 
