@@ -1,21 +1,17 @@
-<div style="margin: 9px 0 15px 9px;">
-  <span style="display:inline-block;vertical-align: middle;width: 15px;height:20px;">
-    <span
-       ng-show="saslauthdAuthCtl.saslauthdAuth.enabled">
-      <img src="/images/correct.svg" width="15" height="15"></span>
-    <span
-       ng-show="!saslauthdAuthCtl.saslauthdAuth.enabled">
-      <img src="/images/ban.svg" width="15" height="15"></span>
+<div class="margin-bottom-half row flex-right">
+  <span
+     class="icon margin-right"
+     ng-class="saslauthdAuthCtl.saslauthdAuth.enabled ? 'fa-check success' : 'fa-ban grayblack-3'">
+  </span>
+  <span class="text-smaller">
+    external authentication is <span ng-show="saslauthdAuthCtl.saslauthdAuth">
+      <span ng-show="!saslauthdAuthCtl.saslauthdAuth.enabled">not</span> enabled</span>
   </span>
   <span
-     style="vertical-align: middle; color:#333;">
-    External Authentication is <span ng-show="saslauthdAuthCtl.saslauthdAuth">
-      <span ng-show="!saslauthdAuthCtl.saslauthdAuth.enabled">not</span> enabled</span></span>
-  <span
-     class="fa-stack icon-info"
-     uib-tooltip-html="'You should use CLI to change the state of External Auth (LDAP)'"
+     class="fa-stack icon-info icon margin-left"
+     uib-tooltip-html="'Use the CLI to change the state of external authentication (LDAP)'"
      tooltip-placement="top">
-    <span class="icon fa-circle-thin fa-stack-2x"></span>
-    <span class="icon fa-info fa-stack-1x"></span>
+    <span class="text-smaller fa-circle-thin fa-stack-2x"></span>
+    <span class="text-smaller fa-info fa-stack-1x"></span>
   </span>
 </div>
