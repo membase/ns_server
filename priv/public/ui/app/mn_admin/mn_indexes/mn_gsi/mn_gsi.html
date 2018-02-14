@@ -38,7 +38,7 @@
   </div>
 
 <!--  NODE VIEW  ********************************************************** -->
-  <span ng-show="viewby == 'viewby_node'">
+  <span ng-if="viewby == 'viewby_node'">
     <div ng-repeat="(nodeName, group) in gsiCtl.state.nodes track by nodeName">
       <h4 class="margin-top-1-5">{{nodeName}}</h4>
       <div class="cbui-table" mn-sortable-table>
@@ -81,7 +81,7 @@
   </span>
 
 <!--  BUCKET VIEW  ********************************************************** -->
-  <span ng-show="viewby == 'viewby_bucket'">
+  <span ng-if="viewby == 'viewby_bucket'">
     <div ng-repeat="(bucketName, group) in gsiCtl.state.groups track by bucketName">
       <h4 class="margin-top-1-5">{{bucketName}}</h4>
       <div class="cbui-table" mn-sortable-table>
@@ -122,7 +122,7 @@
   </span>
 
 <!--  INDEX VIEW **********************************************************  -->
-  <span ng-show="viewby == 'viewby_index'">
+  <span ng-if="viewby == 'viewby_index'">
     <div class="cbui-table margin-top-1" mn-sortable-table>
       <div class="cbui-table-header">
         <span class="cbui-table-cell flex-grow-2">
