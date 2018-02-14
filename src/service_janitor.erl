@@ -18,7 +18,7 @@
 -include("cut.hrl").
 -include("ns_common.hrl").
 
--export([cleanup/0, cleanup/1, complete_service_failover/2]).
+-export([cleanup/0, cleanup/1, complete_service_failover/3]).
 
 -define(INITIAL_REBALANCE_TIMEOUT, ns_config:get_timeout(initial_rebalance, 120000)).
 
@@ -166,6 +166,11 @@ maybe_complete_pending_failover_body(Config, Service) ->
     end.
 
 complete_service_failover(Config, Service) ->
+    FailedNodes = ns_cluster_membership:get_nodes_with_status(Config,
+                                                              inactiveFailed),
+    complete_service_failover(Config, Service, FailedNodes).
+
+complete_service_failover(Config, Service, FailedNodes) ->
     true = ns_cluster_membership:service_has_pending_failover(Config, Service),
 
     TopologyAwareServices = ns_cluster_membership:topology_aware_services(),
@@ -178,15 +183,20 @@ complete_service_failover(Config, Service) ->
 
     case RV of
         ok ->
-            clear_pending_failover(Service);
+            clear_pending_failover(Config, Service, FailedNodes);
         _ ->
             ok
     end,
 
     RV.
 
-clear_pending_failover(Service) ->
-    ns_cluster_membership:service_clear_pending_failover(Service).
+clear_pending_failover(Config, Service, FailedNodes) ->
+    ns_cluster_membership:service_clear_pending_failover(Service),
+
+    OtherNodes = ns_node_disco:nodes_wanted(Config) -- FailedNodes,
+    LiveNodes  = leader_utils:live_nodes(Config, OtherNodes),
+
+    ns_config_rep:ensure_config_seen_by_nodes(LiveNodes).
 
 complete_topology_aware_service_failover(Config, Service) ->
     NodesLeft = ns_cluster_membership:get_service_map(Config, Service),
