@@ -376,12 +376,12 @@ process_action({mail_too_small, Service, SvcNodes, {Node, _UUID}},
                S, _, _, _) ->
     ?user_log(?EVENT_CLUSTER_TOO_SMALL,
               "Could not auto-failover node (~p). "
-              "Number of nodes running ~s service is ~p. "
+              "Number of remaining nodes that are running ~s service is ~p. "
               "You need at least ~p nodes.",
               [Node,
                ns_cluster_membership:user_friendly_service_name(Service),
                length(SvcNodes),
-               auto_failover_logic:service_failover_min_node_count(Service) + 1]),
+               auto_failover_logic:service_failover_min_node_count(Service)]),
     S;
 process_action({mail_down_warning, {Node, _UUID}}, S, _, _, _) ->
     ?user_log(?EVENT_OTHER_NODES_DOWN,

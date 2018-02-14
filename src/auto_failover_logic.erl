@@ -52,7 +52,7 @@
           name :: term(),
           %% List of nodes running this service when the "too small cluster"
           %% event was generated.
-          mailed_too_small_cluster :: list(),
+          mailed_too_small_cluster = nil :: nil | list(),
           %% Have we already logged the auto_failover_disabled message
           %% for this service?
           logged_auto_failover_disabled = false :: boolean()
@@ -84,7 +84,7 @@ init_services_state(CompatVersion) ->
     lists:map(
       fun (Service) ->
               #service_state{name = Service,
-                             mailed_too_small_cluster = [],
+                             mailed_too_small_cluster = nil,
                              logged_auto_failover_disabled = false}
       end, ns_cluster_membership:supported_services_for_version(CompatVersion)).
 
@@ -291,10 +291,14 @@ process_downs(DownStates, State, SvcConfig,
               #down_group_state{name = DownSG, state = failover}) ->
     {process_group_down(DownSG, DownStates, State, SvcConfig), DownStates}.
 
+get_down_node_names(DownStates) ->
+    ordsets:from_list([N || #node_state{name = {N, _UUID}} <- DownStates]).
+
 process_group_down(SG, DownStates, State, SvcConfig) ->
+    DownNodes = get_down_node_names(DownStates),
     lists:foldl(
       fun (#node_state{name = Node}, Actions) ->
-              case should_failover_node(State, Node, SvcConfig) of
+              case should_failover_node(State, Node, SvcConfig, DownNodes) of
                   [{failover, Node}] ->
                       case lists:keyfind(failover_group, 1, Actions) of
                           false ->
@@ -312,7 +316,8 @@ process_group_down(SG, DownStates, State, SvcConfig) ->
 
 process_node_down([#node_state{state = failover, name = Node}] = DownStates,
                   State, SvcConfig) ->
-    {should_failover_node(State, Node, SvcConfig), DownStates};
+    DownNodes = get_down_node_names(DownStates),
+    {should_failover_node(State, Node, SvcConfig, DownNodes), DownStates};
 process_node_down([#node_state{state = nearly_down}] = DownStates, _, _) ->
     {[], DownStates};
 process_node_down(DownStates, _, _) ->
@@ -376,7 +381,7 @@ update_services_state_inner(ServicesState, Svc, Fun) ->
 
 %% Decide whether to failover the node based on the services running
 %% on the node.
-should_failover_node(State, Node, SvcConfig) ->
+should_failover_node(State, Node, SvcConfig, DownNodes) ->
     %% Find what services are running on the node
     {NodeName, _ID} = Node,
     NodeSvc = get_node_services(NodeName, SvcConfig, []),
@@ -386,10 +391,12 @@ should_failover_node(State, Node, SvcConfig) ->
         [Service] ->
             %% Only one service running on this node, so follow its
             %% auto-failover policy.
-            should_failover_service(State, SvcConfig, Service, Node);
+            should_failover_service(State, SvcConfig, Service, Node,
+                                    DownNodes);
         _ ->
             %% Node is running multiple services.
-            should_failover_colocated_node(State, SvcConfig, NodeSvc, Node)
+            should_failover_colocated_node(State, SvcConfig, NodeSvc, Node,
+                                           DownNodes)
     end.
 
 get_node_services(_, [], Acc) ->
@@ -404,37 +411,41 @@ get_node_services(NodeName, [ServiceInfo | Rest], Acc) ->
     end.
 
 
-should_failover_colocated_node(State, SvcConfig, NodeSvc, Node) ->
+should_failover_colocated_node(State, SvcConfig, NodeSvc, Node, DownNodes) ->
     %% Is data one of the services running on the node?
     %% If yes, then we give preference to its auto-failover policy
     %% otherwise we treat all other servcies equally.
     case lists:member(kv, NodeSvc) of
         true ->
-            should_failover_service(State, SvcConfig, kv, Node);
+            should_failover_service(State, SvcConfig, kv, Node, DownNodes);
         false ->
-            should_failover_colocated_service(State, SvcConfig, NodeSvc, Node)
+            should_failover_colocated_service(State, SvcConfig, NodeSvc, Node,
+                                              DownNodes)
     end.
 
 %% Iterate through all services running on this node and check if
 %% each of those services can be failed over.
 %% Auto-failover the node only if ok to auto-failover all the services running
 %% on the node.
-should_failover_colocated_service(_, _, [], Node) ->
+should_failover_colocated_service(_, _, [], Node, _) ->
     [{failover, Node}];
-should_failover_colocated_service(State, SvcConfig, [Service | Rest], Node) ->
+should_failover_colocated_service(State, SvcConfig, [Service | Rest], Node,
+                                  DownNodes) ->
     %% OK to auto-failover this service? If yes, then go to the next one.
-    case should_failover_service(State, SvcConfig, Service, Node) of
+    case should_failover_service(State, SvcConfig, Service, Node, DownNodes) of
         [{failover, Node}] ->
-            should_failover_colocated_service(State, SvcConfig, Rest, Node);
+            should_failover_colocated_service(State, SvcConfig, Rest, Node,
+                                              DownNodes);
         Else ->
             Else
     end.
 
-should_failover_service(State, SvcConfig, Service, Node) ->
+should_failover_service(State, SvcConfig, Service, Node, DownNodes) ->
     %% Check whether auto-failover is disabled for the service.
     case is_failover_disabled_for_service(SvcConfig, Service) of
         false ->
-            should_failover_service_policy(State, SvcConfig, Service, Node);
+            should_failover_service_policy(State, SvcConfig, Service, Node,
+                                           DownNodes);
         true ->
             ?log_debug("Auto-failover for ~p service is disabled.~n",
                        [Service]),
@@ -458,10 +469,11 @@ is_failover_disabled_for_service(SvcConfig, Service) ->
 %% Determine whether to failover the service based on
 %% how many nodes in the cluster are running the same service and
 %% whether that count is above the the minimum required by the service.
-should_failover_service_policy(State, SvcConfig, Service, Node) ->
-    {_, {nodes, SvcNodes}} = proplists:get_value(Service, SvcConfig),
+should_failover_service_policy(State, SvcConfig, Service, Node, DownNodes) ->
+    {_, {nodes, SvcNodes0}} = proplists:get_value(Service, SvcConfig),
+    SvcNodes = ordsets:subtract(ordsets:from_list(SvcNodes0), DownNodes),
     SvcNodeCount = length(SvcNodes),
-    case SvcNodeCount > service_failover_min_node_count(Service) of
+    case SvcNodeCount >= service_failover_min_node_count(Service) of
         true ->
             %% doing failover
             [{failover, Node}];
