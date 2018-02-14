@@ -52,67 +52,81 @@
               <label>CURL() Function Access</label>
               <input
                  type="radio"
-                 value="none"
+                 ng-value="false"
+                 name="all_access"
                  id="n1ql_curl_access_unrestricted"
-                 ng-model="curl_url_list">
+                 ng-disabled="!rbac.cluster.settings.write"
+                 ng-model="settingsClusterCtl.querySettings.queryCurlWhitelist.all_access">
               <label for="n1ql_curl_access_unrestricted" class="checkbox">
                 Unrestricted
               </label>
               <br>
               <input
                  type="radio"
-                 value="restricted"
+                 ng-value="true"
+                 name="all_access"
                  id="n1ql_curl_access_restricted"
-                 ng-model="curl_url_list"> <!-- selected by default -->
+                 ng-disabled="!rbac.cluster.settings.write"
+                 ng-model="settingsClusterCtl.querySettings.queryCurlWhitelist.all_access">
               <label for="n1ql_curl_access_restricted" class="checkbox">
                 Restricted
               </label>
             </div>
-            <div ng-if="curl_url_list == 'restricted'">
+            <div class="formrow"
+                 ng-if="settingsClusterCtl.querySettings.queryCurlWhitelist.all_access">
               <label>Allowed CURL URLs</label>
-              <input
-                 type="text"
-                 autocorrect="off"
-                 spellcheck="false"
-                 autocapitalize="off"
-                 id=""
-                 ng-disabled=""
-                 ng-model="">
+              <div
+                 class="formrow"
+                 ng-repeat="url in settingsClusterCtl.querySettings.queryCurlWhitelist.allowed_urls track by $index">
+                <input
+                   type="text"
+                   autocorrect="off"
+                   spellcheck="false"
+                   autocapitalize="off"
+                   ng-disabled="!rbac.cluster.settings.write"
+                   ng-model="settingsClusterCtl.querySettings.queryCurlWhitelist.allowed_urls[$index]">
+              </div>
               <div class="row flex-right">
                 <button
                    class="outline btn-small margin-quarter"
                    title="Add field"
-                   ng-click=""
+                   ng-disabled="!rbac.cluster.settings.write"
+                   ng-click="settingsClusterCtl.querySettings.queryCurlWhitelist.allowed_urls.push('')"
                    type="button">+</button>
                 <button
                    class="outline btn-small margin-quarter"
                    title="Remove field"
-                   ng-disabled=""
-                   ng-click=""
+                   ng-disabled="!rbac.cluster.settings.write"
+                   ng-click="settingsClusterCtl.querySettings.queryCurlWhitelist.allowed_urls.pop()"
                    type="button">-</button>
               </div>
             </div>
-            <div class="formrow" ng-if="curl_url_list == 'restricted'">
+            <div class="formrow"
+                 ng-if="settingsClusterCtl.querySettings.queryCurlWhitelist.all_access">
               <label>Disallowed CURL URLs</label>
-              <input
-                 type="text"
-                 autocorrect="off"
-                 spellcheck="false"
-                 autocapitalize="off"
-                 id=""
-                 ng-disabled=""
-                 ng-model="">
+              <div
+                 class="formrow"
+                 ng-repeat="url in settingsClusterCtl.querySettings.queryCurlWhitelist.disallowed_urls track by $index">
+                <input
+                   type="text"
+                   autocorrect="off"
+                   spellcheck="false"
+                   autocapitalize="off"
+                   ng-disabled="!rbac.cluster.settings.write"
+                   ng-model="settingsClusterCtl.querySettings.queryCurlWhitelist.disallowed_urls[$index]">
+              </div>
               <div class="row flex-right">
                 <button
                    class="outline btn-small margin-quarter"
                    title="Add field"
-                   ng-click=""
+                   ng-click="settingsClusterCtl.querySettings.queryCurlWhitelist.disallowed_urls.push('')"
+                   ng-disabled="!rbac.cluster.settings.write"
                    type="button">+</button>
                 <button
                    class="outline btn-small margin-quarter"
                    title="Remove field"
-                   ng-disabled=""
-                   ng-click=""
+                   ng-disabled="!rbac.cluster.settings.write"
+                   ng-click="settingsClusterCtl.querySettings.queryCurlWhitelist.disallowed_urls.pop()"
                    type="button">-</button>
               </div>
             </div>

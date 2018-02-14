@@ -47,11 +47,15 @@
             vm.initialMemoryQuota = vm.memoryQuotaConfig.indexMemoryQuota;
           })
           .getPromise();
+      var promise2;
+      var promise3;
+      var promise4;
+      var promise5;
 
       queries.push(promise1);
 
       if (!_.isEqual(vm.indexSettings, vm.initialIndexSettings) && mnPoolDefault.export.compat.atLeast40 && $scope.rbac.cluster.indexes.write) {
-        var promise2 = mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
+        promise2 = mnPromiseHelper(vm, mnSettingsClusterService.postIndexSettings(vm.indexSettings))
             .catchErrors("indexSettingsErrors")
             .applyToScope("initialIndexSettings")
             .getPromise();
@@ -60,19 +64,26 @@
       }
 
       if (mnPoolDefault.export.compat.atLeast55 && $scope.rbac.cluster.settings.write) {
-        var promise3 = mnPromiseHelper(vm, mnClusterConfigurationService.postQuerySettings({
+        promise3 = mnPromiseHelper(vm, mnClusterConfigurationService.postQuerySettings({
           queryTmpSpaceDir: vm.querySettings.queryTmpSpaceDir,
           queryTmpSpaceSize: vm.querySettings.queryTmpSpaceSize
         }))
-          .catchErrors("querySettingsErrors")
+            .catchErrors("querySettingsErrors")
+            .getPromise();
+
+        promise5 = mnPromiseHelper(vm, mnClusterConfigurationService.postCurlWhitelist(
+          vm.querySettings.queryCurlWhitelist
+        ))
+          .catchErrors("curlWhitelistErrors")
           .getPromise();
 
         queries.push(promise3);
+        queries.push(promise5);
       }
 
       if (mnPoolDefault.export.compat.atLeast55 &&
           mnPoolDefault.export.isEnterprise && $scope.rbac.cluster.settings.write) {
-        var promise4 = mnSettingsClusterService.postLogRedaction(vm.logRedactionSettings);
+        promise4 = mnSettingsClusterService.postLogRedaction(vm.logRedactionSettings);
 
         queries.push(promise4);
       }
@@ -102,7 +113,7 @@
 
       if (mnPoolDefault.export.compat.atLeast55 && $scope.rbac.cluster.settings.read) {
         mnPromiseHelper(vm, mnClusterConfigurationService.getQuerySettings())
-          .applyToScope("querySettings");
+          .applyToScope("querySettings").onSuccess(function (a) {console.log(a)})
       }
 
       if (mnPoolDefault.export.compat.atLeast55 &&

@@ -21,7 +21,8 @@
       postEmail: postEmail,
       postStats: postStats,
       getQuerySettings: getQuerySettings,
-      postQuerySettings: postQuerySettings
+      postQuerySettings: postQuerySettings,
+      postCurlWhitelist: postCurlWhitelist
     };
     var re = /^[A-Z]:\//;
     var preprocessPath;
@@ -90,6 +91,19 @@
       return $http({
         method: 'POST',
         url: '/settings/querySettings',
+        data: data
+      }).then(function (resp) {
+        return resp.data;
+      });
+    }
+
+    function postCurlWhitelist(data) {
+      return $http({
+        method: 'POST',
+        mnHttp: {
+          isNotForm: true
+        },
+        url: '/settings/querySettings/curlWhitelist',
         data: data
       }).then(function (resp) {
         return resp.data;
