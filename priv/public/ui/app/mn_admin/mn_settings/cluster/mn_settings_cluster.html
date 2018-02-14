@@ -6,9 +6,9 @@
 
     <div class="row flex-left items-stretch resp-flex-column-med">
 
-      <div class="column fix-width-6">
+      <div class="fix-width-6">
         <div class="margin-bottom-2">
-          <h4>Cluster Name &nbsp <small>(0 — 256 chars)</small></h4>
+          <label>Cluster Name &nbsp <small>(0 — 256 chars)</small></label>
           <input
              id="cluster-name-field"
              type="text"
@@ -22,7 +22,7 @@
 
         <div>
           <div class="formrow">
-            <h4>Service Memory Quotas &nbsp;<small>in megabytes per server node</small></h4>
+            <label>Service Memory Quotas &nbsp;<small>in megabytes per server node</small></label>
           </div>
           <div
              mn-is-enterprise="adminCtl.poolDefault.isEnterprise"
@@ -34,54 +34,132 @@
         </div>
       </div>
 
-      <div style="border-left: 1px solid #d1d1d1; margin: 0 20px; flex-basis: 1;" class="resp-hide-med">&nbsp;</div>
+      <div style="border-left: 1px solid #d1d1d1; margin: 0 32px; flex-basis: 1;" class="resp-hide-med">&nbsp;</div>
 
-      <div class="column fix-width-6">
-        <div
-           class="margin-bottom-2"
-           ng-if="poolDefault.compat.atLeast55 && rbac.cluster.settings.read">
-          <div class="formrow">
-            <div class="row resp-sml">
-              <div class="column width-9">
-                <label for="setup_query_temp_input">Query Temp Disk Path</label>
-                <input
-                   type="text"
-                   autocorrect="off"
-                   spellcheck="false"
-                   autocapitalize="off"
-                   id="setup_query_temp_input"
-                   ng-disabled="!rbac.cluster.settings.write"
-                   ng-model="settingsClusterCtl.querySettings.queryTmpSpaceDir">
-              </div>
-              <div class="width-3">
-                <label for="setup_query_gb_input">Quota &nbsp;<small>in MB</small></label>
-                <input
-                   type="text"
-                   autocorrect="off"
-                   spellcheck="false"
-                   autocapitalize="off"
-                   id="setup_query_gb_input"
-                   ng-init="5"
-                   ng-disabled="!rbac.cluster.settings.write"
-                   ng-model="settingsClusterCtl.querySettings.queryTmpSpaceSize">
+      <div class="fix-width-6">
+
+        <div ng-if="poolDefault.compat.atLeast55 && rbac.cluster.settings.read" class="formrow margin-top-half">
+          <label
+             class="disclosure margin-left-neg-disclosure margin-bottom-half"
+             ng-class="{disclosed: settingsClusterCtl.showAdvancedN1QLSettings}"
+             ng-click="settingsClusterCtl.showAdvancedN1QLSettings = !settingsClusterCtl.showAdvancedN1QLSettings">
+            Advanced N1QL Settings
+          </label>
+          <div
+             ng-show="settingsClusterCtl.showAdvancedN1QLSettings"
+             ng-if="poolDefault.compat.atLeast55 && rbac.cluster.settings.read">
+            <div class="formrow">
+              <label>CURL() Function Access</label>
+              <input
+                 type="radio"
+                 value="none"
+                 id="n1ql_curl_access_unrestricted"
+                 ng-model="curl_url_list">
+              <label for="n1ql_curl_access_unrestricted" class="checkbox">
+                Unrestricted
+              </label>
+              <br>
+              <input
+                 type="radio"
+                 value="restricted"
+                 id="n1ql_curl_access_restricted"
+                 ng-model="curl_url_list"> <!-- selected by default -->
+              <label for="n1ql_curl_access_restricted" class="checkbox">
+                Restricted
+              </label>
+            </div>
+            <div ng-if="curl_url_list == 'restricted'">
+              <label>Allowed CURL URLs</label>
+              <input
+                 type="text"
+                 autocorrect="off"
+                 spellcheck="false"
+                 autocapitalize="off"
+                 id=""
+                 ng-disabled=""
+                 ng-model="">
+              <div class="row flex-right">
+                <button
+                   class="outline btn-small margin-quarter"
+                   title="Add field"
+                   ng-click=""
+                   type="button">+</button>
+                <button
+                   class="outline btn-small margin-quarter"
+                   title="Remove field"
+                   ng-disabled=""
+                   ng-click=""
+                   type="button">-</button>
               </div>
             </div>
-            <div
-               class="error error-form"
-               ng-show="!!settingsClusterCtl.querySettingsErrors.queryTmpSpaceDir">
-              {{settingsClusterCtl.querySettingsErrors.queryTmpSpaceDir}}
+            <div class="formrow" ng-if="curl_url_list == 'restricted'">
+              <label>Disallowed CURL URLs</label>
+              <input
+                 type="text"
+                 autocorrect="off"
+                 spellcheck="false"
+                 autocapitalize="off"
+                 id=""
+                 ng-disabled=""
+                 ng-model="">
+              <div class="row flex-right">
+                <button
+                   class="outline btn-small margin-quarter"
+                   title="Add field"
+                   ng-click=""
+                   type="button">+</button>
+                <button
+                   class="outline btn-small margin-quarter"
+                   title="Remove field"
+                   ng-disabled=""
+                   ng-click=""
+                   type="button">-</button>
+              </div>
             </div>
-            <div
-               class="error error-form"
-               ng-show="!!settingsClusterCtl.querySettingsErrors.queryTmpSpaceSize">
-              {{settingsClusterCtl.querySettingsErrors.queryTmpSpaceSize}}
+
+            <div class="margin-bottom-2">
+              <div class="row resp-sml">
+                <div class="column width-9">
+                  <label for="setup_query_temp_input">Query Temp Disk Path</label>
+                  <input
+                     type="text"
+                     autocorrect="off"
+                     spellcheck="false"
+                     autocapitalize="off"
+                     id="setup_query_temp_input"
+                     ng-disabled="!rbac.cluster.settings.write"
+                     ng-model="settingsClusterCtl.querySettings.queryTmpSpaceDir">
+                </div>
+                <div class="width-3">
+                  <label for="setup_query_gb_input">Quota &nbsp;<small>in MB</small></label>
+                  <input
+                     type="text"
+                     autocorrect="off"
+                     spellcheck="false"
+                     autocapitalize="off"
+                     id="setup_query_gb_input"
+                     ng-init="5"
+                     ng-disabled="!rbac.cluster.settings.write"
+                     ng-model="settingsClusterCtl.querySettings.queryTmpSpaceSize">
+                </div>
+                <div
+                   class="error error-form"
+                   ng-show="!!settingsClusterCtl.querySettingsErrors.queryTmpSpaceDir">
+                  {{settingsClusterCtl.querySettingsErrors.queryTmpSpaceDir}}
+                </div>
+                <div
+                   class="error error-form"
+                   ng-show="!!settingsClusterCtl.querySettingsErrors.queryTmpSpaceSize">
+                  {{settingsClusterCtl.querySettingsErrors.queryTmpSpaceSize}}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="formrow margin-bottom-2"
              ng-if="adminCtl.poolDefault.compat.atLeast55 && adminCtl.poolDefault.isEnterprise">
-          <h4>Log Redaction Level</h4>
+          <label>Log Redaction - Default Level</label>
           <input
              type="radio"
              value="none"
@@ -110,9 +188,9 @@
           </span>
         </div>
 
-        <h4 ng-show="poolDefault.compat.atLeast40 && rbac.cluster.indexes.read">
+        <label ng-show="poolDefault.compat.atLeast40 && rbac.cluster.indexes.read">
           Index Storage Mode
-        </h4>
+        </label>
         <div ng-show="poolDefault.compat.atLeast40 && rbac.cluster.indexes.read">
           <div class="formrow">
             <mn-storage-mode
@@ -204,6 +282,7 @@
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>

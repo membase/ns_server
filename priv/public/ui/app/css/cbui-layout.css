@@ -344,7 +344,12 @@ footer {
 .margin-0 {
   margin: 0 !important;
 }
-
+.margin-quarter {
+  margin: .25rem !important;
+}
+.margin-quarter:last-child {
+  margin: .25rem 0 !important;
+}
 .margin-top-neg-1 {
   margin-top: -1rem !important;
 }
@@ -447,7 +452,9 @@ footer {
 .margin-left-3, .indent-3 {
   margin-left: 3rem !important;
 }
-
+.margin-left-neg-disclosure {
+  margin-left: -1.2rem !important;
+}
 /* padding ------------------------------------------------------------- */
 .padding-0 {
   padding: 0 !important;
