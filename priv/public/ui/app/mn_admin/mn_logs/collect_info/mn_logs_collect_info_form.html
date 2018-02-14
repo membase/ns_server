@@ -83,6 +83,9 @@
          spellcheck="false"
          autocapitalize="off"
          ng-model="logsCollectInfoCtl.collect.logDir">
+      <div
+         class="error error-field"
+         ng-show="logsCollectInfoCtl.errors.logDir">{{logsCollectInfoCtl.errors.logDir}}</div>
     </div>
 
      <div class="formrow margin-bottom2 width-300">
