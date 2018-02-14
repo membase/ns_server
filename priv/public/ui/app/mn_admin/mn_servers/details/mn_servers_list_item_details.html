@@ -27,6 +27,15 @@
          class="break-word">
         <strong>Index Storage Path:</strong> {{serversListItemDetailsCtl.server.details.storage.hdd[0].index_path | mnEllipsisiseOnLeft:100}}
       </div>
+      <div
+         ng-if="!!serversListItemDetailsCtl.server.details.storage.hdd[0].cbas_dirs"
+         class="break-word">
+        <strong>Analytics Storage Path<span ng-if="serversListItemDetailsCtl.server.details.storage.hdd[0].cbas_dirs.length > 1">s</span>:</strong>
+        <span
+           ng-repeat="dir in serversListItemDetailsCtl.server.details.storage.hdd[0].cbas_dirs"
+           ng-attr-title="{{dir}}">{{dir | mnEllipsisiseOnLeft:100}} {{$last ? '' : '| '}}
+         </span>
+      </div>
     </div>
     <div class="cbui-table-meters servers">
       <h5>Memory</h5>
