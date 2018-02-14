@@ -101,12 +101,6 @@
         services: mnHelper.checkboxesToList(vm.config.startNewClusterConfig.services.model).join(',')
       }), "setupServices");
     }
-    function postQuerySettings() {
-      return addErrorHandler(mnClusterConfigurationService.postQuerySettings({
-        queryTmpSpaceDir: vm.querySettings.queryTmpSpaceDir,
-        queryTmpSpaceSize: vm.querySettings.queryTmpSpaceSize
-      }), "postQuerySettings");
-    }
     function postDiskStorage() {
       var data = {
         path: vm.config.dbPath,
@@ -162,36 +156,33 @@
       delete vm.postJoinClusterErrors;
       delete vm.postHostnameErrors;
       delete vm.postIndexSettingsErrors;
-      delete vm.postQuerySettingsErrors;
 
-      var promise = $q.all([
-        postDiskStorage(),
-        postQuerySettings()
-      ]).then(function () {
-        return addErrorHandler(mnClusterConfigurationService.postHostname(vm.config.hostname), "postHostname");
-      }).then(function () {
-        if (mnWizardService.getState().isNewCluster) {
-          if (vm.config.startNewClusterConfig.services.model.index) {
-            return validateIndexSettings().then(function () {
-              if (vm.postIndexSettingsErrors) {
-                return $q.reject();
+      var promise =
+          postDiskStorage().then(function () {
+            return addErrorHandler(mnClusterConfigurationService.postHostname(vm.config.hostname), "postHostname");
+          }).then(function () {
+            if (mnWizardService.getState().isNewCluster) {
+              if (vm.config.startNewClusterConfig.services.model.index) {
+                return validateIndexSettings().then(function () {
+                  if (vm.postIndexSettingsErrors) {
+                    return $q.reject();
+                  }
+                  return doStartNewCluster();
+                });
+              } else {
+                return doStartNewCluster();
               }
-              return doStartNewCluster();
-            });
-          } else {
-            return doStartNewCluster();
-          }
-        } else {
-          return postJoinCluster().then(function () {
-            return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
-              return $state.go('app.admin.overview').then(function () {
-                $rootScope.$broadcast("maybeShowMemoryQuotaDialog", vm.joinClusterConfig.services.model);
-                mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success', 60000);
+            } else {
+              return postJoinCluster().then(function () {
+                return mnAuthService.login(vm.joinClusterConfig.clusterMember).then(function () {
+                  return $state.go('app.admin.overview').then(function () {
+                    $rootScope.$broadcast("maybeShowMemoryQuotaDialog", vm.joinClusterConfig.services.model);
+                    mnAlertsService.formatAndSetAlerts('This server has been associated with the cluster and will join on the next rebalance operation.', 'success', 60000);
+                  });
+                });
               });
-            });
+            }
           });
-        }
-      });
 
       mnPromiseHelper(vm, promise)
         .showGlobalSpinner();
