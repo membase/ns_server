@@ -51,7 +51,7 @@ header h1 .icon {
   width: 0;
   flex-grow: 0;
 }
-input.borderless {
+.borderless .filter-input {
   border: 1px solid #fff;
   background-color: #fff;
   width: 280px;

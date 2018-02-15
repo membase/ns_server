@@ -18,22 +18,11 @@
       <option value="viewby_index">index</option>
     </select>
 
-    <div class="filter-input-group margin-left-1">
-      <input
-         type="text"
-         ng-model="indexFilter"
-         maxlength="256"
-         class="filter-input"
-         placeholder="filter indexes...">
-      <span
-         class="icon fa-search-minus"
-         ng-show="!indexFilter.length">
-      </span>
-      <span
-         class="icon fa-times-circle"
-         ng-show="indexFilter.length > 0"
-         ng-click="indexFilter = ''">
-      </span>
+    <div
+       class="row  margin-left-1"
+       mn-placeholder="filter indexes..."
+       mn-hide-button="true"
+       mn-search="gsiCtl.filterField">
     </div>
   </div>
 
@@ -55,7 +44,7 @@
           <span class="cbui-table-cell flex-grow-half">build progress</span>
         </div>
         <section
-           ng-repeat="row in group | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:indexFilter track by gsiCtl.generateIndexId(row)"
+           ng-repeat="row in group | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:gsiCtl.filterField track by gsiCtl.generateIndexId(row)"
            ng-click="gsiCtl.toggleDetails(gsiCtl.generateIndexId(row))"
            class="has-hover" ng-class="{
                                        'dynamic_healthy': row.status == 'Ready',
@@ -98,7 +87,7 @@
           <span class="cbui-table-cell flex-grow-half">build progress</span>
         </div>
         <section
-           ng-repeat="row in group | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:indexFilter track by gsiCtl.generateIndexId(row)"
+           ng-repeat="row in group | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:gsiCtl.filterField track by gsiCtl.generateIndexId(row)"
            ng-click="gsiCtl.toggleDetails(gsiCtl.generateIndexId(row))"
            class="has-hover" ng-class="{
                                        'dynamic_healthy': row.status == 'Ready',

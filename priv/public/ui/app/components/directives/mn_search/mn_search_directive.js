@@ -11,7 +11,8 @@
       restrict: 'AE',
       scope: {
         mnSearch: "=",
-        mnPlaceholder: "@"
+        mnPlaceholder: "@",
+        mnHideButton: "="
       },
       templateUrl: 'app/components/directives/mn_search/mn_search.html',
       controller: controller,
