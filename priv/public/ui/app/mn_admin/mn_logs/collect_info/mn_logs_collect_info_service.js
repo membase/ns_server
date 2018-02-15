@@ -22,6 +22,9 @@
       if (!collect.logDir) {
         delete collect.logDir;
       }
+      if (!collect.tmpDir) {
+        delete collect.tmpDir;
+      }
       if (!collect.uploadProxy) {
         delete collect.uploadProxy;
       }
