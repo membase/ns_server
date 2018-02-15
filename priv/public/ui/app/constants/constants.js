@@ -18,6 +18,7 @@
       ramQuotaMB: "0",
       uri: '/pools/default/buckets',
       purgeInterval: "1",
+      compressionMode: "off",
       maxTTL: 0
     })
     .constant('daysOfWeek', [

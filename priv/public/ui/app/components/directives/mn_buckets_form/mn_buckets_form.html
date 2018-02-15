@@ -171,39 +171,46 @@
       </div>
     </div>
 
-    <label class="inline">Compression Mode</label>
-    <span
-       class="fa-stack icon-info"
-       uib-tooltip-html="'<strong>Off</strong> - completely disable compression<br>
-                          <strong>Passive</strong> - compressed documents can be stored and streamed from the server,
-                          but the server does not try to actively compress documents (client-initiated)<br>
-                          <strong>Active</strong> - the server will try to actively compress documents in memory'"
-       tooltip-placement="right">
-      <span class="icon fa-circle-thin fa-stack-2x"></span>
-      <span class="icon fa-info fa-stack-1x"></span>
-    </span>
-    <div class="formrow checkbox-list">
-      <input
-         type="radio"
-         id="for-comp-mode-off"
-         ng-model="compModeType"
-         name="compMode"
-         value="off">
-      <label for="for-comp-mode-off">Off</label> <!--  default value -->
-      <input
-         type="radio"
-         id="for-comp-mode-passive"
-         ng-model="compModeType"
-         name="compMode"
-         value="passive">
-      <label for="for-comp-mode-passive">Passive</label>
-      <input
-         type="radio"
-         id="for-comp-mode-active"
-         ng-model="compModeType"
-         name="compMode"
-         value="active">
-      <label for="for-comp-mode-active">Active</label>
+    <div
+       class="formrow"
+       ng-if="pools.isEnterprise &&
+              poolDefault.compat.atLeast55 &&
+              (bucketConf.bucketType === 'membase' ||
+              bucketConf.bucketType === 'ephemeral')">
+      <label class="inline">Compression Mode</label>
+      <span
+         class="fa-stack icon-info"
+         uib-tooltip-html="'<strong>Off</strong> - completely disable compression<br>
+                           <strong>Passive</strong> - compressed documents can be stored and streamed from the server,
+                           but the server does not try to actively compress documents (client-initiated)<br>
+                           <strong>Active</strong> - the server will try to actively compress documents in memory'"
+                           tooltip-placement="right">
+        <span class="icon fa-circle-thin fa-stack-2x"></span>
+        <span class="icon fa-info fa-stack-1x"></span>
+      </span>
+      <div class="formrow checkbox-list">
+        <input
+           type="radio"
+           id="for-comp-mode-off"
+           ng-model="bucketConf.compressionMode"
+           name="compMode"
+           value="off">
+        <label for="for-comp-mode-off">Off</label> <!--  default value -->
+        <input
+           type="radio"
+           id="for-comp-mode-passive"
+           ng-model="bucketConf.compressionMode"
+           name="compMode"
+           value="passive">
+        <label for="for-comp-mode-passive">Passive</label>
+        <input
+           type="radio"
+           id="for-comp-mode-active"
+           ng-model="bucketConf.compressionMode"
+           name="compMode"
+           value="active">
+        <label for="for-comp-mode-active">Active</label>
+      </div>
     </div>
 
     <div ng-if="pools.isEnterprise && (bucketConf.bucketType === 'membase' || bucketConf.bucketType === 'ephemeral') && (bucketConf.isWizard || poolDefault.compat.atLeast46)">

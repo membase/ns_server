@@ -49,6 +49,7 @@
       if (bucketConf.bucketType === "membase" || bucketConf.bucketType === "ephemeral") {
         copyProperties(["threadsNumber", "replicaNumber"]);
         if (pools.isEnterprise && poolDefault.compat.atLeast55) {
+          copyProperty("compressionMode");
           if (!bucketConf.enableMaxTTL) {
             conf.maxTTL = 0;
           } else {
