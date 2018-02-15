@@ -319,46 +319,35 @@ call(Call, Timeout) ->
 call(Node, Call, Timeout) ->
     gen_server2:call({?SERVER, Node}, Call, Timeout).
 
-check_no_domain_conflicts(Domain,
-                          DomainToken, Name, Quorum, From, State, OnSuccess) ->
+check_no_domain_conflicts(ActivityToken, From, State, OnSuccess) ->
+    #activity_token{domain       = Domain,
+                    domain_token = DomainToken} = ActivityToken,
+
     case find_activity(Domain, #activity.domain, State) of
-        {ok, Activity} ->
-            case Activity#activity.domain_token =:= DomainToken of
+        {ok, FoundActivity} ->
+            case FoundActivity#activity.domain_token =:= DomainToken of
                 true ->
-                    check_no_domain_conflicts_success(Domain,
-                                                      DomainToken,
-                                                      Name, State, OnSuccess);
+                    OnSuccess();
                 false ->
                     ?log_error("Can't start activity ~p, "
                                "because of token conflict with~n~p",
-                               [{Domain, DomainToken, Name, Quorum}, Activity]),
+                               [ActivityToken, FoundActivity]),
                     gen_server2:reply(From, {error,
-                                             {domain_conflict, Activity}}),
+                                             {domain_conflict,
+                                              ActivityToken, FoundActivity}}),
                     State
             end;
         not_found ->
-            check_no_domain_conflicts_success(Domain,
-                                              DomainToken,
-                                              Name, State, OnSuccess)
+            OnSuccess()
     end.
-
-check_no_domain_conflicts_success(Domain,
-                                  DomainToken, Name, State, OnSuccess) ->
-    {LeaseNode, LeaseUUID} = State#state.local_lease_holder,
-    true = (LeaseNode =:= node()),
-
-    Token = #activity_token{lease       = {LeaseNode, LeaseUUID},
-                            domain_token = DomainToken,
-                            domain       = Domain,
-                            name         = Name},
-    OnSuccess(Token).
 
 handle_start_activity(Async,
                       Domain,
                       DomainToken, Name, Quorum, Opts, Body, From, State) ->
+    ActivityToken = make_activity_token(Domain, DomainToken, Name, State),
     check_no_domain_conflicts(
-      Domain, DomainToken, Name, Quorum, From, State,
-      fun (ActivityToken) ->
+      ActivityToken, From, State,
+      fun () ->
               {Pid, MRef} = async:start(
                               fun () ->
                                       set_activity_token(ActivityToken),
@@ -372,9 +361,10 @@ handle_start_activity(Async,
 
 handle_register_process(Domain,
                         DomainToken, Name, Quorum, Opts, Pid, From, State) ->
+    ActivityToken = make_activity_token(Domain, DomainToken, Name, State),
     check_no_domain_conflicts(
-      Domain, DomainToken, Name, Quorum, From, State,
-      fun (ActivityToken) ->
+      ActivityToken, From, State,
+      fun () ->
               MRef = erlang:monitor(process, Pid),
               gen_server2:reply(From, {ok, ActivityToken}),
               add_activity(Domain,
@@ -738,6 +728,15 @@ run_body({M, F, A}) ->
 run_body(Body)
   when is_function(Body, 0) ->
     Body().
+
+make_activity_token(Domain, DomainToken, Name, State) ->
+    {LeaseNode, _LeaseUUID} = Lease = State#state.local_lease_holder,
+    true = (LeaseNode =:= node()),
+
+    #activity_token{lease        = Lease,
+                    domain_token = DomainToken,
+                    domain       = Domain,
+                    name         = Name}.
 
 make_fresh_activity_token(Domain) ->
     make_fresh_activity_token(Domain, undefined).
