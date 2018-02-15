@@ -540,7 +540,7 @@ add_activity(Token, Quorum, Opts, Pid, MRef, State) ->
             ok
     end,
 
-    misc:update_field(#state.activities, State, [Activity | _]).
+    add_activity(Activity, State).
 
 add_activity(Activity, State)
   when is_record(Activity, activity) ->
