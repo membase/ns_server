@@ -44,7 +44,7 @@
           <span class="cbui-table-cell flex-grow-half">build progress</span>
         </div>
         <section
-           ng-repeat="row in group | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:gsiCtl.filterField track by gsiCtl.generateIndexId(row)"
+           ng-repeat="row in group | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:gsiCtl.filterField as byServerFiltered track by gsiCtl.generateIndexId(row)"
            ng-click="gsiCtl.toggleDetails(gsiCtl.generateIndexId(row))"
            class="has-hover" ng-class="{
                                        'dynamic_healthy': row.status == 'Ready',
@@ -64,6 +64,13 @@
               {{row.definition}}
             </div>
           </div>
+        </section>
+        <section ng-if="!byServerFiltered.length">
+          <span class="cbui-tablerow">
+            <span class="cbui-table-cell text-center">
+              no result
+            </span>
+          </span>
         </section>
       </div>
     </div>
@@ -87,7 +94,7 @@
           <span class="cbui-table-cell flex-grow-half">build progress</span>
         </div>
         <section
-           ng-repeat="row in group | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:gsiCtl.filterField track by gsiCtl.generateIndexId(row)"
+           ng-repeat="row in group | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:gsiCtl.filterField as byBucketFiltered track by gsiCtl.generateIndexId(row)"
            ng-click="gsiCtl.toggleDetails(gsiCtl.generateIndexId(row))"
            class="has-hover" ng-class="{
                                        'dynamic_healthy': row.status == 'Ready',
@@ -105,6 +112,13 @@
               {{row.definition}}
             </div>
           </div>
+        </section>
+        <section ng-if="!byBucketFiltered.length">
+          <span class="cbui-tablerow">
+            <span class="cbui-table-cell text-center">
+              no result
+            </span>
+          </span>
         </section>
       </div>
     </div>
@@ -130,7 +144,7 @@
       </div>
       <section
          ng-if="gsiCtl.state.indexes.length"
-         ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:gsiCtl.filterField track by gsiCtl.generateIndexId(row)"
+         ng-repeat="row in gsiCtl.state.indexes | orderBy:mnSortableTable.sortableTableProperties.orderBy:mnSortableTable.sortableTableProperties.invert | filter:gsiCtl.filterField as byIndexFiltered track by gsiCtl.generateIndexId(row)"
          ng-click="gsiCtl.toggleDetails(gsiCtl.generateIndexId(row))"
          class="has-hover" ng-class="{
                                      'dynamic_healthy': row.status == 'Ready',
@@ -151,6 +165,13 @@
             {{row.definition}}
           </div>
         </div>
+      </section>
+      <section ng-if="!byIndexFiltered.length">
+        <span class="cbui-tablerow">
+          <span class="cbui-table-cell text-center">
+            no result
+          </span>
+        </span>
       </section>
     </div>
   </span>
