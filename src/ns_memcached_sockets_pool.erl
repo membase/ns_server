@@ -21,7 +21,7 @@
 
 -export([start_link/0]).
 
--export([executing_on_socket/1, executing_on_socket/2]).
+-export([executing_on_socket/1, executing_on_socket/2, executing_on_socket/3]).
 
 start_link() ->
     Options = [{name, ?MODULE},
@@ -29,18 +29,20 @@ start_link() ->
                {pool_size_per_dest, 10000}],
     ns_connection_pool:start_link(Options).
 
-take_socket() ->
-    case ns_connection_pool:maybe_take_socket(?MODULE, ns_memcached) of
+take_socket(Options) ->
+    Destination = get_destination(Options),
+    case ns_connection_pool:maybe_take_socket(?MODULE, Destination) of
         {ok, Sock} ->
             {ok, Sock};
         no_socket ->
-            ns_memcached:connect()
+            NeedXattr = proplists:get_bool(xattrs, Options),
+            ns_memcached:connect([{xattrs, NeedXattr}])
     end.
 
-take_socket(undefined) ->
-    take_socket();
-take_socket(Bucket) ->
-    case take_socket() of
+take_socket(undefined, Options) ->
+    take_socket(Options);
+take_socket(Bucket, Options) ->
+    case take_socket(Options) of
         {ok, Socket} ->
             case mc_client_binary:select_bucket(Socket, Bucket) of
                 ok ->
@@ -52,21 +54,28 @@ take_socket(Bucket) ->
             Error
     end.
 
-put_socket(Socket) ->
-    ns_connection_pool:put_socket(?MODULE, ns_memcached, Socket).
+put_socket(Socket, Options) ->
+    Destination = get_destination(Options),
+    ns_connection_pool:put_socket(?MODULE, Destination, Socket).
 
 executing_on_socket(Fun) ->
     executing_on_socket(Fun, undefined).
 
 executing_on_socket(Fun, Bucket) ->
+    executing_on_socket(Fun, Bucket, []).
+
+executing_on_socket(Fun, Bucket, Options) ->
     misc:executing_on_new_process(
       fun () ->
-              case take_socket(Bucket) of
+              case take_socket(Bucket, Options) of
                   {ok, Sock} ->
                       Result = Fun(Sock),
-                      put_socket(Sock),
+                      put_socket(Sock, Options),
                       Result;
                   Error ->
                       Error
               end
       end).
+
+get_destination(Options) ->
+    {ns_memcached, misc:canonical_proplist(Options)}.

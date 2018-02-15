@@ -129,11 +129,8 @@
          config_reload/0
         ]).
 
-%% for ns_memcached_sockets_pool only
--export([connect/0]).
-
-%% for memcached_file_refresh only
--export([connect/1]).
+%% for ns_memcached_sockets_pool, memcached_file_refresh only
+-export([connect/0, connect/1]).
 
 %% for diagnostics/debugging
 -export([perform_very_long_call/2]).
@@ -323,11 +320,14 @@ handle_call(Msg, From, State) ->
     {noreply, NewState}.
 
 perform_very_long_call(Fun, Bucket) ->
+    perform_very_long_call(Fun, Bucket, []).
+
+perform_very_long_call(Fun, Bucket, Options) ->
     ns_memcached_sockets_pool:executing_on_socket(
       fun (Sock) ->
               {reply, Result} = Fun(Sock),
               Result
-      end, Bucket).
+      end, Bucket, Options).
 
 verify_report_long_call(StartTS, ActualStartTS, State, Msg, RV) ->
     try
@@ -960,7 +960,7 @@ subdoc_multi_lookup(Bucket, Key, VBucket, Paths, Options) ->
       fun (Sock) ->
               {reply, mc_client_binary:subdoc_multi_lookup(Sock, Key, VBucket,
                                                            Paths, Options)}
-      end, Bucket).
+      end, Bucket, [xattrs]).
 
 %% @doc send a set command to memcached instance
 -spec delete(bucket_name(), binary(), integer(), integer()) ->
@@ -1177,9 +1177,13 @@ get_seqno_stats(Bucket, VBucket) ->
 %%
 
 connect() ->
-    connect(?CONNECTION_ATTEMPTS).
+    connect([]).
 
-connect(Tries) ->
+connect(Options) ->
+    Retries = proplists:get_value(retries, Options, ?CONNECTION_ATTEMPTS),
+    connect(Options, Retries).
+
+connect(Options, Tries) ->
     Config = ns_config:get(),
     Port = ns_config:search_node_prop(Config, memcached, dedicated_port),
     User = ns_config:search_node_prop(Config, memcached, admin_user),
@@ -1197,12 +1201,14 @@ connect(Tries) ->
                                         list_to_binary(Pass)}}),
         S of
         Sock ->
-            %% We want to be able to get xattrs for UI via this connection
-            case dcp_commands:negotiate_xattr(Sock, "regular") of
-                {ok, true} ->
-                    ok;
-                {ok, false} ->
-                    ?log_error("Failed to negotiate XATTR on memcached connection")
+            case proplists:get_bool(xattrs, Options) of
+                true ->
+                    case dcp_commands:negotiate_xattr(Sock, "regular") of
+                        {ok, true} -> ok;
+                        {ok, false} -> error(xattr_negotiation_error)
+                    end;
+                false ->
+                    ok
             end,
             {ok, Sock}
     catch
@@ -1214,7 +1220,7 @@ connect(Tries) ->
                 _ ->
                     ?log_warning("Unable to connect: ~p, retrying.", [{E, R}]),
                     timer:sleep(1000), % Avoid reconnecting too fast.
-                    connect(Tries - 1)
+                    connect(Options, Tries - 1)
             end
     end.
 
@@ -1608,13 +1614,13 @@ do_get_keys(Bucket, NodeVBuckets, Params) ->
 config_validate(NewConfig) ->
     misc:executing_on_new_process(
       fun () ->
-              {ok, Sock} = connect(1),
+              {ok, Sock} = connect([{retries, 1}]),
               mc_client_binary:config_validate(Sock, NewConfig)
       end).
 
 config_reload() ->
     misc:executing_on_new_process(
       fun () ->
-              {ok, Sock} = connect(1),
+              {ok, Sock} = connect([{retries, 1}]),
               mc_client_binary:config_reload(Sock)
       end).

@@ -65,7 +65,7 @@ handle_info(refresh, []) ->
     {noreply, []};
 handle_info(refresh, ToRefresh) ->
     ToRetry =
-        case ns_memcached:connect(1) of
+        case ns_memcached:connect([{retries, 1}]) of
             {ok, Sock} ->
                 NewToRefresh =
                     lists:filter(
