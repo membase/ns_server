@@ -72,7 +72,6 @@
          ng-show="settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors.maxCount">
         {{settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors.maxCount}}
       </div>
-      <br>
       <div ng-if="adminCtl.poolDefault.compat.atLeast55 &&
                   adminCtl.poolDefault.isEnterprise">
         <input
@@ -96,8 +95,8 @@
         <span class="text-medium">seconds</span>
         <div
            class="error"
-           ng-show="settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors.failoverOnDataDiskIssues.timePeriod">
-          {{settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors.failoverOnDataDiskIssues.timePeriod}}
+           ng-show="settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors['failoverOnDataDiskIssues[timePeriod]']">
+          {{settingsAutoFailoverCtl.saveAutoFailoverSettingsErrors['failoverOnDataDiskIssues[timePeriod]']}}
         </div>
       </div>
       <input
