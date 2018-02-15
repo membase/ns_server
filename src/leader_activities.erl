@@ -355,8 +355,7 @@ handle_start_activity(Async,
                               end,
                               [monitor, {adopters, [Async]}]),
               gen_server2:reply(From, {ok, Pid}),
-              add_activity(Domain,
-                           DomainToken, Name, Quorum, Opts, Pid, MRef, State)
+              add_activity(ActivityToken, Quorum, Opts, Pid, MRef, State)
       end).
 
 handle_register_process(Domain,
@@ -367,8 +366,7 @@ handle_register_process(Domain,
       fun () ->
               MRef = erlang:monitor(process, Pid),
               gen_server2:reply(From, {ok, ActivityToken}),
-              add_activity(Domain,
-                           DomainToken, Name, Quorum, Opts, Pid, MRef, State)
+              add_activity(ActivityToken, Quorum, Opts, Pid, MRef, State)
       end).
 
 handle_if_internal_process(Type, Pid, SubCall, From, State) ->
@@ -526,12 +524,12 @@ terminate_all_activities(#state{activities = Activities} = State) ->
     terminate_activities(Activities),
     State#state{activities = []}.
 
-add_activity(Domain, DomainToken, Name, Quorum, Opts, Pid, MRef, State) ->
+add_activity(Token, Quorum, Opts, Pid, MRef, State) ->
     Activity = #activity{pid          = Pid,
                          mref         = MRef,
-                         domain       = Domain,
-                         domain_token = DomainToken,
-                         name         = Name,
+                         domain       = Token#activity_token.domain,
+                         domain_token = Token#activity_token.domain_token,
+                         name         = Token#activity_token.name,
                          quorum       = Quorum,
                          options      = Opts},
 
