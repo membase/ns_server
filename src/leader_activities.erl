@@ -43,6 +43,8 @@
 
 -define(SERVER, ?MODULE).
 -define(QUORUM_TIMEOUT, ns_config:get_timeout(quorum_timeout, 15000)).
+-define(UNSAFE_QUORUM_TIMEOUT,
+        ns_config:get_timeout(unsafe_quorum_timeout, 2000)).
 
 -type lease_holder() :: {node(), binary()}.
 
@@ -283,9 +285,9 @@ call_if_internal_process(Type, Pid, SubCall) ->
     call({if_internal_process, Type, Pid, SubCall}, infinity).
 
 call_wait_for_quorum(Node, Token, UserQuorum, Opts, Call, Args) ->
-    QuorumTimeout = proplists:get_value(quorum_timeout, Opts, ?QUORUM_TIMEOUT),
-    OuterTimeout  = proplists:get_value(timeout, Opts, QuorumTimeout + 5000),
     Unsafe        = proplists:get_bool(unsafe, Opts),
+    QuorumTimeout = quorum_timeout(Opts, Unsafe),
+    OuterTimeout  = proplists:get_value(timeout, Opts, QuorumTimeout + 5000),
 
     Lease       = Token#activity_token.lease,
     Domain      = Token#activity_token.domain,
@@ -299,6 +301,17 @@ call_wait_for_quorum(Node, Token, UserQuorum, Opts, Call, Args) ->
 
     call(Node, {wait_for_quorum,
                 Lease, Quorum, Unsafe, SubCall, QuorumTimeout}, OuterTimeout).
+
+quorum_timeout(Opts, Unsafe) ->
+    Default =
+        case Unsafe of
+            true ->
+                ?UNSAFE_QUORUM_TIMEOUT;
+            false ->
+                ?QUORUM_TIMEOUT
+        end,
+
+    proplists:get_value(quorum_timeout, Opts, Default).
 
 call(Call, Timeout) ->
     call(node(), Call, Timeout).
