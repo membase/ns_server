@@ -1,19 +1,25 @@
 <div>
-  <div class="interim row">
-    <span> </span>
+  <div class="row flex-right">
     <span>
       <button
-        ng-show="!('app.admin.logs.collectInfo.form' | isState)"
-        ui-sref="app.admin.logs.collectInfo.form">Start New Collection
+         ng-show="!('app.admin.logs.collectInfo.form' | isState)"
+         ui-sref="app.admin.logs.collectInfo.form"
+         class="outline">
+        Start New Collection
       </button>
       <button
-        ng-show="logsCollectInfoCtl.state.status === 'running'"
-        ng-click="logsCollectInfoCtl.stopCollection()"
-        ng-disabled="logsCollectInfoCtl.disabledStopCollect">Stop Collection
+         ng-show="logsCollectInfoCtl.state.status === 'running'"
+         ng-click="logsCollectInfoCtl.stopCollection()"
+         ng-disabled="logsCollectInfoCtl.disabledStopCollect"
+         class="outline">
+        Stop Collection
       </button>
       <button
-        ng-show="logsCollectInfoCtl.state.status !== 'idle' && !('app.admin.logs.collectInfo.result' | isState)"
-        ui-sref="app.admin.logs.collectInfo.result">Show Collection Progress</button>
+         ng-show="logsCollectInfoCtl.state.status !== 'idle' && !('app.admin.logs.collectInfo.result' | isState)"
+         ui-sref="app.admin.logs.collectInfo.result"
+         class="outline">
+        Show Currrent Collection
+      </button>
     </span>
   </div>
   <div ui-view=""></div>

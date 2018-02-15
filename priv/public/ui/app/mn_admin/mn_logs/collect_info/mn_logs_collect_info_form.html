@@ -1,60 +1,57 @@
 <div mn-spinner="logsCollectInfoCtl.viewLoading || !logsCollectInfoCtl.state.nodes" min-height="300px" class="fix-width-7">
-  <div>Collect logs and diagnostic information from:</div>
+  <div
+     class="error error-field"
+     ng-show="logsCollectInfoCtl.errors._">{{logsCollectInfoCtl.errors._}}
+   </div>
+
+  <h4 class="margin-bottom-half">Collect Logs & Diagnostic Information</h4>
   <form
      ng-submit="logsCollectInfoCtl.submit()"
      name="collectForm"
      class="forms">
-    <div
-       class="error error-field"
-       ng-show="logsCollectInfoCtl.errors._">{{logsCollectInfoCtl.errors._}}</div>
+    <input
+       type="radio"
+       name="from"
+       value="*"
+       ng-model="logsCollectInfoCtl.collect.from"
+       id="all_nodes_radio"
+       checked="checked">
+    <label for="all_nodes_radio">All Nodes</label>
+    <input
+       type="radio"
+       name="from"
+       value=""
+       ng-model="logsCollectInfoCtl.collect.from"
+       id="selected_nodes_radio">
+    <label for="selected_nodes_radio">Selected Nodes</label>
 
-    <div class="checkbox-list">
-      <div class="formrow">
+    <div class="formrow indent-2">
+      <div ng-repeat="node in logsCollectInfoCtl.state.nodes track by node.otpNode"
+           class="row flex-left">
+        <div
+           class="icon margin-right-half"
+           style="width:.2rem;height:1rem;"
+           ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]"></div>
         <input
-           type="radio"
-           name="from"
-           value="*"
-           ng-model="logsCollectInfoCtl.collect.from"
-           id="all_nodes_radio"
-           checked="checked">
-        <label for="all_nodes_radio">All Nodes</label>
-        <input
-           type="radio"
-           name="from"
-           value=""
-           ng-model="logsCollectInfoCtl.collect.from"
-           id="selected_nodes_radio">
-        <label for="selected_nodes_radio">Selected Nodes</label>
-      </div>
-
-      <div class="formrow margin-bottom2 indent-1">
-        <div ng-repeat="node in logsCollectInfoCtl.state.nodes track by node.otpNode"
-             class="row flex-left">
-          <div
-             class="icon margin-right-half"
-             style="width:.2rem;height:1rem;"
-             ng-class="['dynamic_' + node.status, 'dynamic_' + node.clusterMembership]"></div>
-          <input
-             type="checkbox"
-             ng-model="logsCollectInfoCtl.collect.nodes[node.otpNode]"
-             ng-value="node.otpNode"
-             ng-attr-id="collected_node_list_{{node.otpNode}}"
-             ng-checked="logsCollectInfoCtl.collect.from === '*'"
-             ng-disabled="node.status === 'unhealthy' || logsCollectInfoCtl.collect.from">
-          <label for="collected_node_list_{{node.otpNode}}">{{ node.hostname | mnStripPortHTML:logsCollectInfoCtl.state.nodes }}</label>
-        </div>
+           type="checkbox"
+           ng-model="logsCollectInfoCtl.collect.nodes[node.otpNode]"
+           ng-value="node.otpNode"
+           ng-attr-id="collected_node_list_{{node.otpNode}}"
+           ng-checked="logsCollectInfoCtl.collect.from === '*'"
+           ng-disabled="node.status === 'unhealthy' || logsCollectInfoCtl.collect.from">
+        <label for="collected_node_list_{{node.otpNode}}">{{ node.hostname | mnStripPortHTML:logsCollectInfoCtl.state.nodes }}</label>
       </div>
     </div>
 
     <div class="formrow"
          ng-if="adminCtl.poolDefault.compat.atLeast55 && adminCtl.poolDefault.isEnterprise">
-      <h4>Log Redaction Level</h4>
+      <label>Redact Logs</label>
       <input
          type="radio"
          value="none"
          id="redaction_none"
          ng-model="logsCollectInfoCtl.collect.logRedactionLevel">
-      <label for="redaction_none" class="checkbox">None</label>
+      <label for="redaction_none" class="checkbox">No Redaction</label>
 
       <input
          type="radio"
@@ -64,7 +61,8 @@
       <label for="redaction_partial" class="checkbox margin-right-zero">Partial Redaction</label>
       <span
          class="fa-stack icon-info"
-         uib-tooltip="In the log file created through this process, user data such as key/value pairs and usernames will be redacted. Metadata and system data will not be redacted. The cluster-level redaction configuration in Settings remains unchanged by your choice here."
+         uib-tooltip="In the log file created through this process, user data such as key/value pairs and usernames will be redacted.
+         Metadata and system data will not be redacted. The default redaction configuration in Settings remains unchanged by your choice here."
          tooltip-placement="top">
         <span class="icon fa-circle-thin fa-stack-2x"></span>
         <span class="icon fa-info fa-stack-1x"></span>
@@ -75,43 +73,46 @@
       </div>
     </div>
 
-    <div class="formrow width-300">
-      <h4>Log Temporary Directory</h4>
+    <div class="formrow fix-width-5">
       <input
-         type="text"
-         autocorrect="off"
-         spellcheck="false"
-         autocapitalize="off"
-         ng-model="logsCollectInfoCtl.collect.tmpDir">
-      <div
-         class="error error-field"
-         ng-show="logsCollectInfoCtl.errors.tmpDir">{{logsCollectInfoCtl.errors.tmpDir}}</div>
+         id="for_custom_tmpdir"
+         ng-model="custom_tmpdir"
+         name="tmpdir"
+         value="true"
+         type="checkbox">
+      <label for="for_custom_tmpdir">Specify custom temp directory</label>
+      <div ng-if="custom_tmpdir">
+        <input
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           ng-model="logsCollectInfoCtl.collect.tmpDir">
+        <div
+           class="error error-field"
+           ng-show="logsCollectInfoCtl.errors.tmpDir">{{logsCollectInfoCtl.errors.tmpDir}}</div>
+      </div>
     </div>
 
-    <div class="formrow width-300">
-      <h4>Log Directory</h4>
+    <div class="formrow fix-width-5">
       <input
-         type="text"
-         autocorrect="off"
-         spellcheck="false"
-         autocapitalize="off"
-         ng-model="logsCollectInfoCtl.collect.logDir">
-      <div
-         class="error error-field"
-         ng-show="logsCollectInfoCtl.errors.logDir">{{logsCollectInfoCtl.errors.logDir}}</div>
-    </div>
-
-     <div class="formrow margin-bottom2 width-300">
-      <h4>Upload Proxy</h4>
-      <input
-         type="text"
-         autocorrect="off"
-         spellcheck="false"
-         autocapitalize="off"
-         ng-model="logsCollectInfoCtl.collect.uploadProxy">
-      <div
-         class="error error-field"
-         ng-show="logsCollectInfoCtl.errors.uploadProxy">{{logsCollectInfoCtl.errors.uploadProxy}}</div>
+         id="for_custom_logdir"
+         ng-model="custom_logdir"
+         name="logdir"
+         value="true"
+         type="checkbox">
+      <label for="for_custom_logdir">Specify custom log directory</label>
+      <div ng-if="custom_logdir">
+        <input
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           ng-model="logsCollectInfoCtl.collect.logDir">
+        <div
+           class="error error-field"
+           ng-show="logsCollectInfoCtl.errors.logDir">{{logsCollectInfoCtl.errors.logDir}}</div>
+      </div>
     </div>
 
     <div class="formrow checkbox-list">
@@ -127,8 +128,8 @@
          ng-show="logsCollectInfoCtl.errors.upload">{{logsCollectInfoCtl.errors.upload}}</div>
     </div>
 
-    <div class="indent-1 width-300" ng-show="logsCollectInfoCtl.collect.upload">
-      <div class="formrow">
+    <div ng-show="logsCollectInfoCtl.collect.upload">
+      <div class="formrow fix-width-5">
         <label for="uploadHost_input">Upload to Host</label>
         <input
            id="uploadHost_input"
@@ -148,8 +149,8 @@
            ng-show="logsCollectInfoCtl.collect.upload && collectForm.uploadHost.$error.required">upload host field must be given if upload is selected</div>
       </div>
 
-      <div class="formrow">
-        <label for="customer_input">Customer Name</label>
+      <div class="formrow fix-width-5">
+        <label>Customer Name</label>
         <input
            id="customer_input"
            name="customer"
@@ -165,11 +166,24 @@
            ng-show="logsCollectInfoCtl.errors.customer">{{logsCollectInfoCtl.errors.customer}}</div>
         <div
            class="error error-field"
-           ng-show="logsCollectInfoCtl.collect.upload && collectForm.customer.$error.required">customer field must be given if upload is selected</div>
+           ng-show="logsCollectInfoCtl.collect.upload && collectForm.customer.$error.required">A customer name must be given if upload is selected</div>
       </div>
 
-      <div class="formrow">
-        <label for="ticket_input">Ticket Number <small>(optional)</small></label>
+      <div class="formrow fix-width-5">
+        <label>Upload Proxy <small>optional</small></label>
+        <input
+           type="text"
+           autocorrect="off"
+           spellcheck="false"
+           autocapitalize="off"
+           ng-model="logsCollectInfoCtl.collect.uploadProxy">
+        <div
+           class="error error-field"
+           ng-show="logsCollectInfoCtl.errors.uploadProxy">{{logsCollectInfoCtl.errors.uploadProxy}}</div>
+      </div>
+
+      <div class="formrow fix-width-5">
+        <label>Ticket Number <small>optional</small></label>
         <input
            id="ticket_input"
            name="ticket"
@@ -187,6 +201,7 @@
 
     <button
        type="submit"
+       class="margin-top-1"
        ng-disabled="logsCollectInfoCtl.collect.from === '' && !('some' | lodash:('values' | lodash:logsCollectInfoCtl.collect.nodes))">Start Collection</button>
   </form>
 </div>
