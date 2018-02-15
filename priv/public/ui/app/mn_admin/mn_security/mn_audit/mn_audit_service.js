@@ -85,6 +85,7 @@
       if (data.auditdEnabled) {
         result.rotateInterval = data.rotateInterval * formatTimeUnit(data.rotateUnit);
         result.logPath = data.logPath;
+        result.rotateSize = data.rotateSize;
       }
       return result;
     }
