@@ -259,7 +259,6 @@ do_build_pool_info(Id, CanIncludeOtpCookie, InfoLevel, Stability, LocalAddr) ->
         case InfoLevel of
             for_ui ->
                 [{failoverWarnings, ns_bucket:failover_warnings()},
-                 {goxdcrEnabled, true},
                  {ldapEnabled, cluster_compat_mode:is_ldap_enabled()},
                  {uiSessionTimeout, ns_config:read_key_fast(ui_session_timeout, undefined)}
                  | PropList1];
