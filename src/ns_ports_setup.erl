@@ -581,7 +581,8 @@ fts_spec(Config) ->
                       "ipv6=" ++ atom_to_list(misc:is_ipv6()) ++ "," ++
                       "ftsMemoryQuota=" ++ integer_to_list(FTSMemoryQuota * 1024000) ++ "," ++
                       "maxReplicasAllowed=" ++ integer_to_list(MaxReplicasAllowed) ++ "," ++
-                      "bucketTypesAllowed=" ++ BucketTypesAllowed,
+                      "bucketTypesAllowed=" ++ BucketTypesAllowed ++ "," ++
+                      "http2=" ++ atom_to_list(cluster_compat_mode:is_enterprise()),
             Spec = {fts, FtCmd,
                     [
                      "-cfg=metakv",
