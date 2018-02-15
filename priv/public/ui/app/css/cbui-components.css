@@ -1539,6 +1539,9 @@ section.dynamic_unhealthy {
   margin: .5rem;
   text-align: center;
 }
+.zero-content.text-left {
+  text-align: left;
+}
 
 /* shaded box with rounded corners for content such as index definition  */
 .content-box {
