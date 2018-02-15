@@ -1,21 +1,7 @@
 <div>
-  <div
-     class="formrow"
-     ng-show="!xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled">
-    <label for="max_concurrent_reps">XDCR Max Replications Per Bucket</label>
-    <input
-       type="number"
-       ng-model="xdcrSettingsCtl.settings.maxConcurrentReps">
-    <div
-       class="error"
-       ng-show="xdcrSettingsCtl.errors.maxConcurrentReps">
-      {{xdcrSettingsCtl.errors.maxConcurrentReps}}
-    </div>
-  </div>
 
   <div class="formrow"
-       ng-show="xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled &&
-                xdcrSettingsCtl.mnPools.isEnterprise &&
+       ng-show="xdcrSettingsCtl.mnPools.isEnterprise &&
                 xdcrSettingsCtl.settings.type !== 'capi' &&
                 xdcrSettingsCtl.mnPoolDefault.compat.atLeast55">
     <label for="for-xdcr-compression">
@@ -35,21 +21,7 @@
   </div>
 
   <div
-     class="formrow"
-     ng-show="!xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled">
-    <label for="worker_processes_setting">XDCR Workers Per Replication</label>
-    <input
-       type="number"
-       ng-model="xdcrSettingsCtl.settings.workerProcesses">
-    <div
-       class="error"
-       ng-show="xdcrSettingsCtl.errors.workerProcesses">
-      {{xdcrSettingsCtl.errors.workerProcesses}}
-    </div>
-  </div>
-  <div
-     class="formrow"
-     ng-show="xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled">
+     class="formrow">
     <label for="source_nozzle_per_node">XDCR Source Nozzles Per Node</label>
     <input
        type="number"
@@ -61,8 +33,7 @@
     </div>
   </div>
   <div
-     class="formrow"
-     ng-show="xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled">
+     class="formrow">
     <label for="target_nozzle_per_node">XDCR Target Nozzles Per Node</label>
     <input
        type="number"
@@ -129,8 +100,7 @@
     </div>
   </div>
   <div
-     class="formrow"
-     ng-show="xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled">
+     class="formrow">
     <label for="statistics_collection_interval">XDCR Statistics Collection Interval (ms)</label>
     <input
        type="number"
@@ -143,8 +113,7 @@
   </div>
   <div
      class="formrow"
-     ng-show="xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled &&
-              xdcrSettingsCtl.mnPools.isEnterprise &&
+     ng-show="xdcrSettingsCtl.mnPools.isEnterprise &&
               xdcrSettingsCtl.mnPoolDefault.compat.atLeast50 &&
               xdcrSettingsCtl.settings.type === 'xmem'">
     <label for="statistics_collection_interval">XDCR Network Usage Limit (MB/sec)</label>
@@ -158,8 +127,7 @@
     </div>
   </div>
   <div
-     class="formrow"
-     ng-show="xdcrSettingsCtl.mnPoolDefault.goxdcrEnabled">
+     class="formrow">
     <label for="per_logging_level">XDCR Logging Level</label>
     <select ng-model="xdcrSettingsCtl.settings.logLevel">
       <option value="Info">Info</option>

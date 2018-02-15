@@ -60,14 +60,9 @@
     }
 
     function removeExcessSettings(settings) {
-      var neededProperties = ["replicationType", "optimisticReplicationThreshold", "failureRestartInterval", "docBatchSizeKb", "workerBatchSize", "checkpointInterval", "type", "toBucket", "toCluster", "fromBucket"];
-      if (mnPoolDefault.export.goxdcrEnabled) {
-        neededProperties = neededProperties.concat(["sourceNozzlePerNode", "targetNozzlePerNode", "statsInterval", "logLevel"]);
-      } else {
-        neededProperties = neededProperties.concat(["maxConcurrentReps", "workerProcesses"]);
-      }
+      var neededProperties = ["replicationType", "optimisticReplicationThreshold", "failureRestartInterval", "docBatchSizeKb", "workerBatchSize", "checkpointInterval", "type", "toBucket", "toCluster", "fromBucket", "sourceNozzlePerNode", "targetNozzlePerNode", "statsInterval", "logLevel"];
+
       if (mnPools.export.isEnterprise &&
-          mnPoolDefault.export.goxdcrEnabled &&
           settings.type !== "capi" &&
           mnPoolDefault.export.compat.atLeast55
          ) {
@@ -75,7 +70,6 @@
       }
       if (mnPools.export.isEnterprise &&
           mnPoolDefault.export.compat.atLeast50 &&
-          mnPoolDefault.export.goxdcrEnabled &&
           settings.type === "xmem"
          ) {
         neededProperties.push("networkUsageLimit");

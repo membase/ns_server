@@ -146,7 +146,7 @@
         <button class="outline" ng-show="!serversItemCtl.isKVNode">Recovery</button>
       </span>
       <span
-         ng-show="serversItemCtl.isKVNode && poolDefault.compat.atLeast30"
+         ng-show="serversItemCtl.isKVNode"
          ng-click="serversItemCtl.reAddNode('delta', node.otpNode); $event.stopPropagation()">
         <button class="outline">Add Back: Delta Recovery</button>
       </span>

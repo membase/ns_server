@@ -121,60 +121,6 @@
            type="text"
            ng-model="internalSettingsCtl.state.maxBucketCount">
       </label>
-      <label
-         class="formrow"
-         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
-        <span>XDCR Max Replications per Bucket</span>
-        <input
-           maxlength="5"
-           type="text"
-           ng-model="internalSettingsCtl.state.xdcrMaxConcurrentReps">
-      </label>
-      <label
-         class="formrow"
-         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
-        <span>XDCR Checkpoint Interval</span>
-        <input
-           maxlength="5"
-           type="text"
-           ng-model="internalSettingsCtl.state.xdcrCheckpointInterval">
-      </label>
-      <label
-         class="formrow"
-         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
-        <span>XDCR Batch Count</span>
-        <input
-           maxlength="5"
-           type="text"
-           ng-model="internalSettingsCtl.state.xdcrWorkerBatchSize">
-      </label>
-      <label
-         class="formrow"
-         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
-        <span>XDCR Batch Size (kB)</span>
-        <input
-           maxlength="6"
-           type="text"
-           ng-model="internalSettingsCtl.state.xdcrDocBatchSizeKb">
-      </label>
-      <label
-         class="formrow"
-         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
-        <span>XDCR Failure Retry Interval</span>
-        <input
-           maxlength="3"
-           type="text"
-           ng-model="internalSettingsCtl.state.xdcrFailureRestartInterval">
-      </label>
-      <label
-         class="formrow"
-         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
-        <span>XDCR Optimistic Replication Threshold</span>
-        <input
-           maxlength="6"
-           type="text"
-           ng-model="internalSettingsCtl.state.xdcrOptimisticReplicationThreshold">
-      </label>
       <label class="formrow">
         <span>Simultaneous REST requests limit</span>
         <input
@@ -201,15 +147,6 @@
         <input
            type="text"
            ng-model="internalSettingsCtl.state.gotraceback">
-      </label>
-      <label
-         class="formrow"
-         ng-if="!internalSettingsCtl.mnPoolDefault.value.goxdcrEnabled">
-        <span>XDCR anticipatory delay (ms)</span>
-        <input
-           maxlength="6"
-           type="text"
-           ng-model="internalSettingsCtl.state.xdcrAnticipatoryDelay">
       </label>
       <div class="formrow">
         <input
