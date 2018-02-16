@@ -217,7 +217,7 @@ reply_json(Req, Body, Code, ExtraHeaders) ->
     reply(Req, encode_json(Body), Code, [{"Content-Type", "application/json"} | ExtraHeaders]).
 
 log_web_hit(Peer, Req, Resp) ->
-    Level = case menelaus_auth:extract_auth(Req) of
+    Level = case menelaus_auth:get_identity(Req) of
                 {[$@ | _], _} ->
                     debug;
                  _ ->

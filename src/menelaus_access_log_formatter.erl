@@ -108,15 +108,18 @@ get_size(Resp) ->
     end.
 
 get_auth_user(Req) ->
-    case menelaus_auth:extract_auth(Req) of
+    User =
+        case menelaus_auth:get_identity(Req) of
+            undefined ->
+                "-";
+            {[], _} ->
+                "-";
+            {U, _} ->
+                U
+        end,
+    case menelaus_auth:get_token(Req) of
         undefined ->
-            "-";
-        {token, _Token} ->
-            "ui-token";
-        {"", _} ->
-            "-";
-        {client_cert_auth, User} ->
             User;
-        {User, _} ->
-            User
+        _ ->
+            User ++ "/UI"
     end.
