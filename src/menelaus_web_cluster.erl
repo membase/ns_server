@@ -242,7 +242,13 @@ parse_join_cluster_params(Params, ThisIsJoin) ->
                    SvcParams ->
                        case parse_validate_services_list(SvcParams) of
                            {ok, Svcs} ->
-                               {ok, Svcs};
+                               case (Svcs =:= ns_cluster_membership:default_services()
+                                     orelse cluster_compat_mode:is_cluster_40()) of
+                                   true ->
+                                       {ok, Svcs};
+                                   false ->
+                                       {error, <<"services parameter is not supported in this cluster compatibility mode">>}
+                               end;
                            SvcsError ->
                                SvcsError
                        end
