@@ -100,7 +100,7 @@ actual_active_nodes() ->
     actual_active_nodes(ns_config:get()).
 
 actual_active_nodes(Config) ->
-    get_nodes_with_status(Config, ns_node_disco:nodes_actual(), active).
+    get_nodes_with_status(Config, ns_node_disco:nodes_actual_proper(), active).
 
 get_nodes_cluster_membership() ->
     get_nodes_cluster_membership(ns_node_disco:nodes_wanted()).
