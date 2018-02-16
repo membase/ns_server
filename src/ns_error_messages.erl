@@ -15,6 +15,8 @@
 %%
 -module(ns_error_messages).
 
+-include("cut.hrl").
+
 -export([decode_json_response_error/3,
          connection_error_message/3,
          engage_cluster_json_error/1,
@@ -155,7 +157,19 @@ unsupported_services_error(AvailableServices, RequestedServices) ->
                                   services_to_iolist(AvailableServices)])).
 
 services_to_iolist(Services) ->
-    misc:intersperse(lists:map(fun couch_util:to_binary/1, Services), ", ").
+    OrderedServices = sort_services(Services),
+    ServiceToStr = ns_cluster_membership:user_friendly_service_name(_),
+    misc:intersperse([ServiceToStr(S) || S <- OrderedServices], ", ").
+
+sort_services(Services) ->
+    Order = [kv, index, n1ql, fts, cbas, eventing],
+    Weights = lists:zip(Order, lists:seq(1, length(Order))),
+    OrderFun = fun (S1, S2) ->
+                   W1 = proplists:get_value(S1, Weights, S1),
+                   W2 = proplists:get_value(S2, Weights, S2),
+                   W1 =< W2
+               end,
+    lists:usort(OrderFun, Services).
 
 topology_limitation_error(Combinations) ->
     CombinationsStr = misc:intersperse([[$", services_to_iolist(C), $"] ||
