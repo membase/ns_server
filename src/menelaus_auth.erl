@@ -110,16 +110,16 @@ complete_uilogout(Req) ->
 
 -spec maybe_refresh_token(mochiweb_request()) -> [{string(), string()}].
 maybe_refresh_token(Req) ->
-    case menelaus_auth:extract_auth(Req) of
-        {token, Token} ->
+    case menelaus_auth:get_token(Req) of
+        undefined ->
+            [];
+        Token ->
             case menelaus_ui_auth:maybe_refresh(Token) of
                 nothing ->
                     [];
                 {new_token, NewToken} ->
                     [generate_auth_cookie(Req, NewToken)]
-            end;
-        _ ->
-            []
+            end
     end.
 
 -spec validate_request(mochiweb_request()) -> ok.
