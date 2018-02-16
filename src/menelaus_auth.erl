@@ -31,7 +31,7 @@
          maybe_refresh_token/1,
          get_identity/1,
          get_token/1,
-         validate_request/1,
+         assert_no_meta_headers/1,
          verify_login_creds/2,
          verify_rest_auth/2,
          verify_local_token/1,
@@ -122,8 +122,8 @@ maybe_refresh_token(Req) ->
             end
     end.
 
--spec validate_request(mochiweb_request()) -> ok.
-validate_request(Req) ->
+-spec assert_no_meta_headers(mochiweb_request()) -> ok.
+assert_no_meta_headers(Req) ->
     undefined = Req:get_header_value("menelaus-auth-user"),
     undefined = Req:get_header_value("menelaus-auth-domain"),
     undefined = Req:get_header_value("menelaus-auth-token"),

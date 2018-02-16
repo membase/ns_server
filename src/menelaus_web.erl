@@ -867,7 +867,7 @@ handle_serve_file(AppRoot, Path, MaxAge, Req) ->
         [{"Cache-Control", lists:concat(["max-age=", MaxAge])}]).
 
 loop_inner(Req, Info, Path, PathTokens) ->
-    menelaus_auth:validate_request(Req),
+    menelaus_auth:assert_no_meta_headers(Req),
     perform_action(Req, get_action(Req, Info, Path, PathTokens)).
 
 -spec get_bucket_id(rbac_permission() | no_check) -> bucket_name() | false.
