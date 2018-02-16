@@ -74,7 +74,8 @@
 -record(activity_token, { lease        :: {node(), binary()},
                           domain_token :: binary(),
                           domain       :: term(),
-                          name         :: [term()] }).
+                          name         :: [term()],
+                          options      :: activity_options() }).
 
 -record(state, { agent    :: undefined | {pid(), reference()},
                  acquirer :: undefined | {pid(), reference()},
@@ -179,8 +180,9 @@ start_activity_regular(Node, Domain, Name, Quorum, Body, Opts) ->
 start_activity_with_token(Node, ActivityToken, Name, Quorum, Body, Opts) ->
     {ok, Async} = async:get_identity(),
 
+    FinalOpts = merge_options(Opts, ActivityToken#activity_token.options),
     check_activity_body(Node, Body),
-    call_wait_for_quorum(Node, ActivityToken, Quorum, Opts,
+    call_wait_for_quorum(Node, ActivityToken, Quorum, FinalOpts,
                          start_activity, [Async, Name, Body]).
 
 start_activity_bypass(Node, _Domain, _Name, _Quorum, Body, _Opts) ->
@@ -344,7 +346,7 @@ check_no_domain_conflicts(ActivityToken, From, State, OnSuccess) ->
 handle_start_activity(Async,
                       Domain,
                       DomainToken, Name, Quorum, Opts, Body, From, State) ->
-    ActivityToken = make_activity_token(Domain, DomainToken, Name, State),
+    ActivityToken = make_activity_token(Domain, DomainToken, Name, Opts, State),
     check_no_domain_conflicts(
       ActivityToken, From, State,
       fun () ->
@@ -360,7 +362,7 @@ handle_start_activity(Async,
 
 handle_register_process(Domain,
                         DomainToken, Name, Quorum, Opts, Pid, From, State) ->
-    ActivityToken = make_activity_token(Domain, DomainToken, Name, State),
+    ActivityToken = make_activity_token(Domain, DomainToken, Name, Opts, State),
     check_no_domain_conflicts(
       ActivityToken, From, State,
       fun () ->
@@ -727,14 +729,15 @@ run_body(Body)
   when is_function(Body, 0) ->
     Body().
 
-make_activity_token(Domain, DomainToken, Name, State) ->
+make_activity_token(Domain, DomainToken, Name, Opts, State) ->
     {LeaseNode, _LeaseUUID} = Lease = State#state.local_lease_holder,
     true = (LeaseNode =:= node()),
 
     #activity_token{lease        = Lease,
                     domain_token = DomainToken,
                     domain       = Domain,
-                    name         = Name}.
+                    name         = Name,
+                    options      = Opts}.
 
 make_fresh_activity_token(Domain) ->
     make_fresh_activity_token(Domain, undefined).
@@ -745,7 +748,8 @@ make_fresh_activity_token(Domain, DomainToken) ->
     #activity_token{domain       = Domain,
                     domain_token = DomainToken,
                     name         = [],
-                    lease        = undefined}.
+                    lease        = undefined,
+                    options      = []}.
 
 set_activity_token(Token) ->
     erlang:put('$leader_activities_token', Token).
@@ -808,3 +812,38 @@ pick_implementation(Regular, Bypass, Args) ->
            end,
 
     erlang:apply(Impl, Args).
+
+inheritable_options() ->
+    [].
+
+merge_option({Key, Value}, Options, ParentOptions) ->
+    merge_option(Key, _ =:= Value, Options, ParentOptions);
+merge_option(Key, Options, ParentOptions)
+  when is_atom(Key) ->
+    merge_option(Key, functools:const(true), Options, ParentOptions).
+
+merge_option(Key, ValuePred, Options, ParentOptions) ->
+    case proplists:is_defined(Key, Options) of
+        true ->
+            %% Explicitly set in by the caller, so ignoring whatever value the
+            %% parent has.
+            Options;
+        false ->
+            NotSet = make_ref(),
+            case proplists:get_value(Key, ParentOptions, NotSet) of
+                NotSet ->
+                    %% Not set by the parent, so ignoring too.
+                    Options;
+                Value ->
+                    case ValuePred(Value) of
+                        true ->
+                            [{Key, Value} | Options];
+                        false ->
+                            Options
+                    end
+            end
+    end.
+
+merge_options(Options, ParentOptions) ->
+    lists:foldl(merge_option(_, _, ParentOptions),
+                Options, inheritable_options()).
