@@ -1984,6 +1984,33 @@ item_count(List, Item) ->
               end
       end, 0, List).
 
+%% This is similar to proplists:compact() in spirit, except that it
+%% [1] drops the item only if it's tuple and its second field is false
+%% [2] retains already compacted props & tuples whose second field is not false
+%%
+%% Ex:
+%%  compact([{a,true}, {d,false}, 1, {"x",true}, {a,b}]) =:= [a, 1, "x", {a,b}]
+compact_proplist(List) ->
+    lists:filtermap(
+      fun(Elem) ->
+              case Elem of
+                  {Key, true} ->
+                      {true, Key};
+                  {_Key, false} ->
+                      false;
+                  _ ->
+                      {true, Elem}
+              end
+      end, List).
+
+-ifdef(EUNIT).
+
+compact_test() ->
+    ?assertEqual([a, c], compact_proplist([{a,true}, {b,false}, {c,true}])),
+    ?assertEqual(["b", {a,b}], compact_proplist([{"b",true}, {a,b}])).
+
+-endif.
+
 %% TODO: Use string:prefix API (not exported in R16) and remove this when we
 %%       upgrade to newer versions of Erlang.
 -spec string_prefix(string(), string()) -> string() | nomatch.
