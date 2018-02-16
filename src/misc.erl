@@ -1984,6 +1984,9 @@ item_count(List, Item) ->
               end
       end, 0, List).
 
+canonical_proplist(List) ->
+    lists:usort(compact_proplist(List)).
+
 %% This is similar to proplists:compact() in spirit, except that it
 %% [1] drops the item only if it's tuple and its second field is false
 %% [2] retains already compacted props & tuples whose second field is not false
@@ -2008,6 +2011,11 @@ compact_proplist(List) ->
 compact_test() ->
     ?assertEqual([a, c], compact_proplist([{a,true}, {b,false}, {c,true}])),
     ?assertEqual(["b", {a,b}], compact_proplist([{"b",true}, {a,b}])).
+
+canonical_proplist_test() ->
+    ?assertEqual([a], canonical_proplist([{a,true}, a, {b,false}])),
+    ?assertEqual([123, x, {c,"x"}, {e, "y"}],
+                 canonical_proplist([{x,true}, {e,"y"}, 123, {c,"x"}])).
 
 -endif.
 
