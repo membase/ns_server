@@ -787,12 +787,24 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
     end.
 
 log_client_error(Req) ->
-    User = menelaus_auth:extract_auth_user(Req),
+    Body = case Req:recv_body() of
+               undefined ->
+                   "(nothing)";
+               B ->
+                   binary_to_list(B)
+           end,
+
+    User = case menelaus_auth:get_identity(Req) of
+               {[], _} ->
+                   "(anonymous)";
+               {UserName, _} ->
+                   UserName
+           end,
+
     ?MENELAUS_WEB_LOG(
        ?UI_SIDE_ERROR_REPORT,
        "Client-side error-report for user ~p on node ~p:~nUser-Agent:~s~n~s~n",
-       [User, node(), Req:get_header_value("user-agent"),
-        binary_to_list(Req:recv_body())]),
+       [User, node(), Req:get_header_value("user-agent"), Body]),
     reply_ok(Req, "text/plain", []).
 
 serve_ui(Req, IsSSL, F, Args) ->
