@@ -30,7 +30,7 @@
 -export([start_link/0,
          nodes_wanted/0, nodes_wanted/1,
          nodes_wanted_updated/0,
-         nodes_actual/0,
+         erlang_visible_nodes/0,
          random_node/0,
          nodes_actual_proper/0,
          nodes_actual_other/0,
@@ -60,22 +60,16 @@
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
-% Returns all nodes that we see.
-%
-% TODO: Track flapping nodes and attenuate, or figure out
-%       how to configure OTP to do it, if not already.
-
-nodes_actual() ->
+% Returns all nodes that erlang distribution system sees.
+erlang_visible_nodes() ->
     lists:sort(nodes([this, visible])).
 
-% Returns a subset of the nodes_wanted() that we see.  This is not the
-% same as nodes([this, visible]) because this function may return a
-% subset of nodes([this, visible]).  eg, many nodes might be visible
-% at the OTP level.  But the caller only cares about the subset
-% of nodes that are on the nodes_wanted() list.
-
+% Returns a subset of the nodes_wanted() that we see.
 nodes_actual_proper() ->
-    only_live_nodes(nodes_actual(), nodes_wanted()).
+    only_live_nodes(nodes_wanted()).
+
+only_live_nodes(Nodes) ->
+    only_live_nodes(erlang_visible_nodes(), Nodes).
 
 only_live_nodes(Current, Wanted) ->
     ordsets:intersection(ordsets:from_list(Current),

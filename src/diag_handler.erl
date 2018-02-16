@@ -448,7 +448,7 @@ handle_just_diag(Req, Extra) ->
     Resp:write_chunk(<<"-------------------------------\n\n\n">>),
 
     Nodes = case proplists:get_value("oneNode", Req:parse_qs(), "0") of
-                "0" -> ns_node_disco:nodes_actual();
+                "0" -> ns_node_disco:erlang_visible_nodes();
                 _ -> [node()]
             end,
     Results = grab_per_node_diag(Nodes),
