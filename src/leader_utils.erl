@@ -15,8 +15,11 @@
 %%
 -module(leader_utils).
 
+-include("cut.hrl").
+
 -export([is_new_orchestration_disabled/0,
-         ignore_if_new_orchestraction_disabled/1]).
+         ignore_if_new_orchestraction_disabled/1,
+         live_nodes/0, live_nodes/1, live_nodes/2]).
 
 is_new_orchestration_disabled() ->
     ns_config:read_key_fast(force_disable_new_orchestration, false).
@@ -28,3 +31,15 @@ ignore_if_new_orchestraction_disabled(Body) ->
         false ->
             Body()
     end.
+
+live_nodes() ->
+    live_nodes(ns_node_disco:nodes_wanted()).
+
+live_nodes(WantedNodes) ->
+    live_nodes(ns_config:latest(), WantedNodes).
+
+live_nodes(Config, WantedNodes) ->
+    Nodes = ns_cluster_membership:get_nodes_with_status(Config,
+                                                        WantedNodes,
+                                                        _ =/= inactiveFailed),
+    ns_node_disco:only_live_nodes(Nodes).
