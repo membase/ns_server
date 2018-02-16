@@ -15,6 +15,7 @@
 %%
 -module(ns_cluster_membership).
 
+-include("cut.hrl").
 -include("ns_common.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -71,15 +72,20 @@
          should_run_service/3,
          user_friendly_service_name/1]).
 
-get_nodes_with_status(Status) ->
-    get_nodes_with_status(ns_config:latest(), Status).
+get_nodes_with_status(PredOrStatus) ->
+    get_nodes_with_status(ns_config:latest(), PredOrStatus).
 
-get_nodes_with_status(Config, Status) ->
-    get_nodes_with_status(Config, ns_node_disco:nodes_wanted(Config), Status).
+get_nodes_with_status(Config, PredOrStatus) ->
+    get_nodes_with_status(Config,
+                          ns_node_disco:nodes_wanted(Config), PredOrStatus).
 
-get_nodes_with_status(Config, Nodes, Status) ->
+get_nodes_with_status(Config, Nodes, Status)
+  when is_atom(Status) ->
+    get_nodes_with_status(Config, Nodes, _ =:= Status);
+get_nodes_with_status(Config, Nodes, Pred)
+  when is_function(Pred, 1) ->
     [Node || Node <- Nodes,
-             get_cluster_membership(Node, Config) =:= Status].
+             Pred(get_cluster_membership(Node, Config))].
 
 active_nodes() ->
     active_nodes(ns_config:get()).
