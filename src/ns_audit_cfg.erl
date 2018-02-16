@@ -277,7 +277,7 @@ read_descriptors() ->
     Path = filename:join(path_config:component_path(sec), "audit_events.json"),
     {ok, Bin} = file:read_file(Path),
     {Json} = ejson:decode(Bin),
-    1 = proplists:get_value(<<"version">>, Json),
+    true = lists:member(proplists:get_value(<<"version">>, Json), [1, 2]),
     Modules = proplists:get_value(<<"modules">>, Json),
     lists:flatmap(
       fun ({Module}) ->
