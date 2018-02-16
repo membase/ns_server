@@ -814,7 +814,7 @@ pick_implementation(Regular, Bypass, Args) ->
     erlang:apply(Impl, Args).
 
 inheritable_options() ->
-    [].
+    [{unsafe, true}].
 
 merge_option({Key, Value}, Options, ParentOptions) ->
     merge_option(Key, _ =:= Value, Options, ParentOptions);
