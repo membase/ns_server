@@ -77,7 +77,7 @@ to_bin({Command, Arg1, Arg2}) ->
     {Command, list_to_binary(Arg1), list_to_binary(Arg2)}.
 
 multi_call(Request) ->
-    Nodes = ns_node_disco:nodes_actual_proper(),
+    Nodes = ns_node_disco:nodes_actual(),
     RequestBin = to_bin(Request),
 
     Results =

@@ -964,7 +964,7 @@ handle_diag_vbuckets(Req) ->
     Params = Req:parse_qs(),
     BucketName = proplists:get_value("bucket", Params),
     {ok, BucketConfig} = ns_bucket:get_bucket(BucketName),
-    Nodes = ns_node_disco:nodes_actual_proper(),
+    Nodes = ns_node_disco:nodes_actual(),
     RawPerNode = misc:parallel_map(fun (Node) ->
                                            diag_vbucket_per_node(BucketName, Node)
                                    end, Nodes, 30000),

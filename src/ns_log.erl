@@ -290,7 +290,7 @@ do_log(#log_entry{code=undefined} = Entry) ->
 do_log(#log_entry{code=Code, tstamp=TStamp} = Entry) when is_integer(Code) ->
     EntryNew = Entry#log_entry{server_time=calendar:now_to_local_time(TStamp)},
 
-    Nodes = ns_node_disco:nodes_actual_proper(),
+    Nodes = ns_node_disco:nodes_actual(),
     gen_server:abcast(Nodes, ?MODULE, {do_log, EntryNew}).
 
 %% API

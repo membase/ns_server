@@ -351,7 +351,7 @@ do_eject_myself_rec(0, _) ->
     exit(self_eject_failed);
 do_eject_myself_rec(IterationsLeft, Period) ->
     MySelf = node(),
-    case ns_node_disco:nodes_actual_proper() of
+    case ns_node_disco:nodes_actual() of
         [MySelf] -> ok;
         _ ->
             timer:sleep(Period),

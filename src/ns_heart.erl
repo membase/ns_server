@@ -392,7 +392,7 @@ grab_fresh_failover_safeness_infos(BucketsAll) ->
     do_grab_fresh_failover_safeness_infos(BucketsAll, 2000).
 
 do_grab_fresh_failover_safeness_infos(BucketsAll, Timeout) ->
-    Nodes = ns_node_disco:nodes_actual_proper(),
+    Nodes = ns_node_disco:nodes_actual(),
     BucketNames = proplists:get_keys(BucketsAll),
     {NodeResp, NodeErrors, DownNodes} =
         misc:rpc_multicall_with_plist_result(

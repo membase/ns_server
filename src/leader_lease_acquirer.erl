@@ -87,7 +87,7 @@ enter_loop() ->
 
                    leader_activities_pid = Pid},
 
-    Nodes = ns_node_disco:nodes_actual_proper(),
+    Nodes = ns_node_disco:nodes_actual(),
     gen_server:enter_loop(?MODULE, [],
                           handle_new_nodes(Nodes, State), {local, ?SERVER}).
 

@@ -32,7 +32,7 @@
          nodes_wanted_updated/0,
          erlang_visible_nodes/0,
          random_node/0,
-         nodes_actual_proper/0,
+         nodes_actual/0,
          nodes_actual_other/0,
          register_node_renaming_txn/1,
          couchdb_node/0,
@@ -65,7 +65,7 @@ erlang_visible_nodes() ->
     lists:sort(nodes([this, visible])).
 
 % Returns a subset of the nodes_wanted() that we see.
-nodes_actual_proper() ->
+nodes_actual() ->
     only_live_nodes(nodes_wanted()).
 
 only_live_nodes(Nodes) ->
@@ -108,12 +108,9 @@ random_node() ->
         [N|_] -> N
     end.
 
-% Returns nodes_actual_proper(), but with self node() filtered out.
-% This is not the same as nodes([visible]), because this function may
-% return a subset of nodes([visible]), similar to nodes_actual_proper().
-
+% Returns nodes_actual(), but with self node() filtered out.
 nodes_actual_other() ->
-    lists:subtract(nodes_actual_proper(), [node()]).
+    lists:subtract(nodes_actual(), [node()]).
 
 nodes_wanted() ->
     nodes_wanted(ns_config:latest()).
@@ -239,7 +236,7 @@ do_nodes_wanted_updated(NodeListIn) ->
 do_notify(#state{node_renaming_txn_mref = MRef} = State) when MRef =/= undefined ->
     State;
 do_notify(#state{nodes = NodesOld} = State) ->
-    NodesNew = nodes_actual_proper(),
+    NodesNew = nodes_actual(),
     case NodesNew =:= NodesOld of
         true  -> State;
         false -> gen_event:notify(ns_node_disco_events,
