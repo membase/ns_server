@@ -2,10 +2,10 @@
   "use strict";
 
   angular.module('mnSettingsClusterService', [
-    'mnPoolDefault'
+    'mnPools'
   ]).factory('mnSettingsClusterService', mnSettingsClusterServiceFactory);
 
-  function mnSettingsClusterServiceFactory($http, $q, IEC, mnPoolDefault) {
+  function mnSettingsClusterServiceFactory($http, $q, IEC, mnPools) {
     var mnSettingsClusterService = {
       postPoolsDefault: postPoolsDefault,
       getIndexSettings: getIndexSettings,
@@ -47,7 +47,7 @@
         maybeSetQuota(data, memoryQuotaConfig, "fts", "ftsMemoryQuota");
       }
 
-      if (mnPoolDefault.export.isEnterprise) {
+      if (mnPools.export.isEnterprise) {
         maybeSetQuota(data, memoryQuotaConfig, "cbas", "cbasMemoryQuota");
         maybeSetQuota(data, memoryQuotaConfig, "eventing", "eventingMemoryQuota");
       }
