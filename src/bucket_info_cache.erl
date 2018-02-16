@@ -237,8 +237,8 @@ build_nodes_ext([Node | RestNodes], Config, NodesExtAcc) ->
     build_nodes_ext(RestNodes, Config, [NodeInfo | NodesExtAcc]).
 
 do_compute_bucket_info(Bucket, Config) ->
-    case ns_bucket:get_bucket_with_vclock(Bucket, Config) of
-        {ok, BucketConfig, _BucketVC} ->
+    case ns_bucket:get_bucket(Bucket, Config) of
+        {ok, BucketConfig} ->
             compute_bucket_info_with_config(Bucket, Config, BucketConfig);
         not_present ->
             not_present
