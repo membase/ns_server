@@ -485,7 +485,8 @@ get_action(Req, {AppRoot, IsSSL, Plugins}, Path, PathTokens) ->
                     {{[settings], write},
                      fun menelaus_web_queries:handle_curl_whitelist_post/1};
                 ["settings", "logRedaction"] ->
-                    {{[settings], write}, fun menelaus_web_cluster_logs:handle_settings_log_redaction_post/1};
+                    {{[admin, security], write},
+                     fun menelaus_web_cluster_logs:handle_settings_log_redaction_post/1};
                 ["settings", "autoReprovision", "resetCount"] ->
                     {{[settings], write},
                      fun menelaus_web_settings:handle_settings_auto_reprovision_reset_count/1};
