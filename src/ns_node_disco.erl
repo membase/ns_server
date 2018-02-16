@@ -37,7 +37,8 @@
          register_node_renaming_txn/1,
          couchdb_node/0,
          local_sub_nodes/0,
-         ns_server_node/0]).
+         ns_server_node/0,
+         only_live_nodes/1]).
 
 -export([ns_log_cat/1, ns_log_code_string/1]).
 
