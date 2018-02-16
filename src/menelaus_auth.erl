@@ -24,7 +24,6 @@
 -export([has_permission/2,
          get_accessible_buckets/2,
          extract_auth/1,
-         extract_auth_user/1,
          extract_identity_from_cert/1,
          extract_ui_auth_token/1,
          uilogin/3,
@@ -167,14 +166,6 @@ get_identity(Req) ->
 get_token(Req) ->
     Req:get_header_value("menelaus-auth-token").
 
--spec extract_auth_user(mochiweb_request()) -> string() | undefined.
-extract_auth_user(Req) ->
-    case Req:get_header_value("authorization") of
-        "Basic " ++ Value ->
-            parse_user(base64:decode_to_string(Value));
-        _ -> undefined
-    end.
-
 -spec extract_auth(mochiweb_request()) -> {User :: string(), Passwd :: string()}
                                               | {token, string()}
                                               | {client_cert_auth, string()}
@@ -222,13 +213,6 @@ parse_user_password(UserPasswordStr) ->
         I ->
             {string:substr(UserPasswordStr, 1, I - 1),
              string:substr(UserPasswordStr, I + 1)}
-    end.
-
-parse_user(UserPasswordStr) ->
-    case string:tokens(UserPasswordStr, ":") of
-        [] -> undefined;
-        [User] -> User;
-        [User, _Password] -> User
     end.
 
 -spec has_permission(rbac_permission(), mochiweb_request()) -> boolean().
