@@ -217,9 +217,9 @@ verify_bucket_auth(#httpd{method = Method,
                                     {not_found, no_couchbase_bucket_exists}
                             end
                     end;
-                forbidden ->
+                {forbidden, _} ->
                     {forbidden, Permission};
-                auth_failure ->
+                {auth_failure, _} ->
                     auth_failure
             end
     end.

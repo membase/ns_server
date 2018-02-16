@@ -875,11 +875,13 @@ get_bucket_id({Object, _Operations}) ->
 perform_action(_Req, {done, RV}) ->
     RV;
 perform_action(Req, {local, Fun}) ->
-    case menelaus_auth:verify_local_token(Req) of
-        {allowed, NewReq} ->
+    {RV, Headers} = menelaus_auth:verify_local_token(Req),
+    NewReq = menelaus_auth:apply_headers(Req, Headers),
+    case RV of
+        allowed ->
             Fun(NewReq);
         auth_failure ->
-            menelaus_util:require_auth(Req)
+            menelaus_util:require_auth(NewReq)
     end;
 perform_action(Req, {ui, IsSSL, Fun}) ->
     perform_action(Req, {ui, IsSSL, Fun, []});
@@ -888,18 +890,22 @@ perform_action(Req, {ui, IsSSL, Fun, Args}) ->
 perform_action(Req, {Permission, Fun}) ->
     perform_action(Req, {Permission, Fun, []});
 perform_action(Req, {Permission, Fun, Args}) ->
-    case menelaus_auth:verify_rest_auth(Req, Permission) of
-        {allowed, NewReq} ->
+    {RV, Headers} = menelaus_auth:verify_rest_auth(Req, Permission),
+    NewReq = menelaus_auth:apply_headers(Req, Headers),
+    case RV of
+        allowed ->
             case get_bucket_id(Permission) of
                 false ->
                     check_uuid(Fun, Args, NewReq);
                 Bucket ->
-                    check_bucket_uuid(Bucket, fun check_uuid/3, [Fun, Args], NewReq)
+                    check_bucket_uuid(Bucket, fun check_uuid/3, [Fun, Args],
+                                      NewReq)
             end;
         auth_failure ->
-            menelaus_util:require_auth(Req);
+            menelaus_util:require_auth(NewReq);
         forbidden ->
-            menelaus_util:reply_json(Req, menelaus_web_rbac:forbidden_response(Permission), 403)
+            menelaus_util:reply_json(
+              NewReq, menelaus_web_rbac:forbidden_response(Permission), 403)
     end.
 
 check_uuid(F, Args, Req) ->

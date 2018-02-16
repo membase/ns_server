@@ -35,7 +35,8 @@
          validate_request/1,
          verify_login_creds/2,
          verify_rest_auth/2,
-         verify_local_token/1]).
+         verify_local_token/1,
+         apply_headers/2]).
 
 %% rpc from ns_couchdb node
 -export([authenticate/1,
@@ -129,19 +130,28 @@ validate_request(Req) ->
     undefined = Req:get_header_value("menelaus-auth-token"),
     ok.
 
--spec store_user_info(mochiweb_request(), rbac_identity(), auth_token() | undefined) ->
-                             mochiweb_request().
-store_user_info(Req, {User, Domain}, Token) ->
-    Headers = Req:get(headers),
-    H1 = mochiweb_headers:enter("menelaus-auth-user", User, Headers),
-    H2 = mochiweb_headers:enter("menelaus-auth-domain", Domain, H1),
-    H3 = case Token of
-             undefined ->
-                 H2;
-             _ ->
-                 mochiweb_headers:enter("menelaus-auth-token", Token, H2)
-         end,
-    mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path), Req:get(version), H3).
+apply_headers(Req, Headers) ->
+    AllHeaders =
+        lists:foldl(
+          fun ({Header, Val}, H) ->
+                  mochiweb_headers:enter(Header, Val, H)
+          end, Req:get(headers), Headers),
+    mochiweb_request:new(Req:get(socket), Req:get(method), Req:get(raw_path),
+                         Req:get(version), AllHeaders).
+
+meta_headers(undefined) ->
+    [];
+meta_headers({User, Domain}) ->
+    [{"menelaus-auth-user", User},
+     {"menelaus-auth-domain", Domain}];
+meta_headers(User) when is_list(User) ->
+    meta_headers({User, rejected}).
+
+meta_headers(Identity, undefined) ->
+    meta_headers(Identity);
+meta_headers(Identity, Token) ->
+    [{"menelaus-auth-token", Token} | meta_headers(Identity)].
+
 
 -spec get_identity(mochiweb_request()) -> rbac_identity() | undefined.
 get_identity(Req) ->
@@ -188,6 +198,16 @@ extract_auth(Req) ->
                 UName ->
                     {client_cert_auth, UName}
             end
+    end.
+
+get_rejected_user(Auth) ->
+    case Auth of
+        {client_cert_auth, User} ->
+            User;
+        {User, _} when is_list(User) ->
+            User;
+        _ ->
+            undefined
     end.
 
 parse_user_password(UserPasswordStr) ->
@@ -310,50 +330,43 @@ verify_login_creds(Username, Password) ->
             Other
     end.
 
--spec uilogin(mochiweb_request(), rbac_user_id(), rbac_password()) -> mochiweb_response().
+-spec uilogin(mochiweb_request(), rbac_user_id(), rbac_password()) ->
+                     mochiweb_response().
 uilogin(Req, User, Password) ->
     case verify_login_creds(User, Password) of
         {ok, Identity} ->
             Token = menelaus_ui_auth:generate_token(Identity),
             CookieHeader = generate_auth_cookie(Req, Token),
-            ns_audit:login_success(store_user_info(Req, Identity, Token)),
+            ns_audit:login_success(
+              apply_headers(Req, meta_headers(Identity, Token))),
             menelaus_util:reply(Req, 200, [CookieHeader]);
         auth_failure ->
-            ns_audit:login_failure(store_user_info(Req, {User, rejected}, undefined)),
+            ns_audit:login_failure(
+              apply_headers(Req, meta_headers(User))),
             menelaus_util:reply(Req, 400);
         {forbidden, Identity, Permission} ->
-            ns_audit:login_failure(store_user_info(Req, Identity, undefined)),
-            menelaus_util:reply_json(Req, menelaus_web_rbac:forbidden_response(Permission), 403)
+            ns_audit:login_failure(
+              apply_headers(Req, meta_headers(Identity))),
+            menelaus_util:reply_json(
+              Req, menelaus_web_rbac:forbidden_response(Permission), 403)
     end.
 
 -spec verify_rest_auth(mochiweb_request(), rbac_permission() | no_check) ->
-                              auth_failure | forbidden | {allowed, mochiweb_request()}.
+                              {auth_failure | forbidden | allowed, [{_, _}]}.
 verify_rest_auth(Req, Permission) ->
     Auth = extract_auth(Req),
-    case do_verify_rest_auth(Auth, Permission) of
-        {allowed, Identity, Token} ->
-            {allowed, store_user_info(Req, Identity, Token)};
-        Other ->
-            Other
-    end.
-
-do_verify_rest_auth(Auth, Permission) ->
     case authenticate(Auth) of
         false ->
-            auth_failure;
+            {auth_failure, meta_headers(get_rejected_user(Auth))};
         {ok, Identity} ->
-            case check_permission(Identity, Permission) of
-                allowed ->
-                    Token = case Auth of
-                                {token, T} ->
-                                    T;
-                                _ ->
-                                    undefined
-                            end,
-                    {allowed, Identity, Token};
-                Other ->
-                    Other
-            end
+            Token = case Auth of
+                        {token, T} ->
+                            T;
+                        _ ->
+                            undefined
+                    end,
+            {check_permission(Identity, Permission),
+             meta_headers(Identity, Token)}
     end.
 
 -spec extract_identity_from_cert(binary()) -> auth_failure | tuple().
@@ -403,16 +416,16 @@ check_permission(Identity, Permission) ->
     end.
 
 -spec verify_local_token(mochiweb_request()) ->
-                                auth_failure | {allowed, mochiweb_request()}.
+                                {auth_failure | allowed, [{_, _}]}.
 verify_local_token(Req) ->
     case extract_auth(Req) of
         {"@localtoken" = Username, Password} ->
             case menelaus_local_auth:check_token(Password) of
                 true ->
-                    {allowed, store_user_info(Req, {Username, local_token}, undefined)};
+                    {allowed, meta_headers({Username, local_token})};
                 false ->
-                    auth_failure
+                    {auth_failure, meta_headers(Username)}
             end;
-        _ ->
-            auth_failure
+        Auth ->
+            {auth_failure, meta_headers(get_rejected_user(Auth))}
     end.
