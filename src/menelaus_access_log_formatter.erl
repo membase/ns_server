@@ -109,12 +109,12 @@ get_size(Resp) ->
 
 get_auth_user(Req) ->
     User =
-        case menelaus_auth:get_identity(Req) of
+        case menelaus_auth:get_user_id(Req) of
             undefined ->
                 "-";
-            {[], _} ->
+            [] ->
                 "-";
-            {U, _} ->
+            U ->
                 U
         end,
     case menelaus_auth:get_token(Req) of

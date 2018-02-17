@@ -217,10 +217,10 @@ reply_json(Req, Body, Code, ExtraHeaders) ->
     reply(Req, encode_json(Body), Code, [{"Content-Type", "application/json"} | ExtraHeaders]).
 
 log_web_hit(Peer, Req, Resp) ->
-    Level = case menelaus_auth:get_identity(Req) of
-                {[$@ | _], _} ->
+    Level = case menelaus_auth:get_user_id(Req) of
+                [$@ | _] ->
                     debug;
-                 _ ->
+                _ ->
                     info
             end,
     ale:xlog(?ACCESS_LOGGER, Level, {Peer, Req, Resp}, "", []).

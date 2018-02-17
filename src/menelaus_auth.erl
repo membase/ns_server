@@ -30,6 +30,7 @@
          complete_uilogout/1,
          maybe_refresh_token/1,
          get_identity/1,
+         get_user_id/1,
          get_token/1,
          assert_no_meta_headers/1,
          verify_login_creds/2,
@@ -163,6 +164,10 @@ get_identity(Req) ->
         {User, Domain} ->
             {User, list_to_existing_atom(Domain)}
     end.
+
+-spec get_user_id(mochiweb_request()) -> rbac_user_id() | undefined.
+get_user_id(Req) ->
+    Req:get_header_value("menelaus-auth-user").
 
 -spec get_token(mochiweb_request()) -> auth_token() | undefined.
 get_token(Req) ->

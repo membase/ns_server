@@ -794,10 +794,10 @@ log_client_error(Req) ->
                    binary_to_list(B)
            end,
 
-    User = case menelaus_auth:get_identity(Req) of
-               {[], _} ->
+    User = case menelaus_auth:get_user_id(Req) of
+               [] ->
                    "(anonymous)";
-               {UserName, _} ->
+               UserName ->
                    UserName
            end,
 
