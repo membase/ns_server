@@ -129,6 +129,8 @@ assert_no_meta_headers(Req) ->
     undefined = Req:get_header_value("menelaus-auth-token"),
     ok.
 
+apply_headers(Req, []) ->
+    Req;
 apply_headers(Req, Headers) ->
     AllHeaders =
         lists:foldl(
