@@ -310,7 +310,7 @@ default() ->
        %% Location that Breakpad should write minidumps upon memcached crash.
        {breakpad_minidump_dir_path, BreakpadMinidumpDir},
        {dedupe_nmvb_maps, false},
-       {tracing_enabled, true},
+       {tracing_enabled, IsEnterprise},
        {datatype_snappy, true}]},
 
      %% Memcached config
