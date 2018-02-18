@@ -53,7 +53,8 @@
                      | quorum(sets:set(node()) | [node()]).
 
 -type quorum() :: quorum(sets:set(node())).
--type quorum(Nodes) :: {all, Nodes}
+-type quorum(Nodes) :: follower
+                     | {all, Nodes}
                      | {majority, Nodes}
                      | [quorum(Nodes)].
 
